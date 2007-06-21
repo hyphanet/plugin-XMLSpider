@@ -1063,6 +1063,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			appendDefaultPageStart(out,null);
 		} else if ("list".equals(action)) {
 			String listName = request.getParam("listName", null);
+			out.append("<p>list clicked</CENTER></BODY></HTML>");
 		}
 		
 		return out.toString();
