@@ -77,7 +77,7 @@ import freenet.support.api.HTTPRequest;
 public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless,  FredPluginHTTPAdvanced, HttpPlugin, ClientCallback, FoundURICallback ,USKCallback{
 
 	long tProducedIndex;
-
+	int count;
 	// URIs visited, or fetching, or queued. Added once then forgotten about.
 	private final HashSet visitedURIs = new HashSet();
 	private final HashSet urisWithWords = new HashSet();
@@ -92,7 +92,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	//private static final String indexFilename = "index.xml";
 	private static final String DEFAULT_INDEX_DIR = "myindex/";
 	public Set allowedMIMETypes;
-	private static final int MAX_ENTRIES = 50;
+	private static final int MAX_ENTRIES = 5;
 	private static final String pluginName = "XML spider";
 	
 	private static final String indexTitle= "This is an index";
@@ -116,6 +116,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 	private synchronized void queueURI(FreenetURI uri) {
 		//not adding the html condition
+		if((uri.getKeyType()).equals("USK")){
+			if(uri.getSuggestedEdition() < 0)
+				uri = uri.setSuggestedEdition((-1)* uri.getSuggestedEdition());
+			}
 		if ((!visitedURIs.contains(uri)) && queuedURISet.add(uri)) {
 			queuedURIList.addLast(uri);
 			visitedURIs.add(uri);
@@ -150,8 +154,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				FreenetURI uri = (FreenetURI) queuedURIList.removeFirst();
 				queuedURISet.remove(uri);
 				if((uri.getKeyType()).equals("USK")){
-				if(uri.getSuggestedEdition() < 0)
-					uri = uri.setSuggestedEdition((-1)* uri.getSuggestedEdition());
+							
 				try{
 					(ctx.uskManager).subscribe(USK.create(uri),this, false, this);	
 				}catch(Exception e){
@@ -169,7 +172,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			try {
 				runningFetchesByURI.put(g.getURI(), g);
 				g.start();
-				FileWriter outp = new FileWriter("logfile2",true);
+				FileWriter outp = new FileWriter("logfile23",true);
 				outp.write("URI "+g.getURI().toString()+'\n');
 				
 				outp.close();
@@ -275,7 +278,14 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			return;
 		}
 		 
-		
+		try{
+			FileWriter outp = new FileWriter("onText",true);
+			outp.write("inside on text\n");
+			outp.close();
+			
+		}catch(Exception e2){
+			
+		}
       
 		if((type != null) && (type.length() != 0) && type.toLowerCase().equals("title")
 		   && (s != null) && (s.length() != 0) && (s.indexOf('\n') < 0)) {
@@ -323,14 +333,14 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		if(word.length() < 3)
 			return;
 
-
+		
 		FreenetURI[] uris = (FreenetURI[]) urisByWord.get(word);
 
 		//Integer[] positions = (Integer[]) positionsByWordByURI.get(word);
 
 		urisWithWords.add(uri);
 
-
+		
 		/* Word position indexation */
 		HashMap wordPositionsForOneUri = (HashMap)positionsByWordByURI.get(uri.toString()); /* For a given URI, take as key a word, and gives position */
 		
@@ -353,7 +363,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				wordPositionsForOneUri.put(word, newPositions);
 			}
 		}
-	
+		
 		if (uris == null) {
 			urisByWord.put(word, new FreenetURI[] { uri });
 			
@@ -367,7 +377,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			newURIs[uris.length] = uri;
 			urisByWord.put(word, newURIs);
 		}
-		if (tProducedIndex + minTimeBetweenEachIndexRewriting * 1000 < System.currentTimeMillis()) {
+		
+		
+		//produceIndex();
+		if (tProducedIndex + minTimeBetweenEachIndexRewriting * 10 < System.currentTimeMillis()) {
 			try {
 				produceIndex();
 				generateIndex();
@@ -384,11 +397,12 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		
 		//the number of bits to consider for matching 
 		int prefix = 1 ;
-	
+		
 		if (urisByWord.isEmpty() || urisWithWords.isEmpty()) {
 			System.out.println("No URIs with words");
 			return;
 		}
+		
 		File outputFile = new File(DEFAULT_INDEX_DIR+"index.xml");
 		StreamResult resultStream;
 		resultStream = new StreamResult(outputFile);
@@ -443,8 +457,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 
 		
-		String[] words = (String[]) urisByWord.keySet().toArray(new String[urisByWord.size()]);
-		Arrays.sort(words);
+		//String[] words = (String[]) urisByWord.keySet().toArray(new String[urisByWord.size()]);
+		//Arrays.sort(words);
 		FreenetURI[] uris = (FreenetURI[]) urisWithWords.toArray(new FreenetURI[urisWithWords.size()]);
 		urisToNumbers = new HashMap();
 		Element prefixElement = xmlDoc.createElement("prefix");
@@ -1057,23 +1071,99 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		StringBuffer out = new StringBuffer();
 		// need to produce pretty html
 		//later fredpluginhttpadvanced will give the interface
-		String action = request.getParam("action");
-		if(action == null || action.length() == 0){
-			//put the default post fields
-			appendDefaultPageStart(out,null);
-		} else if ("list".equals(action)) {
-			String listName = request.getParam("listName", null);
-			out.append("<p>list clicked</CENTER></BODY></HTML>");
-		}
+		//this brings us to the page from visit
+	
+		appendDefaultPageStart(out,null);
+		String uriParam = request.getParam("adduri");
+		if(uriParam != null && uriParam.length() != 0)
+			{
+			try {
+				FreenetURI uri = new FreenetURI(uriParam);
+				synchronized (this) {
+					failedURIs.remove(uri);
+					visitedURIs.remove(uri);
+				}
+				out.append("<p>URI added :"+uriParam+"</p>");
+				queueURI(uri);
+				startSomeRequests();
+			} catch (MalformedURLException mue1) {
+				out.append("<p>MalFormed URI: "+uriParam+"</p");
+			}
+			}
+		
+//		if(action == null || action.length() == 0){
+//			//put the default post fields
+//			appendDefaultPageStart(out,null);
+//			
+//		} else if ("list".equals(action)) {
+//			String listName = request.getParam("listName", null);
+//			out.append("<p>list clicked</CENTER></BODY></HTML>");
+//			if(listName == null){
+//				//display all th
+//				Set runningFetches = new HashMap(runningFetchesByURI).keySet();
+//				List queued = new ArrayList(queuedURIList);
+//				Set visited = new HashSet(visitedURIs);
+//				Set failed = new HashSet(failedURIs);
+//				
+//				out.append("<p><h3>Running Fetches</h3>");
+//				Iterator it=runningFetches.iterator();
+//				while(it.hasNext()){
+//					out.append("<code>"+(it.next()).toString()+"</code><br>");
+//				}
+//			}
+//			else{
+//				//display individual results
+//			}
+//		}
+//		else if ("add".equals(action)) {
+//			String uriParam = request.getParam("key");
+//			try {
+//				FreenetURI uri = new FreenetURI(uriParam);
+//				synchronized (this) {
+//					failedURIs.remove(uri);
+//					visitedURIs.remove(uri);
+//				}
+//				queueURI(uri);
+//				startSomeRequests();
+//			} catch (MalformedURLException mue1) {
+//				out.append("<h1>URL invalid</h1>");
+////				sendSimpleResponse(context, "URL invalid", "The given URI is not valid.");
+////				return;
+//			}
+//			//not really necc
+////			MultiValueTable responseHeaders = new MultiValueTable();
+////			responseHeaders.put("Location", "?action=list");
+////			context.sendReplyHeaders(301, "Redirect", responseHeaders, "text/html; charset=utf-8", 0);
+//			
+//		
+//		}
 		
 		return out.toString();
 	}
 	private void appendDefaultPageStart(StringBuffer out, String stylesheet) {
+		count ++;
 		out.append("<HTML><HEAD><TITLE>" + pluginName + "</TITLE>");
 		if(stylesheet != null)
 			out.append("<link href=\""+stylesheet+"\" type=\"text/css\" rel=\"stylesheet\" />");
 		out.append("</HEAD><BODY>\n");
 		out.append("<CENTER><H1>" + pluginName + "</H1><BR/><BR/><BR/>\n");
+		out.append("Add uri:");
+		out.append("<form method=\"GET\"><input type=\"text\" name=\"adduri\" /><br/><br/>");
+		out.append("<input type=\"submit\" value=\"Add uri\" /></form>");
+		Set runningFetches = runningFetchesByURI.keySet();
+		out.append("<p><h3>Running Fetches</h3></p>");
+		Set visited = new HashSet(visitedURIs);
+		List queued = new ArrayList(queuedURIList);
+		Set failed = new HashSet(failedURIs);
+		Iterator it=queued.iterator();
+		out.append("<br/>Size :"+runningFetches.size());
+		out.append("<br/>Size :"+queued.size());
+		out.append("<br/>Size :"+visited.size());
+		out.append("<br/>Size :"+failed.size());
+		out.append("<br/>Count : "+count);
+		while(it.hasNext()){
+			out.append("<code>"+(it.next()).toString()+"</code><br>");
+		}
 	}
 	public String handleHTTPPut(HTTPRequest request) throws PluginHTTPException{
 		return null;
@@ -1104,7 +1194,7 @@ public void runPlugin(PluginRespirator pr){
 	tProducedIndex = System.currentTimeMillis();
 	
 	stopped = false;
-	
+	count = 0;
 	Thread starterThread = new Thread("Spider Plugin Starter") {
 		public void run() {
 			try{
