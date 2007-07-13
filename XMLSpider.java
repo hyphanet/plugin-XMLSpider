@@ -100,14 +100,14 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	private Vector list;
 	private boolean indexing ;
 	
-	private static final int minTimeBetweenEachIndexRewriting = 10;
+	private static final int minTimeBetweenEachIndexRewriting = 50;
 /**
  * DEFAULT_INDEX_DIR is the directory where the generated indices are stored.
  * Needs to be created before it can be used
  */
 	private static final String DEFAULT_INDEX_DIR = "myindex3/";
 	public Set allowedMIMETypes;
-	private static final int MAX_ENTRIES = 5;
+	private static final int MAX_ENTRIES = 30;
 	private static final String pluginName = "XML spider";
 	/**
 	 * This gives the allowed fraction of total time spent on generating indices
@@ -139,7 +139,16 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		if((uri.getKeyType()).equals("USK")){
 			if(uri.getSuggestedEdition() < 0)
 				uri = uri.setSuggestedEdition((-1)* uri.getSuggestedEdition());
+			try{
+			uri = (USK.create(uri)).getBaseSSK();
+			/**
+			 * All uris are added as SSK
+			 * 
+			 */
+			}
+			catch(Exception e){}
 		}
+		
 		if ((!visitedURIs.contains(uri)) && queuedURISet.add(uri)) {
 			queuedURIList.addLast(uri);
 			visitedURIs.add(uri);
@@ -355,7 +364,15 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		//Integer[] positions = (Integer[]) positionsByWordByURI.get(word);
 
 		urisWithWords.add(uri);
-
+//	FileWriter outp = new FileWriter("uricheck",true);
+//	outp.write(uri.getDocName()+"\n");
+//	outp.write(uri.getKeyType()+"\n");
+//	outp.write(uri.getMetaString()+"\n");
+//	outp.write(uri.getGuessableKey()+"\n");
+//	outp.write(uri.hashCode()+"\n");
+//	outp.write(uri.getPreferredFilename()+"\n");
+//	
+//	outp.close();
 
 		/* Word position indexation */
 		HashMap wordPositionsForOneUri = (HashMap)positionsByWordByURI.get(uri.toString()); /* For a given URI, take as key a word, and gives position */
@@ -396,7 +413,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		//the new word is added here in urisByWord
 		tMap.put(MD5(word), word);
 		long time_indexing = System.currentTimeMillis();
-		if (tProducedIndex + minTimeBetweenEachIndexRewriting * 10 < System.currentTimeMillis()) {
+		if (tProducedIndex + minTimeBetweenEachIndexRewriting * 1000 < System.currentTimeMillis()) {
 			try {
 				//produceIndex();
 				//check();
@@ -1305,16 +1322,16 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public void startPlugin() {
 		stopped = false;
 		
-		Thread starterThread = new Thread("Spider Plugin Starter") {
-			public void run() {
-				try{
-					Thread.sleep(30 * 1000); // Let the node start up
-				} catch (InterruptedException e){}
-				startSomeRequests();
-			}
-		};
-		starterThread.setDaemon(true);
-		starterThread.start();
+//		Thread starterThread = new Thread("Spider Plugin Starter") {
+//			public void run() {
+//				try{
+//					Thread.sleep(30 * 1000); // Let the node start up
+//				} catch (InterruptedException e){}
+//				startSomeRequests();
+//			}
+//		};
+//		starterThread.setDaemon(true);
+//		starterThread.start();
 	}
 
 	/**
@@ -1487,6 +1504,8 @@ public void runPlugin(PluginRespirator pr){
 	indexing = true;
 	stopped = false;
 	count = 0;
+	
+	//startPlugin();
 	Thread starterThread = new Thread("Spider Plugin Starter") {
 		public void run() {
 			try{
@@ -1612,7 +1631,7 @@ private void appendDefaultPageStart(StringBuffer out, String stylesheet) {
 	Iterator it=queued.iterator();
 	out.append("<br/>Size :"+runningFetches.size());
 	appendList(runningFetches,out,stylesheet);
-	out.append("<p><a href=\"?list="+"running"+"\">Showall running</a><br/></p>");
+	out.append("<p><a href=\"?list="+"running"+"\">Show all</a><br/></p>");
 	out.append("<br/>Size :"+queued.size());
 	int i = 0;
 	while(it.hasNext()){
@@ -1622,13 +1641,13 @@ private void appendDefaultPageStart(StringBuffer out, String stylesheet) {
 		else break;
 		i++;
 	}
-	out.append("<p><a href=\"?list="+"queued"+"\">Showall queued</a><br/></p>");
+	out.append("<p><a href=\"?list="+"queued"+"\">Show all</a><br/></p>");
 	out.append("<br/>Size :"+visited.size());
 	appendList(visited,out,stylesheet);
-	out.append("<p><a href=\"?list="+"visited"+"\">Showall visited</a><br/></p>");
+	out.append("<p><a href=\"?list="+"visited"+"\">Show all</a><br/></p>");
 	out.append("<br/>Size :"+failed.size());
 	appendList(failed,out,stylesheet);
-	out.append("<p><a href=\"?list="+"failed"+"\">Showall failed</a><br/></p>");
+	out.append("<p><a href=\"?list="+"failed"+"\">Show all</a><br/></p>");
 	
 	
 }
