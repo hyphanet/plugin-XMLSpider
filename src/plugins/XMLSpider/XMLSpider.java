@@ -74,7 +74,12 @@ import freenet.support.api.Bucket;
 import freenet.support.api.HTTPRequest;
 
 /**
- * Spider. Produces an index.
+ * XMLSpider. Produces index for searching words. 
+ * In case the size of the index grows up a specific threshold the index is split into several subindices
+ * The indexing key is the md5 hash of the word.
+ * 
+ *  @author swati goyal
+ *  
  */
 public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless,  FredPluginHTTPAdvanced,HttpPlugin, ClientCallback, FoundURICallback ,USKCallback{
 
@@ -94,16 +99,24 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	private int match;
 	private Vector list;
 	private boolean indexing ;
+	
 	private static final int minTimeBetweenEachIndexRewriting = 10;
-	//private static final String indexFilename = "index.xml";
+/**
+ * DEFAULT_INDEX_DIR is the directory where the generated indices are stored.
+ * Needs to be created before it can be used
+ */
 	private static final String DEFAULT_INDEX_DIR = "myindex3/";
 	public Set allowedMIMETypes;
 	private static final int MAX_ENTRIES = 5;
 	private static final String pluginName = "XML spider";
+	/**
+	 * This gives the allowed fraction of total time spent on generating indices
+	 * max value = 1; min value > 0 
+	 */
 	private static final double MAX_TIME_SPENT_INDEXING = 0.5;
-	//MAX_TIME_SPENT_INDEXING is the fraction of the total time  allowed to be spent on indexing(max value = 1)
-	private static final String indexTitle= "This is an index";
-	private static final String indexOwner = "Another anonymous";
+	
+	private static final String indexTitle= "XMLSpider index";
+	private static final String indexOwner = "Freenet";
 	private static final String indexOwnerEmail = null;
 	private final HashMap sizeOfURIs = new HashMap(); /* String (URI) -> Long */
 	private final HashMap mimeOfURIs = new HashMap(); /* String (URI) -> String */
@@ -112,7 +125,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 	// Can have many; this limit only exists to save memory.
 	private static final int maxParallelRequests = 100;
-	private int maxShownURIs = 50;
+	private int maxShownURIs = 15;
 	private HashMap urisToNumbers;
 	private NodeClientCore core;
 	private FetchContext ctx;
@@ -541,7 +554,15 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		
 
 	}
-
+/**
+ * generates the main index file that can be used by librarian for searching in the list of
+ * subindices
+ *  
+ * @param void
+ * @author swati 
+ * @throws IOException
+ * @throws NoSuchAlgorithmException
+ */
 	private synchronized void produceIndex2() throws IOException,NoSuchAlgorithmException {
 		// Produce the main index file.
 		
@@ -670,6 +691,13 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		
 
 	}
+	/**
+	 * Generates the subindices. 
+	 * Each index has less than {@code MAX_ENTRIES} words.
+	 * The original treemap is split into several sublists indexed by the common substring
+	 * of the hash code of the words
+	 * @throws Exception
+	 */
 	private synchronized void generateIndex2() throws Exception{
 		// now we the tree map and we need to use the sorted (md5s) to generate the xml indices
 		if (urisByWord.isEmpty() || urisWithWords.isEmpty()) {
@@ -706,17 +734,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		generateSubIndex(prefix,list);
 		str = key;
 		list = new Vector();
-//		int count = list.size();
-//		if(count > MAX_ENTRIES){
-//			//the index has to be split up
-//			generateSubIndex(prefix,list);			
-//		}
-//		else generateXML(list,prefix);
-//		str = key;
-//		list = new Vector();
 		}
-			//
-		// this variable will keep the number of digits to be used 
 		}
 		
 		generateSubIndex(prefix,list);
@@ -809,23 +827,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		subHeaderElement.appendChild(subHeaderText);
 		headerElement.appendChild(subHeaderElement);
 
-		/* -> owner */
-		subHeaderElement = xmlDoc.createElement("owner");
-		subHeaderText = xmlDoc.createTextNode(indexOwner);
-		
-		subHeaderElement.appendChild(subHeaderText);
-		headerElement.appendChild(subHeaderElement);
-		
-	
-		/* -> owner email */
-		if(indexOwnerEmail != null) {
-			subHeaderElement = xmlDoc.createElement("email");
-			subHeaderText = xmlDoc.createTextNode(indexOwnerEmail);
 			
-			subHeaderElement.appendChild(subHeaderText);
-			headerElement.appendChild(subHeaderElement);
-		}
-
 		
 		Element filesElement = xmlDoc.createElement("files"); /* filesElement != fileElement */
 
@@ -874,15 +876,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				uriElement.appendChild(xmlDoc.createTextNode(positionList.toString()));
 				int l;
 				wordElement.appendChild(uriElement);
-//			for(l = 0;l<filesElement.getChildNodes().getLength();l++)
-//				{ Element file = (Element) filesElement.getChildNodes().item(l);
-//				if(file.getAttribute("id").equals(x.toString()))
-//				
-//				break;
-//				}
-				
-//				if(l>=filesElement.getChildNodes().getLength())
-//				filesElement.appendChild(fileElement);
 				if(!fileid.contains(x.toString()))
 				{
 					fileid.add(x.toString());
@@ -892,9 +885,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			
 			//Element keywordsElement = (Element) root.getElementsByTagName("keywords").item(0);
 			keywordsElement.appendChild(wordElement);
-//				
+				
 		}
-//	
 		
 		rootElement.appendChild(EntriesElement);
 		rootElement.appendChild(headerElement);
@@ -1213,9 +1205,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 	}
 
-	/**
-	 * @see freenet.oldplugins.plugin.HttpPlugin#handlePost(freenet.clients.http.HTTPRequestImpl, freenet.clients.http.ToadletContext)
-	 */
 	public void handlePost(HTTPRequest request, ToadletContext context) throws IOException {
 	}
 	
@@ -1515,7 +1504,14 @@ public String handleHTTPGet(HTTPRequest request) throws PluginHTTPException{
 	// need to produce pretty html
 	//later fredpluginhttpadvanced will give the interface
 	//this brings us to the page from visit
-
+	String listname = request.getParam("list");
+	if(listname.length() != 0)
+	{
+		appendDefaultHeader(out,null);
+		out.append("<p><h4>"+listname+" URIs</h4></p>");
+		appendList(listname,out,null);
+		return out.toString();
+	}
 	appendDefaultPageStart(out,null);
 	String uriParam = request.getParam("adduri");
 	if(uriParam != null && uriParam.length() != 0)
@@ -1583,8 +1579,22 @@ public String handleHTTPGet(HTTPRequest request) throws PluginHTTPException{
 	
 	return out.toString();
 }
+private void appendList(String listname, StringBuffer out, String stylesheet)
+{
+	Iterator it = (runningFetchesByURI.keySet()).iterator();
+	if(listname.equals("running"))
+		it = (runningFetchesByURI.keySet()).iterator();
+	if(listname.equals("visited"))
+		it = (new HashSet(visitedURIs)).iterator();
+	if(listname.equals("queued"))
+		it = (new ArrayList(queuedURIList)).iterator();
+	if(listname.equals("failed"))
+		it = (new HashSet(failedURIs)).iterator();
+	while(it.hasNext())
+		out.append("<code>"+it.next().toString()+"</code><br/>");
+}
 private void appendDefaultPageStart(StringBuffer out, String stylesheet) {
-	count ++;
+	
 	out.append("<HTML><HEAD><TITLE>" + pluginName + "</TITLE>");
 	if(stylesheet != null)
 		out.append("<link href=\""+stylesheet+"\" type=\"text/css\" rel=\"stylesheet\" />");
@@ -1597,16 +1607,60 @@ private void appendDefaultPageStart(StringBuffer out, String stylesheet) {
 	out.append("<p><h3>Running Fetches</h3></p>");
 	Set visited = new HashSet(visitedURIs);
 	List queued = new ArrayList(queuedURIList);
+	
 	Set failed = new HashSet(failedURIs);
 	Iterator it=queued.iterator();
 	out.append("<br/>Size :"+runningFetches.size());
+	appendList(runningFetches,out,stylesheet);
+	out.append("<p><a href=\"?list="+"running"+"\">Showall running</a><br/></p>");
 	out.append("<br/>Size :"+queued.size());
-	out.append("<br/>Size :"+visited.size());
-	out.append("<br/>Size :"+failed.size());
-	out.append("<br/>Count : "+count);
+	int i = 0;
 	while(it.hasNext()){
-		out.append("<code>"+(it.next()).toString()+"</code><br>");
+		if(i<=maxShownURIs){
+		out.append("<code>"+it.next().toString()+"</code><br/>");
+		}
+		else break;
+		i++;
 	}
+	out.append("<p><a href=\"?list="+"queued"+"\">Showall queued</a><br/></p>");
+	out.append("<br/>Size :"+visited.size());
+	appendList(visited,out,stylesheet);
+	out.append("<p><a href=\"?list="+"visited"+"\">Showall visited</a><br/></p>");
+	out.append("<br/>Size :"+failed.size());
+	appendList(failed,out,stylesheet);
+	out.append("<p><a href=\"?list="+"failed"+"\">Showall failed</a><br/></p>");
+	
+	
+}
+private void appendDefaultHeader(StringBuffer out, String stylesheet){
+	out.append("<HTML><HEAD><TITLE>" + pluginName + "</TITLE>");
+	if(stylesheet != null)
+		out.append("<link href=\""+stylesheet+"\" type=\"text/css\" rel=\"stylesheet\" />");
+	out.append("</HEAD><BODY>\n");
+	out.append("<CENTER><H1>" + pluginName + "</H1><BR/><BR/><BR/>\n");
+	out.append("Add uri:");
+	out.append("<form method=\"GET\"><input type=\"text\" name=\"adduri\" /><br/><br/>");
+	out.append("<input type=\"submit\" value=\"Add uri\" /></form>");
+}
+private void appendList(Set  list,StringBuffer out, String stylesheet){
+	Iterator it = list.iterator();
+	int i = 0;
+	while(it.hasNext()){
+		if(i<=maxShownURIs){
+		out.append("<code>"+it.next().toString()+"</code><br/>");
+		}
+		else{
+			//out.append("<form method=\"GET\"><input type=\"submit\" name=\"Showall\" />");
+//			if(listname.equals("visited"))
+//			out.append("<p><a href=\"?list="+listname+">Showall visited</a><br/></p>");
+//			if(listname.equals("failed"))
+//				out.append("<p><a href=\"?list="+listname+">Showall failed</a><br/></p>");
+			break;
+		}
+		i++;
+		
+	}
+	
 }
 public String handleHTTPPut(HTTPRequest request) throws PluginHTTPException{
 	return null;
