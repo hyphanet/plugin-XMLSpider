@@ -140,11 +140,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			if(uri.getSuggestedEdition() < 0)
 				uri = uri.setSuggestedEdition((-1)* uri.getSuggestedEdition());
 			try{
-			uri = (USK.create(uri)).getBaseSSK();
-			/**
-			 * All uris are added as SSK
-			 * 
-			 */
+			uri = ((USK.create(uri)).getSSK()).getURI();
+			//all uris are added as ssk
+			(ctx.uskManager).subscribe(USK.create(uri),this, false, this);	
 			}
 			catch(Exception e){}
 		}
@@ -185,11 +183,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				if((uri.getKeyType()).equals("USK")){
 //				if(uri.getSuggestedEdition() < 0)
 //					uri = uri.setSuggestedEdition((-1)* uri.getSuggestedEdition());
-				try{
-					(ctx.uskManager).subscribe(USK.create(uri),this, false, this);	
-				}catch(Exception e){
-					
-				}
+//				try{
+//					(ctx.uskManager).subscribe(USK.create(uri),this, false, this);	
+//				}catch(Exception e){
+//					
+//				}
 				
 				}
 				ClientGetter getter = makeGetter(uri);
