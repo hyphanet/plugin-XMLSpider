@@ -180,7 +180,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			visitedURIs.add(uri);
 			uriIds.put(uri, id);
 			idUris.put(id, uri);
-			id++;
+			id = new Integer(id.intValue()+1);
 		}
 	}
 
@@ -823,7 +823,7 @@ public void terminate(){
 	
 public void runPlugin(PluginRespirator pr){
 	this.pr = pr;
-	this.id = 0;
+	this.id = new Integer(0);
 	this.core = pr.getNode().clientCore;
 	this.ctx = core.makeClient((short) 0).getFetchContext();
 	ctx.maxSplitfileBlockRetries = 10;
@@ -981,12 +981,12 @@ private void appendList(Set  list,StringBuffer out, String stylesheet){
  *
  */
 public class PageCallBack implements FoundURICallback{
-	int id;
+	Integer id;
 	/*
 	 * id of the page as refrenced in uriIds
 	 */	
 	PageCallBack(){
-	//	id = 0;
+		id = new Integer(0);
 	}
 	
 	public void foundURI(FreenetURI uri){
