@@ -119,7 +119,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public final HashMap inlinks = new HashMap();
 	private Vector indices;
 	private int match;
-	private int id;
+	private Integer id;
 	
 	private boolean indexing ;
 	
@@ -981,18 +981,18 @@ private void appendList(Set  list,StringBuffer out, String stylesheet){
  *
  */
 public class PageCallBack implements FoundURICallback{
-	Integer id;
+	int id;
 	/*
 	 * id of the page as refrenced in uriIds
 	 */	
 	PageCallBack(){
-		id = 0;
+	//	id = 0;
 	}
 	
 	public void foundURI(FreenetURI uri){
 
 		queueURI(uri);
-		Integer iduri = (Integer) uriIds.get(uri);
+		int iduri = (Integer) uriIds.get(uri);
 
 		if(outlinks.containsKey(id)){
 			Vector outlink = (Vector) outlinks.get(id);
