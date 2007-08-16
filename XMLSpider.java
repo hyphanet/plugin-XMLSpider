@@ -81,7 +81,7 @@ import freenet.support.api.HTTPRequest;
  *  @author swati goyal
  *  
  */
-public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless,  FredPluginHTTPAdvanced,HttpPlugin, ClientCallback, FoundURICallback ,USKCallback{
+public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless,  FredPluginHTTPAdvanced,HttpPlugin, ClientCallback, USKCallback{
 
 	long tProducedIndex;
 	private TreeMap tMap = new TreeMap();
@@ -89,25 +89,33 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	// URIs visited, or fetching, or queued. Added once then forgotten about.
 	private final HashSet visitedURIs = new HashSet();
 	private final HashSet urisWithWords = new HashSet();
+	private final HashSet idsWithWords = new HashSet();
 	private final HashSet failedURIs = new HashSet();
 	private final HashSet queuedURISet = new HashSet();
 	private final LinkedList queuedURIList = new LinkedList();
 	private final HashMap runningFetchesByURI = new HashMap();
 	private final HashMap urisByWord = new HashMap();
+	private final HashMap idsByWord = new HashMap();
 	private final HashMap titlesOfURIs = new HashMap();
+	private final HashMap titlesOfIds = new HashMap();
+	private final HashMap uriIds = new HashMap();
+	private final HashMap idUris = new HashMap();
+	private final HashMap outlinks = new HashMap();
+	private final HashMap inlinks = new HashMap();
 	private Vector indices;
 	private int match;
+	private int id;
 	private Vector list;
 	private boolean indexing ;
 	
-	private static final int minTimeBetweenEachIndexRewriting = 50;
+	private static final int minTimeBetweenEachIndexRewriting = 10;
 /**
  * DEFAULT_INDEX_DIR is the directory where the generated indices are stored.
  * Needs to be created before it can be used
  */
-	private static final String DEFAULT_INDEX_DIR = "myindex3/";
+	private static final String DEFAULT_INDEX_DIR = "myindex4/";
 	public Set allowedMIMETypes;
-	private static final int MAX_ENTRIES = 30;
+	private static final int MAX_ENTRIES = 10;
 	private static final String pluginName = "XML spider";
 	/**
 	 * This gives the allowed fraction of total time spent on generating indices
@@ -120,9 +128,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	private static final String indexOwnerEmail = null;
 	private final HashMap sizeOfURIs = new HashMap(); /* String (URI) -> Long */
 	private final HashMap mimeOfURIs = new HashMap(); /* String (URI) -> String */
-	private final HashMap lastPositionByURI = new HashMap(); /* String (URI) -> Integer */ /* Use to determine word position on each uri */
-	private final HashMap positionsByWordByURI = new HashMap(); /* String (URI) -> HashMap (String (word) -> Integer[] (Positions)) */
-
+//	private final HashMap lastPositionByURI = new HashMap(); /* String (URI) -> Integer */ /* Use to determine word position on each uri */
+	private final HashMap lastPositionById = new HashMap();
+//	private final HashMap positionsByWordByURI = new HashMap(); /* String (URI) -> HashMap (String (word) -> Integer[] (Positions)) */
+	private final HashMap positionsByWordById = new HashMap();
 	// Can have many; this limit only exists to save memory.
 	private static final int maxParallelRequests = 100;
 	private int maxShownURIs = 15;
@@ -150,6 +159,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		if ((!visitedURIs.contains(uri)) && queuedURISet.add(uri)) {
 			queuedURIList.addLast(uri);
 			visitedURIs.add(uri);
+			uriIds.put(uri, id);
+			idUris.put(id, uri);
+			id++;
+			
+			//the page object of the client will contain the uri of the current page
 		}
 	}
 
@@ -180,7 +194,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 					break;
 				FreenetURI uri = (FreenetURI) queuedURIList.removeFirst();
 				queuedURISet.remove(uri);
-				if((uri.getKeyType()).equals("USK")){
+//				if((uri.getKeyType()).equals("USK")){
 //				if(uri.getSuggestedEdition() < 0)
 //					uri = uri.setSuggestedEdition((-1)* uri.getSuggestedEdition());
 //				try{
@@ -189,7 +203,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 //					
 //				}
 				
-				}
+	//			}
 				ClientGetter getter = makeGetter(uri);
 				toStart.add(getter);
 				}
@@ -224,14 +238,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 	public void onSuccess(FetchResult result, ClientGetter state) {
 		FreenetURI uri = state.getURI();
-		try{
-	    FileWriter output = new FileWriter("logfile",true);
-	    output.write(uri.toString()+"\n");
-	    output.close();
-		}
-		catch(Exception e){
-			Logger.error(this, "The uri could not be removed from running "+e.toString(), e);
-		}
+
 		synchronized (this) {
 			runningFetchesByURI.remove(uri);
 		}
@@ -242,9 +249,21 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		
 		sizeOfURIs.put(uri.toString(), new Long(data.size()));
 		mimeOfURIs.put(uri.toString(), mimeType);
+		PageCallBack page = new PageCallBack();
+		page.id = (Integer) uriIds.get(uri);
+		inlinks.put(page.id, new Vector());
+		outlinks.put(page.id, new Vector());
 		
+		try{
+	    FileWriter output = new FileWriter("logfile",true);
+	    output.write(uri.toString()+" page " + page.id +"\n");
+	    output.close();
+		}
+		catch(Exception e){
+			Logger.error(this, "The uri could not be removed from running "+e.toString(), e);
+		}
 		try {
-			ContentFilter.filter(data, ctx.bucketFactory, mimeType, uri.toURI("http://127.0.0.1:8888/"), this);
+			ContentFilter.filter(data, ctx.bucketFactory, mimeType, uri.toURI("http://127.0.0.1:8888/"), page);
 		} catch (UnsafeContentTypeException e) {
 			return; // Ignore
 		} catch (IOException e) {
@@ -255,17 +274,17 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			data.free();
 		}
 	}
-
+	
 	public void onFailure(FetchException e, ClientGetter state) {
 		FreenetURI uri = state.getURI();
-		try{
-			FileWriter outp = new FileWriter("failed",true);
-			outp.write("failed "+e.toString()+" for "+uri+'\n');
-			outp.close();
-			
-		}catch(Exception e2){
-			
-		}
+//		try{
+//			FileWriter outp = new FileWriter("failed",true);
+//			outp.write("failed "+e.toString()+" for "+uri+'\n');
+//			outp.close();
+//			
+//		}catch(Exception e2){
+//			
+//		}
 		synchronized (this) {
 			runningFetchesByURI.remove(uri);
 			failedURIs.add(uri);
@@ -291,285 +310,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		// Ignore
 	}
 
-	public void foundURI(FreenetURI uri) {
-		queueURI(uri);
-		startSomeRequests();
-	}
-
-	public void onText(String s, String type, URI baseURI) {
-		
-		FreenetURI uri;
-		try {
-			uri = new FreenetURI(baseURI.getPath().substring(1));
-		} catch (MalformedURLException e) {
-			Logger.error(this, "Caught " + e, e);
-			return;
-		}
-		 
-		
-      
-		if((type != null) && (type.length() != 0) && type.toLowerCase().equals("title")
-		   && (s != null) && (s.length() != 0) && (s.indexOf('\n') < 0)) {
-			/* We should have a correct title */
-			titlesOfURIs.put(uri.toString(), s);
-			type = "title";
-			
-		}
-		else type = null;
-
-
-		String[] words = s.split("[^A-Za-z0-9]");
-
-		Integer lastPosition = null;
-
-		lastPosition = (Integer)lastPositionByURI.get(uri.toString());
-
-		if(lastPosition == null)
-			lastPosition = new Integer(1); /* We start to count from 1 */
-
-		for (int i = 0; i < words.length; i++) {
-			String word = words[i];
-			if ((word == null) || (word.length() == 0))
-				continue;
-			word = word.toLowerCase();
-			try{
-			if(type == null)
-				addWord(word, lastPosition.intValue() + i, uri);
-			else
-				addWord(word, -1 * (i+1), uri);
-			}
-			catch (Exception e){}
-		}
-		
-		if(type == null) {
-			lastPosition = new Integer(lastPosition.intValue() + words.length);
-			lastPositionByURI.put(uri.toString(), lastPosition);
-		}
-		
-	}
-
-	private synchronized void addWord(String word, int position,FreenetURI uri) throws Exception{
-		
-		
-		if(word.length() < 3)
-			return;
-		
-		//word = word.intern();
-
-
-		FreenetURI[] uris = (FreenetURI[]) urisByWord.get(word);
-
-		//Integer[] positions = (Integer[]) positionsByWordByURI.get(word);
-
-		urisWithWords.add(uri);
-//	FileWriter outp = new FileWriter("uricheck",true);
-//	outp.write(uri.getDocName()+"\n");
-//	outp.write(uri.getKeyType()+"\n");
-//	outp.write(uri.getMetaString()+"\n");
-//	outp.write(uri.getGuessableKey()+"\n");
-//	outp.write(uri.hashCode()+"\n");
-//	outp.write(uri.getPreferredFilename()+"\n");
-//	
-//	outp.close();
-
-		/* Word position indexation */
-		HashMap wordPositionsForOneUri = (HashMap)positionsByWordByURI.get(uri.toString()); /* For a given URI, take as key a word, and gives position */
-		
-		if(wordPositionsForOneUri == null) {
-			wordPositionsForOneUri = new HashMap();
-			wordPositionsForOneUri.put(word, new Integer[] { new Integer(position) });
-			positionsByWordByURI.put(uri.toString(), wordPositionsForOneUri);
-		} else {
-			Integer[] positions = (Integer[])wordPositionsForOneUri.get(word);
-
-			if(positions == null) {
-				positions = new Integer[] { new Integer(position) };
-				wordPositionsForOneUri.put(word, positions);
-			} else {
-				Integer[] newPositions = new Integer[positions.length + 1];
-
-				System.arraycopy(positions, 0, newPositions, 0, positions.length);
-				newPositions[positions.length] = new Integer(position);
-
-				wordPositionsForOneUri.put(word, newPositions);
-			}
-		}
-	
-		if (uris == null) {
-			urisByWord.put(word, new FreenetURI[] { uri });
-			
-		} else {
-			for (int i = 0; i < uris.length; i++) {
-				if (uris[i].equals(uri))
-					return;
-			}
-			FreenetURI[] newURIs = new FreenetURI[uris.length + 1];
-			System.arraycopy(uris, 0, newURIs, 0, uris.length);
-			newURIs[uris.length] = uri;
-			urisByWord.put(word, newURIs);
-		}
-		//the new word is added here in urisByWord
-		tMap.put(MD5(word), word);
-		long time_indexing = System.currentTimeMillis();
-		if (tProducedIndex + minTimeBetweenEachIndexRewriting * 1000 < System.currentTimeMillis()) {
-			try {
-				//produceIndex();
-				//check();
-				
-				if(indexing){
-				generateIndex2();
-				produceIndex2();
-				if((System.currentTimeMillis() - time_indexing)/(System.currentTimeMillis() - tProducedIndex) > MAX_TIME_SPENT_INDEXING) indexing= false;
-				else indexing = true;
-				}
-				
-			} catch (IOException e) {
-				Logger.error(this, "Caught " + e + " while creating index", e);
-			}
-			tProducedIndex = System.currentTimeMillis();
-		}
-		
-	}
-//	private synchronized void check() throws IOException{
-//		FileWriter outp = new FileWriter("logs/indexing",true);
-//		outp.write("size = "+urisByWord.size()+"\n");
-//		Iterator it = urisByWord.keySet().iterator();
-//		while(it.hasNext())
-//			outp.write(it.next()+"\n");
-//		outp.close();
-//	}
-
-	private synchronized void produceIndex() throws IOException,NoSuchAlgorithmException {
-		// Produce the main index file.
-		
-		//the number of bits to consider for matching 
-		int prefix = 1 ;
-	
-		if (urisByWord.isEmpty() || urisWithWords.isEmpty()) {
-			System.out.println("No URIs with words");
-			return;
-		}
-		File outputFile = new File(DEFAULT_INDEX_DIR+"index.xml");
-		StreamResult resultStream;
-		resultStream = new StreamResult(outputFile);
-
-		/* Initialize xml builder */
-		Document xmlDoc = null;
-		DocumentBuilderFactory xmlFactory = null;
-		DocumentBuilder xmlBuilder = null;
-		DOMImplementation impl = null;
-		Element rootElement = null;
-
-		xmlFactory = DocumentBuilderFactory.newInstance();
-
-
-		try {
-			xmlBuilder = xmlFactory.newDocumentBuilder();
-		} catch(javax.xml.parsers.ParserConfigurationException e) {
-			/* Will (should ?) never happen */
-			Logger.error(this, "Spider: Error while initializing XML generator: "+e.toString());
-			return;
-		}
-
-		impl = xmlBuilder.getDOMImplementation();
-		/* Starting to generate index */
-		xmlDoc = impl.createDocument(null, "main_index", null);
-		rootElement = xmlDoc.getDocumentElement();
-
-		/* Adding header to the index */
-		Element headerElement = xmlDoc.createElement("header");
-
-		/* -> title */
-		Element subHeaderElement = xmlDoc.createElement("title");
-		Text subHeaderText = xmlDoc.createTextNode(indexTitle);
-		
-		subHeaderElement.appendChild(subHeaderText);
-		headerElement.appendChild(subHeaderElement);
-
-		/* -> owner */
-		subHeaderElement = xmlDoc.createElement("owner");
-		subHeaderText = xmlDoc.createTextNode(indexOwner);
-		
-		subHeaderElement.appendChild(subHeaderText);
-		headerElement.appendChild(subHeaderElement);
-		
-		/* -> owner email */
-		if(indexOwnerEmail != null) {
-			subHeaderElement = xmlDoc.createElement("email");
-			subHeaderText = xmlDoc.createTextNode(indexOwnerEmail);
-			
-			subHeaderElement.appendChild(subHeaderText);
-			headerElement.appendChild(subHeaderElement);
-		}
-
-		
-		//String[] words = (String[]) urisByWord.keySet().toArray(new String[urisByWord.size()]);
-		//Arrays.sort(words);
-		FreenetURI[] uris = (FreenetURI[]) urisWithWords.toArray(new FreenetURI[urisWithWords.size()]);
-		urisToNumbers = new HashMap();
-		Element prefixElement = xmlDoc.createElement("prefix");
-		prefixElement.setAttribute("value", prefix+"");
-	
-
-		for (int i = 0; i < uris.length; i++) {
-			urisToNumbers.put(uris[i], new Integer(i));
-			}
-		
-		//all index files are ready
-		/* Adding word index */
-		Element keywordsElement = xmlDoc.createElement("keywords");
-		for(int i = 0;i<16;i++){
-			generateSubIndex(DEFAULT_INDEX_DIR+"index_"+Integer.toHexString(i)+".xml");
-			Element subIndexElement = xmlDoc.createElement("subIndex");
-			if(i<=9)
-			subIndexElement.setAttribute("key",i+"");
-			else
-				subIndexElement.setAttribute("key",Integer.toHexString(i));
-			//the subindex element key will contain the bits used for matching in that subindex
-			keywordsElement.appendChild(subIndexElement);
-		}
-		
-
-		// make sure that prefix is the first child of root Element
-		rootElement.appendChild(prefixElement);
-		rootElement.appendChild(headerElement);
-		
-		//rootElement.appendChild(filesElement);
-		rootElement.appendChild(keywordsElement);
-
-		/* Serialization */
-		DOMSource domSource = new DOMSource(xmlDoc);
-		TransformerFactory transformFactory = TransformerFactory.newInstance();
-		Transformer serializer;
-
-		try {
-			serializer = transformFactory.newTransformer();
-		} catch(javax.xml.transform.TransformerConfigurationException e) {
-			Logger.error(this, "Spider: Error while serializing XML (transformFactory.newTransformer()): "+e.toString());
-			return;
-		}
-
-		serializer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
-		serializer.setOutputProperty(OutputKeys.INDENT,"yes");
-		
-		/* final step */
-		try {
-			serializer.transform(domSource, resultStream);
-		} catch(javax.xml.transform.TransformerException e) {
-			Logger.error(this, "Spider: Error while serializing XML (transform()): "+e.toString());
-			return;
-		}
-
-		if(Logger.shouldLog(Logger.MINOR, this))
-			Logger.minor(this, "Spider: indexes regenerated.");
-	
-	//the main xml file is generated 
-	//now as each word is generated enter it into the respective subindex
-	//now the parsing will start and nodes will be added as needed 
-		
-
-	}
-/**
+	/**
  * generates the main index file that can be used by librarian for searching in the list of
  * subindices
  *  
@@ -584,7 +325,12 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		//the number of bits to consider for matching 
 		
 	
-		if (urisByWord.isEmpty() || urisWithWords.isEmpty()) {
+//		if (urisByWord.isEmpty() || urisWithWords.isEmpty()) {
+//			System.out.println("No URIs with words");
+//			return;
+//		}
+		
+		if (idsByWord.isEmpty() || idsWithWords.isEmpty()) {
 			System.out.println("No URIs with words");
 			return;
 		}
@@ -715,22 +461,26 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 */
 	private synchronized void generateIndex2() throws Exception{
 		// now we the tree map and we need to use the sorted (md5s) to generate the xml indices
-		if (urisByWord.isEmpty() || urisWithWords.isEmpty()) {
+	
+		
+		if (idsByWord.isEmpty() || idsWithWords.isEmpty()) {
 			System.out.println("No URIs with words");
 			return;
 		}
-		FreenetURI[] uris = (FreenetURI[]) urisWithWords.toArray(new FreenetURI[urisWithWords.size()]);
-		urisToNumbers = new HashMap();
-		for (int i = 0; i < uris.length; i++) {
-			urisToNumbers.put(uris[i], new Integer(i));
-			}
+		
+	//	FreenetURI[] uris = (FreenetURI[]) urisWithWords.toArray(new FreenetURI[urisWithWords.size()]);
+		Integer[] ids = (Integer[]) idsWithWords.toArray(new Integer[idsWithWords.size()]);
+//		urisToNumbers = new HashMap();
+//		for (int i = 0; i < uris.length; i++) {
+//			urisToNumbers.put(uris[i], new Integer(i));
+//			}
 		indices = new Vector();
 		int prefix = 1;
 		match = 1;
 		Vector list = new Vector();
 		//String str = tMap.firstKey();
 		Iterator it = tMap.keySet().iterator();
-		FileWriter outp = new FileWriter("indexing");
+		 FileWriter outp = new FileWriter("indexing");
 		outp.write("size = "+tMap.size()+"\n");
 		outp.close();
 		String str = (String) it.next();
@@ -797,9 +547,14 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}	
 		
 
-	private synchronized void generateXML(Vector list, int prefix)
+	private synchronized void generateXML (Vector list, int prefix) throws Exception
 	{
+		FileWriter outp = new FileWriter("gen",true);
+		
+		
 		String p = ((String) list.elementAt(0)).substring(0, prefix);
+		outp.write("inside gen xml + "+p+"\n");
+		
 		indices.add(p);
 		File outputFile = new File(DEFAULT_INDEX_DIR+"index_"+p+".xml");
 		//indices.add(p);
@@ -847,7 +602,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		Element filesElement = xmlDoc.createElement("files"); /* filesElement != fileElement */
 
 		Element EntriesElement = xmlDoc.createElement("entries");
+		
 		EntriesElement.setNodeValue(list.size()+"");
+		outp.write("size = "+list.size()+"\n");
 		EntriesElement.setAttribute("value", list.size()+"");
 		//all index files are ready
 		/* Adding word index */
@@ -858,13 +615,16 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		{
 			Element wordElement = xmlDoc.createElement("word");
 			String str = (String) tMap.get(list.elementAt(i));
+			outp.write("word "+str+"\n");
 			wordElement.setAttribute("v",str );
-			FreenetURI[] urisForWord = (FreenetURI[]) urisByWord.get(str);
+			//FreenetURI[] urisForWord = (FreenetURI[]) urisByWord.get(str);
+			Integer[] idsForWord = (Integer[]) idsByWord.get(str);
 //			
-			for (int j = 0; j < urisForWord.length; j++) {
-				FreenetURI uri = urisForWord[j];
-				Integer x = (Integer) urisToNumbers.get(uri);
-				
+			for (int j = 0; j < idsForWord.length; j++) {
+				Integer id = idsForWord[j];
+				//Integer x = (Integer) urisToNumbers.get(uri);
+				Integer x = id;
+				outp.write("x "+x+"\n");
 				if (x == null) {
 					Logger.error(this, "Eh?");
 					continue;
@@ -874,9 +634,12 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				Element fileElement = xmlDoc.createElement("file");
 				uriElement.setAttribute("id", x.toString());
 				fileElement.setAttribute("id", x.toString());
-				fileElement.setAttribute("key", uri.toString());
+				//fileElement.setAttribute("key", uri.toString());
+				outp.write("uri "+(idUris.get(id)).toString()+"\n");
+				fileElement.setAttribute("key",(idUris.get(id)).toString());
 ////				/* Position by position */
-				HashMap positionsForGivenWord = (HashMap)positionsByWordByURI.get(uri.toString());
+				//HashMap positionsForGivenWord = (HashMap)positionsByWordByURI.get(uri.toString());
+				HashMap positionsForGivenWord = (HashMap)positionsByWordById.get(x);
 				Integer[] positions = (Integer[])positionsForGivenWord.get(str);
 
 				StringBuffer positionList = new StringBuffer();
@@ -889,11 +652,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				}
 				
 				uriElement.appendChild(xmlDoc.createTextNode(positionList.toString()));
-				int l;
+			
 				wordElement.appendChild(uriElement);
-				if(!fileid.contains(x.toString()))
+				if(!fileid.contains(x))
 				{
-					fileid.add(x.toString());
+					fileid.add(x);
 					filesElement.appendChild(fileElement);
 				}
 			}
@@ -934,214 +697,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		if(Logger.shouldLog(Logger.MINOR, this))
 			Logger.minor(this, "Spider: indexes regenerated.");
-	
+		outp.close();
 	}
-	private synchronized void generateIndex() throws Exception{
-		String[] words = (String[]) urisByWord.keySet().toArray(new String[urisByWord.size()]);
-		Arrays.sort(words);
-		for (int i = 0; i < words.length; i++) {
-		try{
+
 		
-		String prefix_match = getIndex(words[i]);
-
-		boolean addedWord = addWord(prefix_match,words[i]);
-
-		if(addedWord == false)
-			{
-			split(prefix_match);
-			regenerateIndex(prefix_match);
-			prefix_match = getIndex(words[i]);
-			addWord(prefix_match,words[i]);
-			}
-		}
-		catch(Exception e2){Logger.error(this,"The Word could not be added"+ e2.toString(), e2); }
-		}	
-
-	
-	}
-	private void regenerateIndex(String prefix) throws Exception{
-		//redistribute the entries in prefix.xml to prefix(0-f).xml
-		DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
-		DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
-		Document doc = docBuilder.parse(DEFAULT_INDEX_DIR+"index_"+prefix+".xml");
-		Element root = doc.getDocumentElement();
-		NodeList wordList = root.getElementsByTagName("word");
-		for(int i = 0;i<wordList.getLength();i++){
-			Element word = (Element)wordList.item(i);
-			String value = word.getAttribute("v");
-			String prefix_match = getIndex(value);
-			addWord(prefix_match,value);
-		}
-	}
-	
-	private String getIndex(String word) throws Exception {
-		DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
-		DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
-		Document doc = docBuilder.parse(DEFAULT_INDEX_DIR+"index.xml");
-		Element root = doc.getDocumentElement();
-		Attr prefix_value = (Attr) (root.getElementsByTagName("prefix").item(0)).getAttributes().getNamedItem("value");
-		int prefix = Integer.parseInt(prefix_value.getValue()); 
-		String md5 = MD5(word);
-		NodeList subindexList = root.getElementsByTagName("subIndex");
-		String str = md5.substring(0,prefix);		
-		String prefix_match = search(str,subindexList);
-		
-		return prefix_match;
-	}
-	
-	private boolean addWord(String prefix, String str) throws Exception
-	{
-		//this word has to be added to the particular subindex
-		// modify the corresponding index
-		try{
-			DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
-			DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
-			Document doc = docBuilder.parse(DEFAULT_INDEX_DIR+"index_"+prefix+".xml");
-			Element root = doc.getDocumentElement();
-			
-			Element entry = (Element) root.getElementsByTagName("entries").item(0);
-			
-			Attr no_entries = (Attr) entry.getAttributes().getNamedItem("value");
-			
-			Element filesElement = (Element) root.getElementsByTagName("files").item(0);
-			NodeList filesList = filesElement.getElementsByTagName("file");
-			if(Integer.parseInt(no_entries.getValue()) >= MAX_ENTRIES) return false;
-			else
-			{
-			//increment the number of entries
-			entry.setAttribute("value",(Integer.parseInt(no_entries.getValue())+1)+"");
-			//add the entry
-			
-			Element wordElement = doc.createElement("word");
-			wordElement.setAttribute("v", str);
-
-			FreenetURI[] urisForWord = (FreenetURI[]) urisByWord.get(str);
-
-			/* URI by URI */
-			for (int j = 0; j < urisForWord.length; j++) {
-				FreenetURI uri = urisForWord[j];
-				Integer x = (Integer) urisToNumbers.get(uri);
-				
-				if (x == null) {
-					Logger.error(this, "Eh?");
-					continue;
-				}
-
-				Element uriElement = doc.createElement("file");
-				Element fileElement = doc.createElement("file");
-				uriElement.setAttribute("id", x.toString());
-				fileElement.setAttribute("id", x.toString());
-				fileElement.setAttribute("key", uri.toString());
-//				/* Position by position */
-				HashMap positionsForGivenWord = (HashMap)positionsByWordByURI.get(uri.toString());
-				Integer[] positions = (Integer[])positionsForGivenWord.get(str);
-
-				StringBuffer positionList = new StringBuffer();
-
-				for(int k=0; k < positions.length ; k++) {
-					if(k!=0)
-						positionList.append(',');
-
-					positionList.append(positions[k].toString());
-				}
-				
-				uriElement.appendChild(doc.createTextNode(positionList.toString()));
-				int l;
-			for(l = 0;l<filesList.getLength();l++)
-				{ Element file = (Element) filesList.item(l);
-				if(file.getAttribute("id").equals(x.toString()))
-				
-				break;
-				}
-				wordElement.appendChild(uriElement);
-				if(l>=filesList.getLength())
-				filesElement.appendChild(fileElement);
-			}
-			Element keywordsElement = (Element) root.getElementsByTagName("keywords").item(0);
-			keywordsElement.appendChild(wordElement);
-		
-			
-			
-			DOMSource domSource = new DOMSource(doc);
-			TransformerFactory transformFactory = TransformerFactory.newInstance();
-			Transformer serializer;
-
-			
-				serializer = transformFactory.newTransformer();
-			
-				
-						
-			File outputFile = new File(DEFAULT_INDEX_DIR+"index_"+prefix+".xml");
-			StreamResult resultStream;
-			resultStream = new StreamResult(outputFile);
-
-			serializer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
-			serializer.setOutputProperty(OutputKeys.INDENT,"yes");
-			
-			/* final step */
-			try {
-				serializer.transform(domSource, resultStream);
-			} catch(javax.xml.transform.TransformerException e) {}
-			}
-			
-			return true;	
-		}
-		
-		catch(Exception e){Logger.error(this,"Word could not be added to the subindex"+ e.toString(), e);}
-		return false;
-	}
-	private void split(String prefix) throws Exception
-	{
-		//first we need to split the current subindex into 16 newones
-		//then read from the original one and append to the new ones
-		// make the entry in the main index..
-		DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
-		DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
-		Document doc = docBuilder.parse(DEFAULT_INDEX_DIR+"index.xml");
-		Element root = doc.getDocumentElement();
-		Element prefixElt =(Element) root.getElementsByTagName("prefix").item(0);
-		int prefix_current = Integer.parseInt(prefixElt.getAttribute("value"));
-		if (prefix_current <= prefix.length())
-		prefixElt.setAttribute("value", (prefix_current+1)+"");
-		
-		Element keywordElement = (Element) root.getElementsByTagName("keywords").item(0);
-		
-		NodeList subIndexElt = root.getElementsByTagName("subIndex");
-		for(int i =0;i<subIndexElt.getLength();i++)
-		{
-			Element subIndex = (Element) subIndexElt.item(i);
-			if((subIndex.getAttribute("key")).equals(prefix)) {
-				keywordElement.removeChild(subIndex);
-				break;
-			}
-		}
-		
-		for(int i = 0;i<16;i++)
-			{
-			Element subIndex = doc.createElement("subIndex");
-			generateSubIndex(DEFAULT_INDEX_DIR+"index_"+prefix+Integer.toHexString(i)+".xml");
-			subIndex.setAttribute("key",prefix.concat(Integer.toHexString(i)));
-			keywordElement.appendChild(subIndex);
-			}
-		
-		
-		DOMSource domSource = new DOMSource(doc);
-		TransformerFactory transformFactory = TransformerFactory.newInstance();
-		Transformer serializer;
-		serializer = transformFactory.newTransformer();
-		File outputFile = new File(DEFAULT_INDEX_DIR+"index.xml");
-		StreamResult resultStream;
-		resultStream = new StreamResult(outputFile);
-
-		serializer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
-		serializer.setOutputProperty(OutputKeys.INDENT,"yes");
-		
-		/* final step */
-		try {
-			serializer.transform(domSource, resultStream);
-		} catch(javax.xml.transform.TransformerException e) {}
-	}
-	
 	public String search(String str,NodeList list) throws Exception
 	{
 		int prefix = str.length();
@@ -1319,17 +878,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 */
 	public void startPlugin() {
 		stopped = false;
-		
-//		Thread starterThread = new Thread("Spider Plugin Starter") {
-//			public void run() {
-//				try{
-//					Thread.sleep(30 * 1000); // Let the node start up
-//				} catch (InterruptedException e){}
-//				startSomeRequests();
-//			}
-//		};
-//		starterThread.setDaemon(true);
-//		starterThread.start();
 	}
 
 	/**
@@ -1485,6 +1033,7 @@ public void terminate(){
 	
 public void runPlugin(PluginRespirator pr){
 	this.pr = pr;
+	this.id = 0;
 	this.core = pr.getNode().clientCore;
 	this.ctx = core.makeClient((short) 0).getFetchContext();
 	ctx.maxSplitfileBlockRetries = 10;
@@ -1546,54 +1095,6 @@ public String handleHTTPGet(HTTPRequest request) throws PluginHTTPException{
 			out.append("<p>MalFormed URI: "+uriParam+"</p");
 		}
 		}
-	
-//	if(action == null || action.length() == 0){
-//		//put the default post fields
-//		appendDefaultPageStart(out,null);
-//		
-//	} else if ("list".equals(action)) {
-//		String listName = request.getParam("listName", null);
-//		out.append("<p>list clicked</CENTER></BODY></HTML>");
-//		if(listName == null){
-//			//display all th
-//			Set runningFetches = new HashMap(runningFetchesByURI).keySet();
-//			List queued = new ArrayList(queuedURIList);
-//			Set visited = new HashSet(visitedURIs);
-//			Set failed = new HashSet(failedURIs);
-//			
-//			out.append("<p><h3>Running Fetches</h3>");
-//			Iterator it=runningFetches.iterator();
-//			while(it.hasNext()){
-//				out.append("<code>"+(it.next()).toString()+"</code><br>");
-//			}
-//		}
-//		else{
-//			//display individual results
-//		}
-//	}
-//	else if ("add".equals(action)) {
-//		String uriParam = request.getParam("key");
-//		try {
-//			FreenetURI uri = new FreenetURI(uriParam);
-//			synchronized (this) {
-//				failedURIs.remove(uri);
-//				visitedURIs.remove(uri);
-//			}
-//			queueURI(uri);
-//			startSomeRequests();
-//		} catch (MalformedURLException mue1) {
-//			out.append("<h1>URL invalid</h1>");
-////			sendSimpleResponse(context, "URL invalid", "The given URI is not valid.");
-////			return;
-//		}
-//		//not really necc
-////		MultiValueTable responseHeaders = new MultiValueTable();
-////		responseHeaders.put("Location", "?action=list");
-////		context.sendReplyHeaders(301, "Redirect", responseHeaders, "text/html; charset=utf-8", 0);
-//		
-//	
-//	}
-	
 	return out.toString();
 }
 private void appendList(String listname, StringBuffer out, String stylesheet)
@@ -1675,6 +1176,191 @@ private void appendList(Set  list,StringBuffer out, String stylesheet){
 			break;
 		}
 		i++;
+		
+	}
+	
+}
+
+public class PageCallBack implements FoundURICallback{
+	int id;
+		
+	PageCallBack(){
+		id = 0;
+	}
+	public void foundURI(FreenetURI uri){
+		//now we have the id of the page that had called this link
+		queueURI(uri);
+		int iduri = (Integer) uriIds.get(uri);
+		Vector outlink = (Vector) outlinks.get(id);
+		if(!outlink.contains(iduri))	
+			outlink.add(iduri);
+		outlinks.remove(id);
+		outlinks.put(id, outlink);
+		try{
+		FileWriter out = new FileWriter("outlink",true);
+		out.write(" id "+id+" size "+ outlink.size()+" \n");
+		out.close();
+		}catch(Exception e){}
+
+		if(inlinks.containsKey(iduri)){
+			Vector inlink = (Vector) inlinks.get(iduri);
+			try{
+				FileWriter out = new FileWriter("inlink",true);
+				out.write(" id "+iduri+" size "+ inlink.size()+" \n");
+				out.close();
+				}catch(Exception e){}
+		
+			if(!inlink.contains(id)) inlink.add(id);
+			inlinks.remove(iduri);
+			inlinks.put(iduri, inlink);
+			
+		}
+		startSomeRequests();
+	}
+	public void onText(String s, String type, URI baseURI){
+		try{
+			FileWriter outp = new FileWriter("ontext",true);
+			outp.write("inside on text with id"+id+" \n");
+			outp.close();
+		}catch(Exception e){}
+//		FreenetURI uri;
+//		try {
+//			uri = new FreenetURI(baseURI.getPath().substring(1));
+//		} catch (MalformedURLException e) {
+//			Logger.error(this, "Caught " + e, e);
+//			return;
+//		}
+		 
+		
+      
+		if((type != null) && (type.length() != 0) && type.toLowerCase().equals("title")
+		   && (s != null) && (s.length() != 0) && (s.indexOf('\n') < 0)) {
+			/* We should have a correct title */
+		//	titlesOfURIs.put(uri.toString(), s);
+			titlesOfIds.put(id, s);
+			
+			type = "title";
+			
+		}
+		else type = null;
+
+
+		String[] words = s.split("[^A-Za-z0-9]");
+
+		Integer lastPosition = null;
+
+		//lastPosition = (Integer)lastPositionByURI.get(uri.toString());
+		lastPosition = (Integer)lastPositionById.get(id);
+		if(lastPosition == null)
+			lastPosition = new Integer(1); /* We start to count from 1 */
+
+		for (int i = 0; i < words.length; i++) {
+			String word = words[i];
+			if ((word == null) || (word.length() == 0))
+				continue;
+			word = word.toLowerCase();
+			try{
+			if(type == null)
+				addWord(word, lastPosition.intValue() + i, id);
+			else
+				addWord(word, -1 * (i+1), id);
+			}
+			catch (Exception e){}
+		}
+		
+		if(type == null) {
+			lastPosition = new Integer(lastPosition.intValue() + words.length);
+		//	lastPositionByURI.put(uri.toString(), lastPosition);
+			lastPositionById.put(id, lastPosition);
+		}
+		
+	}
+private synchronized void addWord(String word, int position,int id) throws Exception{
+		
+		
+		if(word.length() < 3)
+			return;
+		
+		//word = word.intern();
+
+
+		//FreenetURI[] uris = (FreenetURI[]) urisByWord.get(word);
+		Integer[] ids = (Integer[]) idsByWord.get(word);
+		
+	//	urisWithWords.add(uri);
+		idsWithWords.add(id);
+		try{
+			FileWriter outp = new FileWriter("addWord",true);
+			outp.write("ID ="+id+" uri ="+idUris.get(id)+"\n");
+			outp.close();
+		}catch(Exception e){}
+//	FileWriter outp = new FileWriter("uricheck",true);
+//	outp.write(uri.getDocName()+"\n");
+//	outp.write(uri.getKeyType()+"\n");
+//	outp.write(uri.getMetaString()+"\n");
+//	outp.write(uri.getGuessableKey()+"\n");
+//	outp.write(uri.hashCode()+"\n");
+//	outp.write(uri.getPreferredFilename()+"\n");
+//	
+//	outp.close();
+
+		/* Word position indexation */
+		HashMap wordPositionsForOneUri = (HashMap)positionsByWordById.get(id); /* For a given URI, take as key a word, and gives position */
+		
+		if(wordPositionsForOneUri == null) {
+			wordPositionsForOneUri = new HashMap();
+			wordPositionsForOneUri.put(word, new Integer[] { new Integer(position) });
+			//positionsByWordByURI.put(uri.toString(), wordPositionsForOneUri);
+			positionsByWordById.put(id, wordPositionsForOneUri);
+		} else {
+			Integer[] positions = (Integer[])wordPositionsForOneUri.get(word);
+
+			if(positions == null) {
+				positions = new Integer[] { new Integer(position) };
+				wordPositionsForOneUri.put(word, positions);
+			} else {
+				Integer[] newPositions = new Integer[positions.length + 1];
+
+				System.arraycopy(positions, 0, newPositions, 0, positions.length);
+				newPositions[positions.length] = new Integer(position);
+
+				wordPositionsForOneUri.put(word, newPositions);
+			}
+		}
+	
+		if (ids == null) {
+			idsByWord.put(word, new Integer[] { id });
+			
+		} else {
+			for (int i = 0; i < ids.length; i++) {
+				if (ids[i].equals(id))
+					return;
+			}
+			Integer[] newIDs = new Integer[ids.length + 1];
+			System.arraycopy(ids, 0, newIDs, 0, ids.length);
+			newIDs[ids.length] = id;
+			idsByWord.put(word, newIDs);
+		}
+		//the new word is added here in urisByWord
+		tMap.put(MD5(word), word);
+		long time_indexing = System.currentTimeMillis();
+		if (tProducedIndex + minTimeBetweenEachIndexRewriting * 10 < System.currentTimeMillis()) {
+			try {
+				//produceIndex();
+				//check();
+				
+				if(indexing){
+				generateIndex2();
+				produceIndex2();
+				if((System.currentTimeMillis() - time_indexing)/(System.currentTimeMillis() - tProducedIndex) > MAX_TIME_SPENT_INDEXING) indexing= false;
+				else indexing = true;
+				}
+				
+			} catch (IOException e) {
+				Logger.error(this, "Caught " + e + " while creating index", e);
+			}
+			tProducedIndex = System.currentTimeMillis();
+		}
 		
 	}
 	
