@@ -70,7 +70,7 @@ import freenet.support.api.HTTPRequest;
  * In case the size of the index grows up a specific threshold the index is split into several subindices.
  * The indexing key is the md5 hash of the word.
  * 
- *  @author swati goyal
+ *  @author swati
  *  
  */
 public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless,  FredPluginHTTPAdvanced,HttpPlugin, ClientCallback, USKCallback{
