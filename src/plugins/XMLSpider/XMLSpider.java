@@ -841,7 +841,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		indexing = true;
 		stopped = false;
 		count = 0;
-	
+		try{
+		Runtime.getRuntime().exec("mkdir "+DEFAULT_INDEX_DIR);}
+		catch(Exception e){
+			Logger.error(this, "Could not create index directory ", e);
+		}
 		//startPlugin();
 		Thread starterThread = new Thread("Spider Plugin Starter") {
 			public void run() {
