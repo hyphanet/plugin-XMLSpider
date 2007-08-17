@@ -146,9 +146,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	private static final String indexOwnerEmail = null;
 	private final HashMap sizeOfURIs = new HashMap(); /* String (URI) -> Long */
 	private final HashMap mimeOfURIs = new HashMap(); /* String (URI) -> String */
-//	private final HashMap lastPositionByURI = new HashMap(); /* String (URI) -> Integer */ /* Use to determine word position on each uri */
+	//	private final HashMap lastPositionByURI = new HashMap(); /* String (URI) -> Integer */ /* Use to determine word position on each uri */
 	private final HashMap lastPositionById = new HashMap();
-//	private final HashMap positionsByWordByURI = new HashMap(); /* String (URI) -> HashMap (String (word) -> Integer[] (Positions)) */
+	//	private final HashMap positionsByWordByURI = new HashMap(); /* String (URI) -> HashMap (String (word) -> Integer[] (Positions)) */
 	private final HashMap positionsByWordById = new HashMap();
 	// Can have many; this limit only exists to save memory.
 	private static final int maxParallelRequests = 100;
@@ -443,7 +443,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			//create a list of the words to be added in the same subindex
 			if(key.substring(0, prefix).equals(str.substring(0, prefix))) 
 			{i++;
-			list.add(key);
+				list.add(key);
 			}
 			else {
 				//generate the appropriate subindex with the current list
@@ -713,7 +713,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}
 
 	public void generateSubIndex(String filename){
-//		generates the new subIndex
+		//		generates the new subIndex
 		File outputFile = new File(filename);
 		StreamResult resultStream;
 		resultStream = new StreamResult(outputFile);
@@ -842,7 +842,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		stopped = false;
 		count = 0;
 		try{
-		Runtime.getRuntime().exec("mkdir "+DEFAULT_INDEX_DIR);}
+			Runtime.getRuntime().exec("mkdir "+DEFAULT_INDEX_DIR);}
 		catch(Exception e){
 			Logger.error(this, "Could not create index directory ", e);
 		}
@@ -1036,7 +1036,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				/* We should have a correct title */
 				titlesOfIds.put(id, s);
 				type = "title";
-			}
+					}
 			else type = null;
 
 			String[] words = s.split("[^A-Za-z0-9]");
