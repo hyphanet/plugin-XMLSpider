@@ -128,7 +128,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
  * directory where the generated indices are stored. 
  * Needs to be created before it can be used
  */
-	public static final String DEFAULT_INDEX_DIR = "myindex2/";
+	public static final String DEFAULT_INDEX_DIR = "myindex/";
 	/**
 	 * Lists the allowed mime types of the fetched page. 
 	 */
@@ -565,8 +565,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				uriElement.setAttribute("id", x.toString());
 				fileElement.setAttribute("id", x.toString());
 				fileElement.setAttribute("key",(idUris.get(id)).toString());
-				fileElement.setAttribute("uriTitle",(titlesOfIds.get(id)).toString());
-			
+				if(titlesOfIds.containsKey(id))
+				fileElement.setAttribute("title",(titlesOfIds.get(id)).toString());
+				else 
+					fileElement.setAttribute("title",(idUris.get(id)).toString());
 			//				try{
 //				FileWriter outp = new FileWriter("titles",true);
 //				outp.write("title = "+(titlesOfIds.get(id)).toString());
