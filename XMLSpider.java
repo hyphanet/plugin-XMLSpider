@@ -456,6 +456,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		generateSubIndex(prefix,list);
 	}
+	
 	private synchronized Vector subVector(Vector list, int begin, int end){
 		Vector tmp = new Vector();
 		for(int i = begin;i<end+1;i++) tmp.add(list.elementAt(i));
