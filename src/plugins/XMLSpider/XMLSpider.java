@@ -4,6 +4,7 @@
 package plugins.XMLSpider;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
@@ -132,8 +133,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * Lists the allowed mime types of the fetched page. 
 	 */
 	public Set allowedMIMETypes;
-	private static final int MAX_ENTRIES = 10;
-	private static final String pluginName = "XML spider";
+	private static final int MAX_ENTRIES = 6;
+	private static int version = 5;
+	private static final String pluginName = "XML spider "+version;
 	/**
 	 * Gives the allowed fraction of total time spent on generating indices with
 	 * maximum value = 1; minimum value = 0. 
@@ -853,7 +855,12 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		indexing = true;
 		stopped = false;
 		count = 0;
-
+		try{
+		Runtime.getRuntime().exec("mkdir "+DEFAULT_INDEX_DIR);
+		}
+		catch(Exception e){
+			Logger.error(this, "Could not create default index directory "+e.toString(), e);
+		}
 		//startPlugin();
 		Thread starterThread = new Thread("Spider Plugin Starter") {
 			public void run() {
@@ -1124,22 +1131,29 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			}
 
 			tMap.put(MD5(word), word);
-			long time_indexing = System.currentTimeMillis();
+			//long time_indexing = System.currentTimeMillis();
+//			FileWriter outp = new FileWriter("logfile",true);
+			long next = System.currentTimeMillis() - (tProducedIndex + minTimeBetweenEachIndexRewriting * 10);
+//			outp.write("after ==== "+next);
+//			outp.close();
+			Logger.debug(this, "Spider will next write after  "+next);
+		
 			if (tProducedIndex + minTimeBetweenEachIndexRewriting * 10 < System.currentTimeMillis()) {
 				try {
-					if(indexing){
+					//if(indexing){
 						generateIndex2();
 						produceIndex2();
 						/*
 						 * ensures that index production doesn't eat up the processor time 
 						 */
-						if((System.currentTimeMillis() - time_indexing)/(System.currentTimeMillis() - tProducedIndex) > MAX_TIME_SPENT_INDEXING) indexing= false;
-						else indexing = true;
-					}
+						//if((System.currentTimeMillis() - time_indexing)/(System.currentTimeMillis() - tProducedIndex) > MAX_TIME_SPENT_INDEXING) indexing= false;
+						//else indexing = true;
+					//}
+						tProducedIndex = System.currentTimeMillis();
 				} catch (IOException e) {
 					Logger.error(this, "Caught " + e + " while creating index", e);
 				}
-				tProducedIndex = System.currentTimeMillis();
+
 			}
 		}
 	}
