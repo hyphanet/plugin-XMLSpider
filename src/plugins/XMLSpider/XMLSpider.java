@@ -133,8 +133,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * Lists the allowed mime types of the fetched page. 
 	 */
 	public Set allowedMIMETypes;
-	private static final int MAX_ENTRIES = 6;
-	private static int version = 5;
+	private static final int MAX_ENTRIES = 5;
+	private static int version = 6;
 	private static final String pluginName = "XML spider "+version;
 	/**
 	 * Gives the allowed fraction of total time spent on generating indices with
