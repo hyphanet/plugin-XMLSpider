@@ -120,20 +120,22 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	private Vector indices;
 	private int match;
 	private Integer id;
-
+	private long time_taken;
 	private boolean indexing ;
-
-	private static final int minTimeBetweenEachIndexRewriting = 10;
+/*
+ * minTimeBetweenEachIndexRewriting in seconds 
+ */
+	private static final int minTimeBetweenEachIndexRewriting = 1000;
 	/**
 	 * directory where the generated indices are stored. 
 	 * Needs to be created before it can be used
 	 */
-	public static final String DEFAULT_INDEX_DIR = "myindex/";
+	public static final String DEFAULT_INDEX_DIR = "myindex7/";
 	/**
 	 * Lists the allowed mime types of the fetched page. 
 	 */
 	public Set allowedMIMETypes;
-	private static final int MAX_ENTRIES = 5;
+	private static final int MAX_ENTRIES = 20;
 	private static int version = 6;
 	private static final String pluginName = "XML spider "+version;
 	/**
@@ -252,8 +254,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		sizeOfURIs.put(uri.toString(), new Long(data.size()));
 		mimeOfURIs.put(uri.toString(), mimeType);
-		PageCallBack page = new PageCallBack();
-		page.id = (Integer) uriIds.get(uri);
+		PageCallBack page = new PageCallBack((Integer) uriIds.get(uri));
 		inlinks.put(page.id, new Vector());
 		outlinks.put(page.id, new Vector());
 		/*
@@ -964,6 +965,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		out.append("<br/>Size :"+failed.size()+"<br/>");
 		appendList(failed,out,stylesheet);
 		out.append("<p><a href=\"?list="+"failed"+"\">Show all</a><br/></p>");
+		out.append("<p>Time taken in generating index = "+time_taken+"</p>");
 	}
 
 
@@ -1000,12 +1002,12 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 *
 	 */
 	public class PageCallBack implements FoundURICallback{
-		Integer id;
+		final Integer id;
 		/*
 		 * id of the page as refrenced in uriIds
 		 */	
-		PageCallBack(){
-			id = new Integer(0);
+		PageCallBack(Integer i){
+			id = i;
 		}
 
 		public void foundURI(FreenetURI uri){
@@ -1136,13 +1138,19 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			long next = System.currentTimeMillis() - (tProducedIndex + minTimeBetweenEachIndexRewriting * 10);
 //			outp.write("after ==== "+next);
 //			outp.close();
-			Logger.debug(this, "Spider will next write after  "+next);
+			
 		
-			if (tProducedIndex + minTimeBetweenEachIndexRewriting * 10 < System.currentTimeMillis()) {
+			if (tProducedIndex + minTimeBetweenEachIndexRewriting * 1000 < System.currentTimeMillis()) {
 				try {
 					//if(indexing){
+						
+					    time_taken = System.currentTimeMillis();
 						generateIndex2();
 						produceIndex2();
+						time_taken = System.currentTimeMillis() - time_taken;
+//						FileWriter outp = new FileWriter("logfile3",true);
+//						outp.write("Time taken = "+time_taken+"\n");
+//						outp.close();
 						/*
 						 * ensures that index production doesn't eat up the processor time 
 						 */
