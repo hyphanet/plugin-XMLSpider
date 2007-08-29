@@ -255,6 +255,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		sizeOfURIs.put(uri.toString(), new Long(data.size()));
 		mimeOfURIs.put(uri.toString(), mimeType);
 		PageCallBack page = new PageCallBack((Integer) uriIds.get(uri));
+		Logger.minor(this, "Successful: "+uri+" : "+page.id);
 		inlinks.put(page.id, new Vector());
 		outlinks.put(page.id, new Vector());
 		/*
@@ -263,6 +264,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		 */
 	
 		try {
+			Logger.minor(this, "Filtering "+uri+" : "+page.id);
 			ContentFilter.filter(data, ctx.bucketFactory, mimeType, uri.toURI("http://127.0.0.1:8888/"), page);
 		} catch (UnsafeContentTypeException e) {
 			return; // Ignore
@@ -277,6 +279,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 	public void onFailure(FetchException e, ClientGetter state) {
 		FreenetURI uri = state.getURI();
+		Logger.minor(this, "Failed: "+uri+" : "+e);
 
 		synchronized (this) {
 			runningFetchesByURI.remove(uri);
@@ -1012,6 +1015,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		public void foundURI(FreenetURI uri){
 
+			Logger.minor(this, "foundURI "+uri+" on "+id);
 			queueURI(uri);
 			Integer iduri = (Integer) uriIds.get(uri);
 /*
@@ -1051,6 +1055,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 
 		public void onText(String s, String type, URI baseURI){
+			
+			Logger.minor(this, "onText on "+id+" ("+baseURI+")");
 
 			if((type != null) && (type.length() != 0) && type.toLowerCase().equals("title")
 					&& (s != null) && (s.length() != 0) && (s.indexOf('\n') < 0)) {
