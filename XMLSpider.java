@@ -136,7 +136,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 */
 	public Set allowedMIMETypes;
 	private static final int MAX_ENTRIES = 20;
-	private static int version = 6;
+	private static int version = 7;
 	private static final String pluginName = "XML spider "+version;
 	/**
 	 * Gives the allowed fraction of total time spent on generating indices with
@@ -159,7 +159,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 	private NodeClientCore core;
 	private FetchContext ctx;
-	private final short PRIORITY_CLASS = RequestStarter.BULK_SPLITFILE_PRIORITY_CLASS;
+	// Equal to Frost, ARK fetches etc. One step down from Fproxy.
+	// Any lower makes it very difficult to debug. Maybe reduce for production - after solving the ARK bugs.
+	private final short PRIORITY_CLASS = RequestStarter.IMMEDIATE_SPLITFILE_PRIORITY_CLASS;
 	private boolean stopped = true;
 	PluginRespirator pr;
 
