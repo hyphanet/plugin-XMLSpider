@@ -125,7 +125,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 /*
  * minTimeBetweenEachIndexRewriting in seconds 
  */
-	private static final int minTimeBetweenEachIndexRewriting = 1000;
+	private static final int minTimeBetweenEachIndexRewriting = 60;
 	/**
 	 * directory where the generated indices are stored. 
 	 * Needs to be created before it can be used
@@ -417,7 +417,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 
 		if(Logger.shouldLog(Logger.MINOR, this))
-			Logger.minor(this, "Spider: indexes regenerated.");
+			Logger.minor(this, "Spider: indexes regenerated - tProducedIndex="+(System.currentTimeMillis()-tProducedIndex)+"ms ago time taken="+time_taken+"ms");
 
 		//The main xml file is generated 
 		//As each word is generated enter it into the respective subindex
