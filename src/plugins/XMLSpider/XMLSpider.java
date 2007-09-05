@@ -340,7 +340,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			xmlBuilder = xmlFactory.newDocumentBuilder();
 		} catch(javax.xml.parsers.ParserConfigurationException e) {
 
-			Logger.error(this, "Spider: Error while initializing XML generator: "+e.toString());
+			Logger.error(this, "Spider: Error while initializing XML generator: "+e.toString(), e);
 			return;
 		}
 
@@ -401,7 +401,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		try {
 			serializer = transformFactory.newTransformer();
 		} catch(javax.xml.transform.TransformerConfigurationException e) {
-			Logger.error(this, "Spider: Error while serializing XML (transformFactory.newTransformer()): "+e.toString());
+			Logger.error(this, "Spider: Error while serializing XML (transformFactory.newTransformer()): "+e.toString(), e);
 			return;
 		}
 
@@ -412,7 +412,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		try {
 			serializer.transform(domSource, resultStream);
 		} catch(javax.xml.transform.TransformerException e) {
-			Logger.error(this, "Spider: Error while serializing XML (transform()): "+e.toString());
+			Logger.error(this, "Spider: Error while serializing XML (transform()): "+e.toString(), e);
 			return;
 		}
 
@@ -532,7 +532,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		try {
 			xmlBuilder = xmlFactory.newDocumentBuilder();
 		} catch(javax.xml.parsers.ParserConfigurationException e) {
-			Logger.error(this, "Spider: Error while initializing XML generator: "+e.toString());
+			Logger.error(this, "Spider: Error while initializing XML generator: "+e.toString(), e);
 			return;
 		}
 
@@ -619,7 +619,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		try {
 			serializer = transformFactory.newTransformer();
 		} catch(javax.xml.transform.TransformerConfigurationException e) {
-			Logger.error(this, "Spider: Error while serializing XML (transformFactory.newTransformer()): "+e.toString());
+			Logger.error(this, "Spider: Error while serializing XML (transformFactory.newTransformer()): "+e.toString(), e);
 			return;
 		}
 		serializer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
@@ -628,7 +628,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		try {
 			serializer.transform(domSource, resultStream);
 		} catch(javax.xml.transform.TransformerException e) {
-			Logger.error(this, "Spider: Error while serializing XML (transform()): "+e.toString());
+			Logger.error(this, "Spider: Error while serializing XML (transform()): "+e.toString(), e);
 			return;
 		}
 
@@ -752,7 +752,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			xmlBuilder = xmlFactory.newDocumentBuilder();
 		} catch(javax.xml.parsers.ParserConfigurationException e) {
 			/* Will (should ?) never happen */
-			Logger.error(this, "Spider: Error while initializing XML generator: "+e.toString());
+			Logger.error(this, "Spider: Error while initializing XML generator: "+e.toString(), e);
 			return;
 		}
 
@@ -814,7 +814,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		try {
 			serializer = transformFactory.newTransformer();
 		} catch(javax.xml.transform.TransformerConfigurationException e) {
-			Logger.error(this, "Spider: Error while serializing XML (transformFactory.newTransformer()): "+e.toString());
+			Logger.error(this, "Spider: Error while serializing XML (transformFactory.newTransformer()): "+e.toString(), e);
 			return;
 		}
 
@@ -826,7 +826,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		try {
 			serializer.transform(domSource, resultStream);
 		} catch(javax.xml.transform.TransformerException e) {
-			Logger.error(this, "Spider: Error while serializing XML (transform()): "+e.toString());
+			Logger.error(this, "Spider: Error while serializing XML (transform()): "+e.toString(), e);
 			return;
 		}
 
