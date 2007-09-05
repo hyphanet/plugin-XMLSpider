@@ -3,7 +3,10 @@
  * http://www.gnu.org/ for further details of the GPL. */
 package plugins.XMLSpider;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -323,9 +326,12 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 		//the main index file 
 		File outputFile = new File(DEFAULT_INDEX_DIR+"index.xml");
+		// Use a stream so we can explicitly close - minimise number of filehandles used.
+		BufferedOutputStream fos = new BufferedOutputStream(new FileOutputStream(outputFile));
 		StreamResult resultStream;
-		resultStream = new StreamResult(outputFile);
+		resultStream = new StreamResult(fos);
 
+		try {
 		/* Initialize xml builder */
 		Document xmlDoc = null;
 		DocumentBuilderFactory xmlFactory = null;
@@ -414,6 +420,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		} catch(javax.xml.transform.TransformerException e) {
 			Logger.error(this, "Spider: Error while serializing XML (transform()): "+e.toString(), e);
 			return;
+		}
+		} finally {
+			fos.close();
 		}
 
 		if(Logger.shouldLog(Logger.MINOR, this))
@@ -518,9 +527,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		String p = ((String) list.elementAt(0)).substring(0, prefix);
 		indices.add(p);
 		File outputFile = new File(DEFAULT_INDEX_DIR+"index_"+p+".xml");
+		BufferedOutputStream fos = new BufferedOutputStream(new FileOutputStream(outputFile));
 		StreamResult resultStream;
-		resultStream = new StreamResult(outputFile);
+		resultStream = new StreamResult(fos);
 
+		try {
 		/* Initialize xml builder */
 		Document xmlDoc = null;
 		DocumentBuilderFactory xmlFactory = null;
@@ -631,6 +642,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			Logger.error(this, "Spider: Error while serializing XML (transform()): "+e.toString(), e);
 			return;
 		}
+		} finally {
+			fos.close();
+		}
 
 		if(Logger.shouldLog(Logger.MINOR, this))
 			Logger.minor(this, "Spider: indexes regenerated.");
@@ -735,8 +749,16 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public void generateSubIndex(String filename){
 //		generates the new subIndex
 		File outputFile = new File(filename);
+		BufferedOutputStream fos;
+		try {
+			fos = new BufferedOutputStream(new FileOutputStream(outputFile));
+		} catch (FileNotFoundException e1) {
+			Logger.error(this, "Cannot open "+filename+" writing index : "+e1, e1);
+			return;
+		}
+		try {
 		StreamResult resultStream;
-		resultStream = new StreamResult(outputFile);
+		resultStream = new StreamResult(fos);
 
 		/* Initialize xml builder */
 		Document xmlDoc = null;
@@ -828,6 +850,13 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		} catch(javax.xml.transform.TransformerException e) {
 			Logger.error(this, "Spider: Error while serializing XML (transform()): "+e.toString(), e);
 			return;
+		}
+		} finally {
+			try {
+				fos.close();
+			} catch (IOException e) {
+				// Ignore
+			}
 		}
 
 		if(Logger.shouldLog(Logger.MINOR, this))
