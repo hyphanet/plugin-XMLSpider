@@ -67,6 +67,7 @@ import freenet.pluginmanager.PluginRespirator;
 import freenet.support.Logger;
 import freenet.support.api.Bucket;
 import freenet.support.api.HTTPRequest;
+import freenet.support.io.NullBucketFactory;
 
 /**
  * XMLSpider. Produces xml index for searching words. 
@@ -270,7 +271,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	
 		try {
 			Logger.minor(this, "Filtering "+uri+" : "+page.id);
-			ContentFilter.filter(data, ctx.bucketFactory, mimeType, uri.toURI("http://127.0.0.1:8888/"), page);
+			ContentFilter.filter(data, new NullBucketFactory(), mimeType, uri.toURI("http://127.0.0.1:8888/"), page);
 		} catch (UnsafeContentTypeException e) {
 			return; // Ignore
 		} catch (IOException e) {
