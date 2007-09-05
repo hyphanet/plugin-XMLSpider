@@ -128,7 +128,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 /*
  * minTimeBetweenEachIndexRewriting in seconds 
  */
-	private static final int minTimeBetweenEachIndexRewriting = 60;
+	private static final int minTimeBetweenEachIndexRewriting = 600;
 	/**
 	 * directory where the generated indices are stored. 
 	 * Needs to be created before it can be used
