@@ -249,10 +249,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public void onSuccess(FetchResult result, ClientGetter state) {
 		FreenetURI uri = state.getURI();
 
-		synchronized (this) {
-			runningFetchesByURI.remove(uri);
-		}
-		startSomeRequests();
+		try {
+		
 		ClientMetadata cm = result.getMetadata();
 		Bucket data = result.asBucket();
 		String mimeType = cm.getMIMEType();
@@ -279,6 +277,12 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			Logger.error(this, "Internal error: " + e, e);
 		} finally {
 			data.free();
+		}
+		} finally {
+			synchronized (this) {
+				runningFetchesByURI.remove(uri);
+			}
+			startSomeRequests();
 		}
 	}
 
