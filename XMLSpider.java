@@ -1176,10 +1176,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			tMap.put(MD5(word), word);
 			//long time_indexing = System.currentTimeMillis();
 //			FileWriter outp = new FileWriter("logfile",true);
-			long next = System.currentTimeMillis() - (tProducedIndex + minTimeBetweenEachIndexRewriting * 10);
-//			outp.write("after ==== "+next);
-//			outp.close();
-			
 		
 			if (tProducedIndex + minTimeBetweenEachIndexRewriting * 1000 < System.currentTimeMillis()) {
 				try {
