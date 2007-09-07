@@ -251,33 +251,33 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		try {
 		
-		ClientMetadata cm = result.getMetadata();
-		Bucket data = result.asBucket();
-		String mimeType = cm.getMIMEType();
-
-		sizeOfURIs.put(uri.toString(), new Long(data.size()));
-		mimeOfURIs.put(uri.toString(), mimeType);
-		PageCallBack page = new PageCallBack((Integer) uriIds.get(uri));
-		Logger.minor(this, "Successful: "+uri+" : "+page.id);
-		inlinks.put(page.id, new Vector());
-		outlinks.put(page.id, new Vector());
-		/*
-		 * instead of passing the current object, the pagecallback object for every page is passed to the content filter
-		 * this is to allow inlinks and outlinks be indexed by specific pages
-		 */
-	
-		try {
-			Logger.minor(this, "Filtering "+uri+" : "+page.id);
-			ContentFilter.filter(data, new NullBucketFactory(), mimeType, uri.toURI("http://127.0.0.1:8888/"), page);
-		} catch (UnsafeContentTypeException e) {
-			return; // Ignore
-		} catch (IOException e) {
-			Logger.error(this, "Bucket error?: " + e, e);
-		} catch (URISyntaxException e) {
-			Logger.error(this, "Internal error: " + e, e);
-		} finally {
-			data.free();
-		}
+			ClientMetadata cm = result.getMetadata();
+			Bucket data = result.asBucket();
+			String mimeType = cm.getMIMEType();
+			
+			sizeOfURIs.put(uri.toString(), new Long(data.size()));
+			mimeOfURIs.put(uri.toString(), mimeType);
+			PageCallBack page = new PageCallBack((Integer) uriIds.get(uri));
+			Logger.minor(this, "Successful: "+uri+" : "+page.id);
+			inlinks.put(page.id, new Vector());
+			outlinks.put(page.id, new Vector());
+			/*
+			 * instead of passing the current object, the pagecallback object for every page is passed to the content filter
+			 * this is to allow inlinks and outlinks be indexed by specific pages
+			 */
+			
+			try {
+				Logger.minor(this, "Filtering "+uri+" : "+page.id);
+				ContentFilter.filter(data, new NullBucketFactory(), mimeType, uri.toURI("http://127.0.0.1:8888/"), page);
+			} catch (UnsafeContentTypeException e) {
+				return; // Ignore
+			} catch (IOException e) {
+				Logger.error(this, "Bucket error?: " + e, e);
+			} catch (URISyntaxException e) {
+				Logger.error(this, "Internal error: " + e, e);
+			} finally {
+				data.free();
+			}
 		} finally {
 			synchronized (this) {
 				runningFetchesByURI.remove(uri);
