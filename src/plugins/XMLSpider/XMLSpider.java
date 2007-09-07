@@ -139,7 +139,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 */
 	public Set allowedMIMETypes;
 	private static final int MAX_ENTRIES = 200;
-	private static int version = 8;
+	private static int version = 9;
 	private static final String pluginName = "XML spider "+version;
 	/**
 	 * Gives the allowed fraction of total time spent on generating indices with
