@@ -124,7 +124,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	private int match;
 	private Integer id;
 	private long time_taken;
-	private boolean indexing ;
 /*
  * minTimeBetweenEachIndexRewriting in seconds 
  */
@@ -694,7 +693,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		ctx.allowedMIMETypes = new HashSet(allowedMIMETypes);
 		//	ctx.allowedMIMETypes.add("text/html"); 
 		tProducedIndex = System.currentTimeMillis();
-		indexing = true;
 	}
 
 
@@ -891,7 +889,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		ctx.allowedMIMETypes = new HashSet(allowedMIMETypes);
 
 		tProducedIndex = System.currentTimeMillis();
-		indexing = true;
 		stopped = false;
 		count = 0;
 		try{
