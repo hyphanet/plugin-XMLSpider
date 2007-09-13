@@ -138,7 +138,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 */
 	public Set allowedMIMETypes;
 	private static final int MAX_ENTRIES = 200;
-	private static int version = 10;
+	private static int version = 11;
 	private static final String pluginName = "XML spider "+version;
 	/**
 	 * Gives the allowed fraction of total time spent on generating indices with
@@ -971,12 +971,17 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		out.append("Add uri:");
 		out.append("<form method=\"GET\"><input type=\"text\" name=\"adduri\" /><br/><br/>");
 		out.append("<input type=\"submit\" value=\"Add uri\" /></form>");
-		Set runningFetches = runningFetchesByURI.keySet();
+		Set runningFetches;
+		Set visited;
+		Set failed;
+		List queued;
+		synchronized(this) {
+			visited = new HashSet(visitedURIs);
+			failed = new HashSet(failedURIs);
+			queued = new ArrayList(queuedURIList);
+			runningFetches = runningFetchesByURI.keySet();
+		}
 		out.append("<p><h3>Running Fetches</h3></p>");
-		Set visited = new HashSet(visitedURIs);
-		List queued = new ArrayList(queuedURIList);
-
-		Set failed = new HashSet(failedURIs);
 		Iterator it=queued.iterator();
 		out.append("<br/>Size :"+runningFetches.size()+"<br/>");
 		appendList(runningFetches,out,stylesheet);
