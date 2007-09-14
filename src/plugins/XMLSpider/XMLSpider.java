@@ -138,7 +138,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 */
 	public Set allowedMIMETypes;
 	private static final int MAX_ENTRIES = 200;
-	private static int version = 12;
+	private static int version = 13;
 	private static final String pluginName = "XML spider "+version;
 	/**
 	 * Gives the allowed fraction of total time spent on generating indices with
@@ -1118,6 +1118,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				if ((word == null) || (word.length() == 0))
 					continue;
 				word = word.toLowerCase();
+				word = word.intern();
 				try{
 					if(type == null)
 						addWord(word, lastPosition.intValue() + i, id);
