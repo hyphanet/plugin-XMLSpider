@@ -110,16 +110,18 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	private final HashMap titlesOfIds = new HashMap();
 	private final HashMap uriIds = new HashMap();
 	private final HashMap idUris = new HashMap();
+	
+	// Re-enable outlinks/inlinks when we publish them or use them for ranking.
 	/**
 	 * Lists the outlinks from a particular page, 
 	 * </br> indexed by the id of page uri
 	 */
-	public final HashMap outlinks = new HashMap();
+//	public final HashMap outlinks = new HashMap();
 	/**
 	 * Lists the inlinks to a particular page,
 	 *  indexed by the id of page uri.
 	 */
-	public final HashMap inlinks = new HashMap();
+//	public final HashMap inlinks = new HashMap();
 	private Vector indices;
 	private int match;
 	private Integer id;
@@ -138,7 +140,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 */
 	public Set allowedMIMETypes;
 	private static final int MAX_ENTRIES = 200;
-	private static int version = 13;
+	private static int version = 14;
 	private static final String pluginName = "XML spider "+version;
 	/**
 	 * Gives the allowed fraction of total time spent on generating indices with
@@ -254,16 +256,21 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			Bucket data = result.asBucket();
 			String mimeType = cm.getMIMEType();
 			
-			sizeOfURIs.put(uri.toString(), new Long(data.size()));
-			mimeOfURIs.put(uri.toString(), mimeType);
-			PageCallBack page = new PageCallBack((Integer) uriIds.get(uri));
-			Logger.minor(this, "Successful: "+uri+" : "+page.id);
-			inlinks.put(page.id, new Vector());
-			outlinks.put(page.id, new Vector());
+			Integer id;
+			synchronized(this) {
+				sizeOfURIs.put(uri.toString(), new Long(data.size()));
+				mimeOfURIs.put(uri.toString(), mimeType);
+				id = (Integer) uriIds.get(uri);
+//				inlinks.put(page.id, new Vector());
+//				outlinks.put(page.id, new Vector());
+			}
 			/*
 			 * instead of passing the current object, the pagecallback object for every page is passed to the content filter
-			 * this is to allow inlinks and outlinks be indexed by specific pages
+			 * this has many benefits to efficiency, and allows us to identify trivially which page is being indexed.
+			 * (we CANNOT rely on the base href provided).
 			 */
+			PageCallBack page = new PageCallBack(id);
+			Logger.minor(this, "Successful: "+uri+" : "+page.id);
 			
 			try {
 				Logger.minor(this, "Filtering "+uri+" : "+page.id);
@@ -1054,39 +1061,42 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 			Logger.minor(this, "foundURI "+uri+" on "+id);
 			queueURI(uri);
-			Integer iduri = (Integer) uriIds.get(uri);
+			// FIXME re-enable outlinks/inlinks when we can do something useful with them
+//			synchronized(XMLSpider.this) {
+//			Integer iduri = (Integer) uriIds.get(uri);
 /*
  * update the outlink information for the current page
  */
-			if(outlinks.containsKey(id)){
-				Vector outlink = (Vector) outlinks.get(id);
-				if(!outlink.contains(iduri))	
-					outlink.add(iduri);
-				outlinks.remove(id);
-				outlinks.put(id, outlink);
-			}
-			else 
-			{
-				Vector outlink = new Vector();
-				outlink.add(iduri);
-				outlinks.put(id, outlink);
-			}
+//			if(outlinks.containsKey(id)){
+//				Vector outlink = (Vector) outlinks.get(id);
+//				if(!outlink.contains(iduri))	
+//					outlink.add(iduri);
+//				outlinks.remove(id);
+//				outlinks.put(id, outlink);
+//			}
+//			else 
+//			{
+//				Vector outlink = new Vector();
+//				outlink.add(iduri);
+//				outlinks.put(id, outlink);
+//			}
 /*
  * update the inlink information for the new link 
  */
-			if(inlinks.containsKey(iduri)){
-				Vector inlink = (Vector) inlinks.get(iduri);
-				if(!inlink.contains(id)) inlink.add(id);
-				inlinks.remove(iduri);
-				inlinks.put(iduri, inlink);
-			}
-			else 
-			{
-				Vector inlink = new Vector();
-				inlink.add(id);
-				inlinks.put(iduri, inlink);
-			}
-
+//			if(inlinks.containsKey(iduri)){
+//				Vector inlink = (Vector) inlinks.get(iduri);
+//				if(!inlink.contains(id)) inlink.add(id);
+//				inlinks.remove(iduri);
+//				inlinks.put(iduri, inlink);
+//			}
+//			else 
+//			{
+//				Vector inlink = new Vector();
+//				inlink.add(id);
+//				inlinks.put(iduri, inlink);
+//			}
+//			} // synchronized
+			
 			startSomeRequests();
 		}
 
