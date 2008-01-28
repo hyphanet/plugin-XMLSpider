@@ -140,6 +140,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 */
 	public Set allowedMIMETypes;
 	private static final int MAX_ENTRIES = 2000;
+	private static final long MAX_SUBINDEX_UNCOMPRESSED_SIZE = 256*1024*1024;
 	private static int version = 15;
 	private static final String pluginName = "XML spider "+version;
 	/**
@@ -497,12 +498,15 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		 * and iterate till the number of entries per subindex is less than the allowed value
 		 */
 
-		if(list.size() < MAX_ENTRIES)
-		{	
-			generateXML(list,p);
+		try {
+			if(list.size() < MAX_ENTRIES)
+			{	
+				generateXML(list,p);
+				return;
+			}
+		} catch (TooBigIndexException e) {
+			// Handle below
 		}
-		else
-		{
 			//prefix needs to be incremented
 			if(match <= p) match = p+1; 
 			int prefix = p+1;
@@ -523,16 +527,19 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				}
 			}
 			generateSubIndex(prefix,subVector(list,index,i-1));
-		}
 	}	
 
+	private class TooBigIndexException extends Exception {
+		
+	}
+	
 	/**
 	 * generates the xml index with the given list of words with prefix number of matching bits in md5
 	 * @param list  list of the words to be added in the index
 	 * @param prefix number of matching bits of md5
 	 * @throws Exception
 	 */
-	public synchronized void generateXML (Vector list, int prefix) throws Exception
+	public synchronized void generateXML (Vector list, int prefix) throws TooBigIndexException, Exception
 	{
 		String p = ((String) list.elementAt(0)).substring(0, prefix);
 		indices.add(p);
@@ -654,6 +661,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 		} finally {
 			fos.close();
+		}
+		if(outputFile.length() > MAX_SUBINDEX_UNCOMPRESSED_SIZE) {
+			outputFile.delete();
+			throw new TooBigIndexException();
 		}
 
 		if(Logger.shouldLog(Logger.MINOR, this))
