@@ -141,7 +141,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public Set allowedMIMETypes;
 	private static final int MAX_ENTRIES = 2000;
 	private static final long MAX_SUBINDEX_UNCOMPRESSED_SIZE = 256*1024*1024;
-	private static int version = 15;
+	private static int version = 16;
 	private static final String pluginName = "XML spider "+version;
 	/**
 	 * Gives the allowed fraction of total time spent on generating indices with
@@ -662,7 +662,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		} finally {
 			fos.close();
 		}
-		if(outputFile.length() > MAX_SUBINDEX_UNCOMPRESSED_SIZE) {
+		if(outputFile.length() > MAX_SUBINDEX_UNCOMPRESSED_SIZE && list.size() > 1) {
 			outputFile.delete();
 			throw new TooBigIndexException();
 		}
