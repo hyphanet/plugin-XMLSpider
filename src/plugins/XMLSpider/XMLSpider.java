@@ -197,7 +197,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	private void startSomeRequests() {
 
 
-		FreenetURI[] initialURIs = core.bookmarkManager.getBookmarkURIs();
+		FreenetURI[] initialURIs = core.getBookmarkURIs();
 		for (int i = 0; i < initialURIs.length; i++)
 		{
 			queueURI(initialURIs[i]);
