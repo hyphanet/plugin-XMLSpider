@@ -530,7 +530,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}	
 
 	private class TooBigIndexException extends Exception {
-		
+		private static final long serialVersionUID = -6172560811504794914L;
 	}
 	
 	/**
