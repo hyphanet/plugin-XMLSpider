@@ -232,6 +232,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 					ClientGetter getter = makeGetter(uri);
 					toStart.add(getter);
 					found = true;
+					break;
 				}
 				if(!found) break;
 			}
