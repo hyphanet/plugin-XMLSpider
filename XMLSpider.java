@@ -143,7 +143,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public Set allowedMIMETypes;
 	private static final int MAX_ENTRIES = 2000;
 	private static final long MAX_SUBINDEX_UNCOMPRESSED_SIZE = 256*1024;
-	private static int version = 26;
+	private static int version = 27;
 	private static final String pluginName = "XML spider "+version;
 	/**
 	 * Gives the allowed fraction of total time spent on generating indices with
@@ -161,7 +161,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 //	private final HashMap positionsByWordByURI = new HashMap(); /* String (URI) -> HashMap (String (word) -> Integer[] (Positions)) */
 	private final HashMap positionsByWordById = new HashMap();
 	// Can have many; this limit only exists to save memory.
-	private static final int maxParallelRequests = 100;
+	private static final int maxParallelRequests = 500;
 	private int maxShownURIs = 15;
 
 	private NodeClientCore core;
@@ -707,8 +707,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		this.core = pluginManager.getClientCore();
 		this.ctx = core.makeClient((short) 0).getFetchContext();
-		ctx.maxSplitfileBlockRetries = 10;
-		ctx.maxNonSplitfileRetries = 10;
+		ctx.maxSplitfileBlockRetries = 9; // Will be on the cooldown queue 3 times.
+		ctx.maxNonSplitfileRetries = 9; // Will be on the cooldown queue 3 times.
 		ctx.maxTempLength = 2 * 1024 * 1024;
 		ctx.maxOutputLength = 2 * 1024 * 1024;
 		allowedMIMETypes = new HashSet();
