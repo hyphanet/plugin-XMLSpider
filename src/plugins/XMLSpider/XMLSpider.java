@@ -1023,18 +1023,18 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		appendList(runningFetches,out,stylesheet);
 		out.append("<p><a href=\"?list="+"running"+"\">Show all</a><br/></p>");
 		for(int j=0;j<queued.length;j++) {
-		out.append("<p><h3>Queued URIs ("+j+")</h3></p>");
-		out.append("<br/>Size :"+queued[j].size()+"<br/>");
-		int i = 0;
-		Iterator it=queued[j].iterator();
-		while(it.hasNext()){
-			if(i<=maxShownURIs){
-				out.append("<code>"+it.next().toString()+"</code><br/>");
+			out.append("<p><h3>Queued URIs ("+j+")</h3></p>");
+			out.append("<br/>Size :"+queued[j].size()+"<br/>");
+			int i = 0;
+			Iterator it=queued[j].iterator();
+			while(it.hasNext()){
+				if(i<=maxShownURIs){
+					out.append("<code>"+it.next().toString()+"</code><br/>");
+				}
+				else break;
+				i++;
 			}
-			else break;
-			i++;
-		}
-		out.append("<p><a href=\"?list="+"queued"+j+"\">Show all</a><br/></p>");
+			out.append("<p><a href=\"?list="+"queued"+j+"\">Show all</a><br/></p>");
 		}
 		out.append("<p><h3>Visited URIs</h3></p>");
 		out.append("<br/>Size :"+visited.size()+"<br/>");
