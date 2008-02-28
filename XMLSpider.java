@@ -225,13 +225,13 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			for (int i = running; i < maxParallelRequests; i++) {
 				boolean found = false;
 				for(int j=0;j<queuedURIList.length;j++) {
-				if(queuedURIList[j].isEmpty()) continue;
-				FreenetURI uri = (FreenetURI) queuedURIList[j].removeFirst();
-				if(j < queuedURIList.length-1) queuedURIList[j+1].add(uri);
-				else queuedURISet.remove(uri);
-				ClientGetter getter = makeGetter(uri);
-				toStart.add(getter);
-				found = true;
+					if(queuedURIList[j].isEmpty()) continue;
+					FreenetURI uri = (FreenetURI) queuedURIList[j].removeFirst();
+					if(j < queuedURIList.length-1) queuedURIList[j+1].add(uri);
+					else queuedURISet.remove(uri);
+					ClientGetter getter = makeGetter(uri);
+					toStart.add(getter);
+					found = true;
 				}
 				if(!found) break;
 			}
