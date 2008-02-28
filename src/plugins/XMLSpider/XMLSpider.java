@@ -129,7 +129,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 /*
  * minTimeBetweenEachIndexRewriting in seconds 
  */
-	private static final int minTimeBetweenEachIndexRewriting = 600;
+	private static final int minTimeBetweenEachIndexRewriting = 60;
 	/**
 	 * directory where the generated indices are stored. 
 	 * Needs to be created before it can be used
@@ -141,7 +141,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public Set allowedMIMETypes;
 	private static final int MAX_ENTRIES = 2000;
 	private static final long MAX_SUBINDEX_UNCOMPRESSED_SIZE = 256*1024;
-	private static int version = 17;
+	private static int version = 18;
 	private static final String pluginName = "XML spider "+version;
 	/**
 	 * Gives the allowed fraction of total time spent on generating indices with
@@ -452,6 +452,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * @throws Exception
 	 */
 	private synchronized void generateIndex2() throws Exception{
+		Logger.normal(this, "Generating index...");
 		//using the tMap generate the xml indices
 		if (idsByWord.isEmpty() || idsWithWords.isEmpty()) {
 			System.out.println("No URIs with words");
@@ -492,11 +493,14 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}
 
 	private synchronized void generateSubIndex(int p,Vector list) throws Exception{
+		boolean logMINOR = Logger.shouldLog(Logger.MINOR, this);
 		/*
 		 * if the list is less than max allowed entries in a file then directly generate the xml 
 		 * otherwise split the list into further sublists
 		 * and iterate till the number of entries per subindex is less than the allowed value
 		 */
+		if(logMINOR)
+			Logger.minor(this, "Generating subindex for "+list.size()+" entries with prefix length "+p);
 
 		try {
 			if(list.size() < MAX_ENTRIES)
@@ -507,6 +511,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		} catch (TooBigIndexException e) {
 			// Handle below
 		}
+		if(logMINOR)
+			Logger.minor(this, "Too big subindex for "+list.size()+" entries with prefix length "+p);
 			//prefix needs to be incremented
 			if(match <= p) match = p+1; 
 			int prefix = p+1;
