@@ -1208,21 +1208,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			if (tProducedIndex + minTimeBetweenEachIndexRewriting * 1000 < System.currentTimeMillis()) {
 				try {
 					//if(indexing){
-						
-					    time_taken = System.currentTimeMillis();
-						generateIndex2();
-						produceIndex2();
-						time_taken = System.currentTimeMillis() - time_taken;
-//						FileWriter outp = new FileWriter("logfile3",true);
-//						outp.write("Time taken = "+time_taken+"\n");
-//						outp.close();
-						/*
-						 * ensures that index production doesn't eat up the processor time 
-						 */
-						//if((System.currentTimeMillis() - time_indexing)/(System.currentTimeMillis() - tProducedIndex) > MAX_TIME_SPENT_INDEXING) indexing= false;
-						//else indexing = true;
-					//}
-						tProducedIndex = System.currentTimeMillis();
+					makeIndex();
 				} catch (IOException e) {
 					Logger.error(this, "Caught " + e + " while creating index", e);
 				}
@@ -1235,6 +1221,23 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public String handleHTTPPut(HTTPRequest request) throws PluginHTTPException{
 		return null;
 	}
+	public void makeIndex() throws Exception {
+	    time_taken = System.currentTimeMillis();
+		generateIndex2();
+		produceIndex2();
+		time_taken = System.currentTimeMillis() - time_taken;
+//		FileWriter outp = new FileWriter("logfile3",true);
+//		outp.write("Time taken = "+time_taken+"\n");
+//		outp.close();
+		/*
+		 * ensures that index production doesn't eat up the processor time 
+		 */
+		//if((System.currentTimeMillis() - time_indexing)/(System.currentTimeMillis() - tProducedIndex) > MAX_TIME_SPENT_INDEXING) indexing= false;
+		//else indexing = true;
+	//}
+		tProducedIndex = System.currentTimeMillis();
+	}
+
 	public String handleHTTPPost(HTTPRequest request) throws PluginHTTPException{
 		return null;
 	}
