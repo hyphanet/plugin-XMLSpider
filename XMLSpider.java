@@ -129,7 +129,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 /*
  * minTimeBetweenEachIndexRewriting in seconds 
  */
-	private static final int minTimeBetweenEachIndexRewriting = 600;
+	private static final int minTimeBetweenEachIndexRewriting = 60;
 	/**
 	 * directory where the generated indices are stored. 
 	 * Needs to be created before it can be used
@@ -141,7 +141,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public Set allowedMIMETypes;
 	private static final int MAX_ENTRIES = 2000;
 	private static final long MAX_SUBINDEX_UNCOMPRESSED_SIZE = 256*1024;
-	private static int version = 20;
+	private static int version = 21;
 	private static final String pluginName = "XML spider "+version;
 	/**
 	 * Gives the allowed fraction of total time spent on generating indices with
@@ -928,6 +928,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 					Thread.sleep(30 * 1000); // Let the node start up
 				} catch (InterruptedException e){}
 				startSomeRequests();
+				scheduleMakeIndex();
 			}
 		}, "Spider Plugin Starter");
 	}
@@ -1204,6 +1205,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			tMap.put(MD5(word), word);
 			//long time_indexing = System.currentTimeMillis();
 //			FileWriter outp = new FileWriter("logfile",true);
+			mustWriteIndex = true;
 		
 			if (tProducedIndex + minTimeBetweenEachIndexRewriting * 1000 < System.currentTimeMillis()) {
 				try {
@@ -1217,25 +1219,40 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 	}
 
+	private boolean mustWriteIndex = false;
 
 	public String handleHTTPPut(HTTPRequest request) throws PluginHTTPException{
 		return null;
 	}
+	
 	public void makeIndex() throws Exception {
-	    time_taken = System.currentTimeMillis();
+		try {
+			synchronized(this) {
+				if(!mustWriteIndex) return;
+				mustWriteIndex = false;
+			}
+		time_taken = System.currentTimeMillis();
 		generateIndex2();
 		produceIndex2();
 		time_taken = System.currentTimeMillis() - time_taken;
-//		FileWriter outp = new FileWriter("logfile3",true);
-//		outp.write("Time taken = "+time_taken+"\n");
-//		outp.close();
-		/*
-		 * ensures that index production doesn't eat up the processor time 
-		 */
-		//if((System.currentTimeMillis() - time_indexing)/(System.currentTimeMillis() - tProducedIndex) > MAX_TIME_SPENT_INDEXING) indexing= false;
-		//else indexing = true;
-	//}
 		tProducedIndex = System.currentTimeMillis();
+		} finally {
+			scheduleMakeIndex();
+		}
+	}
+
+	private void scheduleMakeIndex() {
+		core.getTicker().queueTimedJob(new Runnable() {
+
+			public void run() {
+				try {
+					makeIndex();
+				} catch (Exception e) {
+					Logger.error(this, "Could not generate index: "+e, e);
+				}
+			}
+			
+		}, minTimeBetweenEachIndexRewriting * 1000);
 	}
 
 	public String handleHTTPPost(HTTPRequest request) throws PluginHTTPException{
