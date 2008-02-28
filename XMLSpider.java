@@ -103,8 +103,12 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	/**
 	 * 
 	 * Lists the uris that are still queued.
+	 * 
+	 * Since we have limited RAM, and we don't want stuff to be on the cooldown queue for a 
+	 * long period, we use 2 retries (to stay off the cooldown queue), and we go over the queued
+	 * list 3 times for each key.
 	 */
-	public final LinkedList queuedURIList = new LinkedList();
+	public final LinkedList[] queuedURIList = new LinkedList[] { new LinkedList(), new LinkedList(), new LinkedList() };
 	private final HashMap runningFetchesByURI = new HashMap();
 
 	private final HashMap idsByWord = new HashMap();
@@ -143,7 +147,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public Set allowedMIMETypes;
 	private static final int MAX_ENTRIES = 2000;
 	private static final long MAX_SUBINDEX_UNCOMPRESSED_SIZE = 256*1024;
-	private static int version = 27;
+	private static int version = 28;
 	private static final String pluginName = "XML spider "+version;
 	/**
 	 * Gives the allowed fraction of total time spent on generating indices with
@@ -188,7 +192,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 
 		if ((!visitedURIs.contains(uri)) && queuedURISet.add(uri)) {
-			queuedURIList.addLast(uri);
+			queuedURIList[0].addLast(uri);
 			visitedURIs.add(uri);
 			uriIds.put(uri, id);
 			idUris.put(id, uri);
@@ -211,7 +215,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				return;
 			}
 			int running = runningFetchesByURI.size();
-			int queued = queuedURIList.size();
+			int queued = queuedURIList[0].size() + queuedURIList[1].size() + queuedURIList[2].size();
 
 			if ((running >= maxParallelRequests) || (queued == 0))
 				return;
@@ -219,12 +223,17 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			toStart = new ArrayList(Math.min(maxParallelRequests - running, queued));
 
 			for (int i = running; i < maxParallelRequests; i++) {
-				if (queuedURIList.isEmpty())
-					break;
-				FreenetURI uri = (FreenetURI) queuedURIList.removeFirst();
+				boolean found = false;
+				for(int j=0;j<queuedURIList.length;j++) {
+				if(queuedURIList[j].isEmpty()) continue;
+				FreenetURI uri = (FreenetURI) queuedURIList[j].removeFirst();
+				if(j < queuedURIList.length-1) queuedURIList[j+1].add(uri);
 				queuedURISet.remove(uri);
 				ClientGetter getter = makeGetter(uri);
 				toStart.add(getter);
+				found = true;
+				}
+				if(!found) break;
 			}
 		}
 		for (int i = 0; i < toStart.size(); i++) {
@@ -707,8 +716,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		this.core = pluginManager.getClientCore();
 		this.ctx = core.makeClient((short) 0).getFetchContext();
-		ctx.maxSplitfileBlockRetries = 9; // Will be on the cooldown queue 3 times.
-		ctx.maxNonSplitfileRetries = 9; // Will be on the cooldown queue 3 times.
+		ctx.maxSplitfileBlockRetries = 2; // Don't let it enter the cooldown queue.
+		ctx.maxNonSplitfileRetries = 2; // Don't let it enter the cooldown queue.
 		ctx.maxTempLength = 2 * 1024 * 1024;
 		ctx.maxOutputLength = 2 * 1024 * 1024;
 		allowedMIMETypes = new HashSet();
@@ -735,7 +744,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public void stopPlugin() {
 		synchronized (this) {
 			stopped = true;
-			queuedURIList.clear();
+			for(int i=0;i<queuedURIList.length;i++)
+				queuedURIList[i].clear();
 		}
 	}
 
@@ -894,7 +904,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public void terminate(){
 		synchronized (this) {
 			stopped = true;
-			queuedURIList.clear();
+			for(int i=0;i<queuedURIList.length;i++)
+				queuedURIList[i].clear();
 		}
 	}
 
@@ -978,8 +989,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			it = (runningFetchesByURI.keySet()).iterator();
 		if(listname.equals("visited"))
 			it = (new HashSet(visitedURIs)).iterator();
-		if(listname.equals("queued"))
-			it = (new ArrayList(queuedURIList)).iterator();
+		if(listname.startsWith("queued"))
+			it = (new ArrayList(queuedURIList[Integer.parseInt(listname.substring("queued".length()))])).iterator();
 		if(listname.equals("failed"))
 			it = (new HashSet(failedURIs)).iterator();
 		while(it.hasNext())
@@ -999,21 +1010,23 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		Set runningFetches;
 		Set visited;
 		Set failed;
-		List queued;
+		List[] queued = new List[queuedURIList.length];
 		synchronized(this) {
 			visited = new HashSet(visitedURIs);
 			failed = new HashSet(failedURIs);
-			queued = new ArrayList(queuedURIList);
+			for(int i=0;i<queuedURIList.length;i++)
+				queued[i] = new ArrayList(queuedURIList[i]);
 			runningFetches = new HashSet(runningFetchesByURI.keySet());
 		}
 		out.append("<p><h3>Running Fetches</h3></p>");
-		Iterator it=queued.iterator();
 		out.append("<br/>Size :"+runningFetches.size()+"<br/>");
 		appendList(runningFetches,out,stylesheet);
 		out.append("<p><a href=\"?list="+"running"+"\">Show all</a><br/></p>");
-		out.append("<p><h3>Queued URIs</h3></p>");
-		out.append("<br/>Size :"+queued.size()+"<br/>");
+		for(int j=0;j<queued.length;j++) {
+		out.append("<p><h3>Queued URIs ("+j+")</h3></p>");
+		out.append("<br/>Size :"+queued[j].size()+"<br/>");
 		int i = 0;
+		Iterator it=queued[j].iterator();
 		while(it.hasNext()){
 			if(i<=maxShownURIs){
 				out.append("<code>"+it.next().toString()+"</code><br/>");
@@ -1021,7 +1034,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			else break;
 			i++;
 		}
-		out.append("<p><a href=\"?list="+"queued"+"\">Show all</a><br/></p>");
+		out.append("<p><a href=\"?list="+"queued"+j+"\">Show all</a><br/></p>");
+		}
 		out.append("<p><h3>Visited URIs</h3></p>");
 		out.append("<br/>Size :"+visited.size()+"<br/>");
 		appendList(visited,out,stylesheet);
