@@ -54,6 +54,7 @@ import freenet.clients.http.filter.UnsafeContentTypeException;
 import freenet.keys.FreenetURI;
 import freenet.keys.USK;
 import freenet.node.NodeClientCore;
+import freenet.node.PrioRunnable;
 import freenet.node.RequestStarter;
 import freenet.oldplugins.plugin.HttpPlugin;
 import freenet.oldplugins.plugin.PluginManager;
@@ -66,6 +67,7 @@ import freenet.pluginmanager.PluginRespirator;
 import freenet.support.Logger;
 import freenet.support.api.Bucket;
 import freenet.support.api.HTTPRequest;
+import freenet.support.io.NativeThread;
 import freenet.support.io.NullBucketFactory;
 
 /**
@@ -129,7 +131,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 /*
  * minTimeBetweenEachIndexRewriting in seconds 
  */
-	private static final int minTimeBetweenEachIndexRewriting = 60;
+	private static final int minTimeBetweenEachIndexRewriting = 600;
 	/**
 	 * directory where the generated indices are stored. 
 	 * Needs to be created before it can be used
@@ -141,7 +143,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public Set allowedMIMETypes;
 	private static final int MAX_ENTRIES = 2000;
 	private static final long MAX_SUBINDEX_UNCOMPRESSED_SIZE = 256*1024;
-	private static int version = 25;
+	private static int version = 26;
 	private static final String pluginName = "XML spider "+version;
 	/**
 	 * Gives the allowed fraction of total time spent on generating indices with
@@ -1239,7 +1241,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}
 
 	private void scheduleMakeIndex() {
-		core.getTicker().queueTimedJob(new Runnable() {
+		core.getTicker().queueTimedJob(new PrioRunnable() {
 
 			public void run() {
 				try {
@@ -1247,6 +1249,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				} catch (Exception e) {
 					Logger.error(this, "Could not generate index: "+e, e);
 				}
+			}
+
+			public int getPriority() {
+				return NativeThread.LOW_PRIORITY;
 			}
 			
 		}, minTimeBetweenEachIndexRewriting * 1000);
