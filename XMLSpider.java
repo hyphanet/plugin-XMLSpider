@@ -129,7 +129,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 /*
  * minTimeBetweenEachIndexRewriting in seconds 
  */
-	private static final int minTimeBetweenEachIndexRewriting = 60;
+	private static final int minTimeBetweenEachIndexRewriting = 600;
 	/**
 	 * directory where the generated indices are stored. 
 	 * Needs to be created before it can be used
@@ -140,8 +140,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 */
 	public Set allowedMIMETypes;
 	private static final int MAX_ENTRIES = 2000;
-	private static final long MAX_SUBINDEX_UNCOMPRESSED_SIZE = 32*1024;
-	private static int version = 19;
+	private static final long MAX_SUBINDEX_UNCOMPRESSED_SIZE = 256*1024;
+	private static int version = 20;
 	private static final String pluginName = "XML spider "+version;
 	/**
 	 * Gives the allowed fraction of total time spent on generating indices with
