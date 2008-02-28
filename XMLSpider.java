@@ -916,16 +916,14 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			Logger.error(this, "Could not create default index directory "+e.toString(), e);
 		}
 		//startPlugin();
-		Thread starterThread = new Thread("Spider Plugin Starter") {
+		pr.getNode().executor.execute(new Runnable() {
 			public void run() {
 				try{
 					Thread.sleep(30 * 1000); // Let the node start up
 				} catch (InterruptedException e){}
 				startSomeRequests();
 			}
-		};
-		starterThread.setDaemon(true);
-		starterThread.start();
+		}, "Spider Plugin Starter");
 	}
 
 	/**
