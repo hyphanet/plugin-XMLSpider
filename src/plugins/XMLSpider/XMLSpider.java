@@ -78,7 +78,7 @@ import freenet.support.io.NullBucketFactory;
  *  @author swati goyal
  *  
  */
-public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless,  FredPluginHTTPAdvanced,HttpPlugin, ClientCallback, USKCallback{
+public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless,  FredPluginHTTPAdvanced,HttpPlugin, USKCallback{
 
 	long tProducedIndex;
 	/**
@@ -147,7 +147,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public Set allowedMIMETypes;
 	private static final int MAX_ENTRIES = 2000;
 	private static final long MAX_SUBINDEX_UNCOMPRESSED_SIZE = 256*1024;
-	private static int version = 30;
+	private static int version = 31;
 	private static final String pluginName = "XML spider "+version;
 	/**
 	 * Gives the allowed fraction of total time spent on generating indices with
@@ -227,9 +227,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				for(int j=0;j<queuedURIList.length;j++) {
 					if(queuedURIList[j].isEmpty()) continue;
 					FreenetURI uri = (FreenetURI) queuedURIList[j].removeFirst();
-					if(j < queuedURIList.length-1) queuedURIList[j+1].add(uri);
-					else queuedURISet.remove(uri);
-					ClientGetter getter = makeGetter(uri);
+					if(j == queuedURIList.length) queuedURISet.remove(uri);
+					ClientGetter getter = makeGetter(uri, j);
 					toStart.add(getter);
 					found = true;
 					break;
@@ -244,14 +243,59 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				runningFetchesByURI.put(g.getURI(), g);
 				g.start();
 			} catch (FetchException e) {
-				onFailure(e, g);
+				onFailure(e, g, ((MyClientCallback)g.getClientCallback()).tries);
 			}
 		}
 	}
 
+	private final ClientCallback[] clientCallbacks =
+		new ClientCallback[] {
+			new MyClientCallback(0),
+			new MyClientCallback(1),
+			new MyClientCallback(2)
+	};
 
-	private ClientGetter makeGetter(FreenetURI uri) {
-		ClientGetter g = new ClientGetter(this, core.requestStarters.chkFetchScheduler, core.requestStarters.sskFetchScheduler, uri, ctx, PRIORITY_CLASS, this, null, null);
+	private class MyClientCallback implements ClientCallback {
+
+		final int tries;
+		
+		public MyClientCallback(int x) {
+			tries = x;
+			// TODO Auto-generated constructor stub
+		}
+
+		public void onFailure(FetchException e, ClientGetter state) {
+			XMLSpider.this.onFailure(e, state, tries);
+		}
+
+		public void onFailure(InsertException e, BaseClientPutter state) {
+			// Ignore
+		}
+
+		public void onFetchable(BaseClientPutter state) {
+			// Ignore
+		}
+
+		public void onGeneratedURI(FreenetURI uri, BaseClientPutter state) {
+			// Ignore
+		}
+
+		public void onMajorProgress() {
+			// Ignore
+		}
+
+		public void onSuccess(FetchResult result, ClientGetter state) {
+			XMLSpider.this.onSuccess(result, state);
+		}
+
+		public void onSuccess(BaseClientPutter state) {
+			// Ignore
+		}
+		
+	}
+	
+	private ClientGetter makeGetter(FreenetURI uri, int retries) {
+		ClientGetter g = new ClientGetter(clientCallbacks[retries], core.requestStarters.chkFetchScheduler, core.requestStarters.sskFetchScheduler, uri, ctx, PRIORITY_CLASS, this, null, null);
 		return g;
 	}
 	/**
@@ -305,13 +349,16 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 	}
 
-	public void onFailure(FetchException e, ClientGetter state) {
+	public void onFailure(FetchException e, ClientGetter state, int tries) {
 		FreenetURI uri = state.getURI();
 		Logger.minor(this, "Failed: "+uri+" : "+e);
 
 		synchronized (this) {
 			runningFetchesByURI.remove(uri);
 			failedURIs.add(uri);
+			tries++;
+			if(tries < queuedURIList.length && !e.isFatal())
+				queuedURIList[tries].addLast(uri);
 		}
 		if (e.newURI != null)
 			queueURI(e.newURI);
