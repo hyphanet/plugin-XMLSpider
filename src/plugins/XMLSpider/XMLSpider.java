@@ -1138,6 +1138,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 
 		public void foundURI(FreenetURI uri){
+			// Ignore
+		}
+		
+		public void foundURI(FreenetURI uri, boolean inline){
 
 			Logger.minor(this, "foundURI "+uri+" on "+id);
 			queueURI(uri);
