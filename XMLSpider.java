@@ -1335,4 +1335,12 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		queueURI(uri);
 	}
 
+	public short getPollingPriorityNormal() {
+		return (short) Math.min(RequestStarter.MINIMUM_PRIORITY_CLASS, PRIORITY_CLASS + 1);
+	}
+
+	public short getPollingPriorityProgress() {
+		return PRIORITY_CLASS;
+	}
+
 }
