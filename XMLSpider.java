@@ -1344,4 +1344,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		return PRIORITY_CLASS;
 	}
 
+	public boolean persistent() {
+		return false;
+	}
+
 }
