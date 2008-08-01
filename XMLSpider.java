@@ -55,7 +55,6 @@ import freenet.keys.FreenetURI;
 import freenet.keys.USK;
 import freenet.node.NodeClientCore;
 import freenet.node.PrioRunnable;
-import freenet.node.RequestClient;
 import freenet.node.RequestStarter;
 import freenet.oldplugins.plugin.HttpPlugin;
 import freenet.oldplugins.plugin.PluginManager;
@@ -79,7 +78,7 @@ import freenet.support.io.NullBucketFactory;
  *  @author swati goyal
  *  
  */
-public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless,  FredPluginHTTPAdvanced,HttpPlugin, USKCallback, RequestClient{
+public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless,  FredPluginHTTPAdvanced,HttpPlugin, USKCallback {
 
 	long tProducedIndex;
 	/**
