@@ -1346,5 +1346,4 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public boolean persistent() {
 		return false;
 	}
-
 }
