@@ -56,13 +56,12 @@ import freenet.keys.USK;
 import freenet.node.NodeClientCore;
 import freenet.node.PrioRunnable;
 import freenet.node.RequestStarter;
-import freenet.oldplugins.plugin.HttpPlugin;
-import freenet.oldplugins.plugin.PluginManager;
 import freenet.pluginmanager.FredPlugin;
 import freenet.pluginmanager.FredPluginHTTP;
 import freenet.pluginmanager.FredPluginHTTPAdvanced;
 import freenet.pluginmanager.FredPluginThreadless;
 import freenet.pluginmanager.PluginHTTPException;
+import freenet.pluginmanager.PluginManager;
 import freenet.pluginmanager.PluginRespirator;
 import freenet.support.Logger;
 import freenet.support.api.Bucket;
@@ -78,7 +77,7 @@ import freenet.support.io.NullBucketFactory;
  *  @author swati goyal
  *  
  */
-public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless,  FredPluginHTTPAdvanced,HttpPlugin, USKCallback {
+public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless,  FredPluginHTTPAdvanced, USKCallback {
 
 	long tProducedIndex;
 	/**
@@ -756,28 +755,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public String getPluginName() {
 		return pluginName;
 	}
-
-	/**
-	 * @see freenet.oldplugins.plugin.Plugin#setPluginManager(freenet.oldplugins.plugin.PluginManager)
-	 */
-	public void setPluginManager(PluginManager pluginManager) {
-
-		this.core = pluginManager.getClientCore();
-		this.ctx = core.makeClient((short) 0).getFetchContext();
-		ctx.maxSplitfileBlockRetries = 2; // Don't let it enter the cooldown queue.
-		ctx.maxNonSplitfileRetries = 2; // Don't let it enter the cooldown queue.
-		ctx.maxTempLength = 2 * 1024 * 1024;
-		ctx.maxOutputLength = 2 * 1024 * 1024;
-		allowedMIMETypes = new HashSet();
-		allowedMIMETypes.add(new String("text/html"));
-		allowedMIMETypes.add(new String("text/plain"));
-		allowedMIMETypes.add(new String("application/xhtml+xml"));
-		//	allowedMIMETypes.add(new String("application/zip"));
-		ctx.allowedMIMETypes = new HashSet(allowedMIMETypes);
-		//	ctx.allowedMIMETypes.add("text/html"); 
-		tProducedIndex = System.currentTimeMillis();
-	}
-
 
 	/**
 	 * @see freenet.oldplugins.plugin.Plugin#startPlugin()
