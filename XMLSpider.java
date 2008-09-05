@@ -164,7 +164,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 //	private final HashMap positionsByWordByURI = new HashMap(); /* String (URI) -> HashMap (String (word) -> Integer[] (Positions)) */
 	private final HashMap positionsByWordById = new HashMap();
 	// Can have many; this limit only exists to save memory.
-	private static final int maxParallelRequests = 100;
+	private static final int maxParallelRequests = 1;
 	private int maxShownURIs = 15;
 
 	private NodeClientCore core;
@@ -681,7 +681,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 				HashMap positionsForGivenWord = (HashMap)positionsByWordById.get(x);
 				Integer[] positions = (Integer[])positionsForGivenWord.get(str);
-				StringBuffer positionList = new StringBuffer();
+				StringBuilder positionList = new StringBuilder();
 
 				for(int k=0; k < positions.length ; k++) {
 					if(k!=0)
@@ -782,7 +782,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		// Ignore
 	}
 	private static String convertToHex(byte[] data) {
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		for (int i = 0; i < data.length; i++) {
 			int halfbyte = (data[i] >>> 4) & 0x0F;
 			int two_halfs = 0;
@@ -975,7 +975,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * Interface to the Spider data
 	 */
 	public String handleHTTPGet(HTTPRequest request) throws PluginHTTPException{
-		StringBuffer out = new StringBuffer();
+		StringBuilder out = new StringBuilder();
 
 		String listname = request.getParam("list");
 		if(listname.length() != 0)
@@ -1007,7 +1007,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 /*
  * List the visited, queued, failed and running fetches on the web interface
  */
-	private synchronized void appendList(String listname, StringBuffer out, String stylesheet)
+	private synchronized void appendList(String listname, StringBuilder out, String stylesheet)
 	{
 		Iterator it = (runningFetchesByURI.keySet()).iterator();
 		if(listname.equals("running"))
@@ -1022,7 +1022,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			out.append("<code>"+it.next().toString()+"</code><br/>");
 	}
 
-	private void appendDefaultPageStart(StringBuffer out, String stylesheet) {
+	private void appendDefaultPageStart(StringBuilder out, String stylesheet) {
 
 		out.append("<HTML><HEAD><TITLE>" + pluginName + "</TITLE>");
 		if(stylesheet != null)
@@ -1073,7 +1073,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}
 
 
-	private void appendDefaultHeader(StringBuffer out, String stylesheet){
+	private void appendDefaultHeader(StringBuilder out, String stylesheet){
 		out.append("<HTML><HEAD><TITLE>" + pluginName + "</TITLE>");
 		if(stylesheet != null)
 			out.append("<link href=\""+stylesheet+"\" type=\"text/css\" rel=\"stylesheet\" />");
@@ -1085,7 +1085,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}
 
 
-	private void appendList(Set  list,StringBuffer out, String stylesheet){
+	private void appendList(Set  list,StringBuilder out, String stylesheet){
 		Iterator it = list.iterator();
 		int i = 0;
 		while(it.hasNext()){
