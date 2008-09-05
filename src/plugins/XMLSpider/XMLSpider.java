@@ -164,7 +164,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 //	private final HashMap positionsByWordByURI = new HashMap(); /* String (URI) -> HashMap (String (word) -> Integer[] (Positions)) */
 	private final HashMap positionsByWordById = new HashMap();
 	// Can have many; this limit only exists to save memory.
-	private static final int maxParallelRequests = 1;
+	private static final int maxParallelRequests = 100;
 	private int maxShownURIs = 15;
 
 	private NodeClientCore core;
