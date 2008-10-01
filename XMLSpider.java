@@ -61,7 +61,6 @@ import freenet.pluginmanager.FredPluginHTTP;
 import freenet.pluginmanager.FredPluginHTTPAdvanced;
 import freenet.pluginmanager.FredPluginThreadless;
 import freenet.pluginmanager.PluginHTTPException;
-import freenet.pluginmanager.PluginManager;
 import freenet.pluginmanager.PluginRespirator;
 import freenet.support.Logger;
 import freenet.support.api.Bucket;
@@ -1257,10 +1256,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}
 
 	private boolean mustWriteIndex = false;
-
-	public String handleHTTPPut(HTTPRequest request) throws PluginHTTPException{
-		return null;
-	}
 	
 	public void makeIndex() throws Exception {
 		try {
