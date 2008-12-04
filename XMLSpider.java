@@ -803,7 +803,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		MessageDigest md;
 		md = MessageDigest.getInstance("MD5");
 		byte[] md5hash = new byte[32];
-		md.update(text.getBytes("UTF-8"), 0, text.length());
+		byte[] b = text.getBytes("UTF-8");
+		md.update(b, 0, b.length);
 		md5hash = md.digest();
 		return convertToHex(md5hash);
 	}
