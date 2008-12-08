@@ -185,7 +185,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * @param uri the new uri that needs to be fetched for further indexing
 	 */
 	public synchronized void queueURI(FreenetURI uri) {
-		if((uri.getKeyType()).equals("USK")){
+		if (uri.isUSK()) {
 			if(uri.getSuggestedEdition() < 0)
 				uri = uri.setSuggestedEdition((-1)* uri.getSuggestedEdition());
 			try{
