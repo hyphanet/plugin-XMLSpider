@@ -200,7 +200,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			visitedURIs.add(uri);
 			uriIds.put(uri, id);
 			idUris.put(id, uri);
-			id = new Integer(id.intValue()+1);
+			id++;
 		}
 	}
 
@@ -529,12 +529,14 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		Iterator<String> it = tMap.keySet().iterator();
 
 		String str = it.next();
+		String currentPrefix = str.substring(0, prefix);
+				
 		int i = 0;
 		while(it.hasNext())
 		{
 			String key = it.next();
 			//create a list of the words to be added in the same subindex
-			if(key.substring(0, prefix).equals(str.substring(0, prefix))) 
+			if (key.startsWith(currentPrefix)) 
 			{i++;
 			list.add(key);
 			}
@@ -942,7 +944,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 	public void runPlugin(PluginRespirator pr){
 		this.pr = pr;
-		this.id = new Integer(0);
+		this.id = 0;
 		this.core = pr.getNode().clientCore;
 		this.ctx = core.makeClient((short) 0).getFetchContext();
 		ctx.maxSplitfileBlockRetries = 10;
@@ -950,9 +952,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		ctx.maxTempLength = 2 * 1024 * 1024;
 		ctx.maxOutputLength = 2 * 1024 * 1024;
 		allowedMIMETypes = new HashSet<String>();
-		allowedMIMETypes.add(new String("text/html"));
-		allowedMIMETypes.add(new String("text/plain"));
-		allowedMIMETypes.add(new String("application/xhtml+xml"));
+		allowedMIMETypes.add("text/html");
+		allowedMIMETypes.add("text/plain");
+		allowedMIMETypes.add("application/xhtml+xml");
 
 		ctx.allowedMIMETypes = new HashSet<String>(allowedMIMETypes);
 
@@ -1191,7 +1193,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			lastPosition = lastPositionById.get(id);
 
 			if(lastPosition == null)
-				lastPosition = new Integer(1); 
+				lastPosition = 1; 
 			for (int i = 0; i < words.length; i++) {
 				String word = words[i];
 				if ((word == null) || (word.length() == 0))
@@ -1208,7 +1210,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			}
 
 			if(type == null) {
-				lastPosition = new Integer(lastPosition.intValue() + words.length);
+				lastPosition = lastPosition + words.length;
 				lastPositionById.put(id, lastPosition);
 			}
 
@@ -1241,19 +1243,19 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 																								 */
 			if(wordPositionsForOneUri == null) {
 				wordPositionsForOneUri = new HashMap<String, Integer[]>();
-				wordPositionsForOneUri.put(word, new Integer[] { new Integer(position) });
+				wordPositionsForOneUri.put(word, new Integer[] { position });
 				positionsByWordById.put(id, wordPositionsForOneUri);
 			} 
 			else {
 				Integer[] positions = wordPositionsForOneUri.get(word);
 				if(positions == null) {
-					positions = new Integer[] { new Integer(position) };
+					positions = new Integer[] { position };
 					wordPositionsForOneUri.put(word, positions);
 				} 
 				else {
 					Integer[] newPositions = new Integer[positions.length + 1];
 					System.arraycopy(positions, 0, newPositions, 0, positions.length);
-					newPositions[positions.length] = new Integer(position);
+					newPositions[positions.length] = position;
 					wordPositionsForOneUri.put(word, newPositions);
 				}
 			}
