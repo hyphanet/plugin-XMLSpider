@@ -92,9 +92,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public final HashSet<String> visitedURIMD5s = new HashSet<String>();
 	private final HashSet<Integer> idsWithWords = new HashSet<Integer>();
 	/**
-	 * Lists the uris that were visited but failed.
+	 * Lists the md5 of uris that were visited but failed.
 	 */
-	public final HashSet<FreenetURI> failedURIs = new HashSet<FreenetURI>();
+	public final HashSet<String> failedURIMD5s = new HashSet<String>();
 
 	private final HashSet<FreenetURI> queuedURISet = new HashSet<FreenetURI>();
 	/**
@@ -359,7 +359,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		synchronized (this) {
 			runningFetchesByURI.remove(uri);
-			failedURIs.add(uri);
+			failedURIMD5s.add(MD5(uri.toString()));
 			tries++;
 			if(tries < queuedURIList.length && !e.isFatal())
 				queuedURIList[tries].addLast(uri);
@@ -1002,8 +1002,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			try {
 				FreenetURI uri = new FreenetURI(uriParam);
 				synchronized (this) {
-					visitedURIMD5s.remove(MD5(uri.toString()));
-					failedURIs.remove(uri);
+					String md5 = MD5(uri.toString());
+					visitedURIMD5s.remove(md5);
+					failedURIMD5s.remove(md5);
 				}
 				out.append("<p>URI added :"+uriParam+"</p>");
 				queueURI(uri);
@@ -1028,7 +1029,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			it = (new ArrayList<FreenetURI>(queuedURIList[Integer.parseInt(listname.substring("queued".length()))]))
 			        .iterator();
 		if(listname.equals("failed"))
-			it = (new HashSet<FreenetURI>(failedURIs)).iterator();
+			it = (new HashSet<String>(failedURIMD5s)).iterator();
 		while(it.hasNext())
 			out.append("<code>"+it.next().toString()+"</code><br/>");
 	}
@@ -1045,11 +1046,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		out.append("<input type=\"submit\" value=\"Add uri\" /></form>");
 		Set<FreenetURI> runningFetches;
 		Set<String> visited;
-		Set<FreenetURI> failed;
+		Set<String> failed;
 		List[] queued = new List[queuedURIList.length];
 		synchronized(this) {
 			visited = new HashSet<String>(visitedURIMD5s);
-			failed = new HashSet<FreenetURI>(failedURIs);
+			failed = new HashSet<String>(failedURIMD5s);
 			for(int i=0;i<queuedURIList.length;i++)
 				queued[i] = new ArrayList(queuedURIList[i]);
 			runningFetches = new HashSet<FreenetURI>(runningFetchesByURI.keySet());
@@ -1076,7 +1077,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		out.append("<br/>Size :"+visited.size()+"<br/>");
 		appendList(visited,out,stylesheet);
 		out.append("<p><a href=\"?list="+"visited"+"\">Show all</a><br/></p>");
-		out.append("<p><h3>Failed URIs</h3></p>");
+		out.append("<p><h3>Failed URIs MD5</h3></p>");
 		out.append("<br/>Size :"+failed.size()+"<br/>");
 		appendList(failed,out,stylesheet);
 		out.append("<p><a href=\"?list="+"failed"+"\">Show all</a><br/></p>");
