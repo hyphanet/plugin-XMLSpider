@@ -82,22 +82,21 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	/**
 	 * Stores the found words along with md5
 	 */
-	public TreeMap tMap = new TreeMap();
+	public TreeMap<String, String> tMap = new TreeMap<String, String>();
 	int count;
 	// URIs visited, or fetching, or queued. Added once then forgotten about.
 	/**
 	 * 
 	 * Lists the uris that have been vistied by the spider
 	 */
-	public final HashSet visitedURIs = new HashSet();
-	private final HashSet idsWithWords = new HashSet();
+	public final HashSet<FreenetURI> visitedURIs = new HashSet<FreenetURI>();
+	private final HashSet<Integer> idsWithWords = new HashSet<Integer>();
 	/**
-	 * 
 	 * Lists the uris that were visited but failed.
 	 */
-	public final HashSet failedURIs = new HashSet();
+	public final HashSet<FreenetURI> failedURIs = new HashSet<FreenetURI>();
 
-	private final HashSet queuedURISet = new HashSet();
+	private final HashSet<FreenetURI> queuedURISet = new HashSet<FreenetURI>();
 	/**
 	 * 
 	 * Lists the uris that are still queued.
@@ -106,14 +105,15 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * long period, we use 2 retries (to stay off the cooldown queue), and we go over the queued
 	 * list 3 times for each key.
 	 */
-	public final LinkedList[] queuedURIList = new LinkedList[] { new LinkedList(), new LinkedList(), new LinkedList() };
-	private final HashMap runningFetchesByURI = new HashMap();
+	public final LinkedList<FreenetURI>[] queuedURIList = new LinkedList[] { new LinkedList<FreenetURI>(),
+	        new LinkedList<FreenetURI>(), new LinkedList<FreenetURI>() };
+	private final HashMap<FreenetURI, ClientGetter> runningFetchesByURI = new HashMap<FreenetURI, ClientGetter>();
 
-	private final HashMap idsByWord = new HashMap();
+	private final HashMap<String, Integer[]> idsByWord = new HashMap<String, Integer[]>();
 
-	private final HashMap titlesOfIds = new HashMap();
-	private final HashMap uriIds = new HashMap();
-	private final HashMap idUris = new HashMap();
+	private final HashMap<Integer, String> titlesOfIds = new HashMap<Integer, String>();
+	private final HashMap<FreenetURI, Integer> uriIds = new HashMap<FreenetURI, Integer>();
+	private final HashMap<Integer, FreenetURI> idUris = new HashMap<Integer, FreenetURI>();
 	
 	// Re-enable outlinks/inlinks when we publish them or use them for ranking.
 	/**
@@ -126,7 +126,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 *  indexed by the id of page uri.
 	 */
 //	public final HashMap inlinks = new HashMap();
-	private Vector indices;
+	private Vector<String> indices;
 	private int match;
 	private Integer id;
 	private long time_taken;
@@ -142,7 +142,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	/**
 	 * Lists the allowed mime types of the fetched page. 
 	 */
-	public Set allowedMIMETypes;
+	public Set<String> allowedMIMETypes;
 	private static final int MAX_ENTRIES = 2000;
 	private static final long MAX_SUBINDEX_UNCOMPRESSED_SIZE = 4*1024*1024;
 	private static int version = 32;
@@ -156,12 +156,18 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	private static final String indexTitle= "XMLSpider index";
 	private static final String indexOwner = "Freenet";
 	private static final String indexOwnerEmail = null;
-	private final HashMap sizeOfURIs = new HashMap(); /* String (URI) -> Long */
-	private final HashMap mimeOfURIs = new HashMap(); /* String (URI) -> String */
+	private final HashMap<String, Long> sizeOfURIs = new HashMap<String, Long>(); /*
+																				 * String (URI) ->
+																				 * Long
+																				 */
+	private final HashMap<String, String> mimeOfURIs = new HashMap<String, String>(); /*
+																					 * String (URI)
+																					 * -> String
+																					 */
 //	private final HashMap lastPositionByURI = new HashMap(); /* String (URI) -> Integer */ /* Use to determine word position on each uri */
-	private final HashMap lastPositionById = new HashMap();
+	private final HashMap<Integer, Integer> lastPositionById = new HashMap<Integer, Integer>();
 //	private final HashMap positionsByWordByURI = new HashMap(); /* String (URI) -> HashMap (String (word) -> Integer[] (Positions)) */
-	private final HashMap positionsByWordById = new HashMap();
+	private final HashMap<Integer, HashMap<String, Integer[]>> positionsByWordById = new HashMap<Integer, HashMap<String, Integer[]>>();
 	// Can have many; this limit only exists to save memory.
 	private static final int maxParallelRequests = 100;
 	private int maxShownURIs = 15;
@@ -207,7 +213,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			queueURI(initialURIs[i]);
 		}
 
-		ArrayList toStart = null;
+		ArrayList<ClientGetter> toStart = null;
 		synchronized (this) {
 			if (stopped) {
 				return;
@@ -218,7 +224,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			if ((running >= maxParallelRequests) || (queued == 0))
 				return;
 
-			toStart = new ArrayList(Math.min(maxParallelRequests - running, queued));
+			toStart = new ArrayList<ClientGetter>(Math.min(maxParallelRequests - running, queued));
 
 			for (int i = running; i < maxParallelRequests; i++) {
 				boolean found = false;
@@ -236,7 +242,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 		for (int i = 0; i < toStart.size(); i++) {
 
-			ClientGetter g = (ClientGetter) toStart.get(i);
+			ClientGetter g = toStart.get(i);
 			try {
 				runningFetchesByURI.put(g.getURI(), g);
 				g.start();
@@ -315,7 +321,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			synchronized(this) {
 				sizeOfURIs.put(uri.toString(), new Long(data.size()));
 				mimeOfURIs.put(uri.toString(), mimeType);
-				id = (Integer) uriIds.get(uri);
+				id = uriIds.get(uri);
 //				inlinks.put(page.id, new Vector());
 //				outlinks.put(page.id, new Vector());
 			}
@@ -457,7 +463,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		for(int i = 0;i<indices.size();i++){
 
 			Element subIndexElement = xmlDoc.createElement("subIndex");
-			subIndexElement.setAttribute("key", (String) indices.elementAt(i));
+			subIndexElement.setAttribute("key", indices.elementAt(i));
 			//the subindex element key will contain the bits used for matching in that subindex
 			keywordsElement.appendChild(subIndexElement);
 		}
@@ -516,17 +522,17 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			return;
 		}
 
-		indices = new Vector();
+		indices = new Vector<String>();
 		int prefix = 1;
 		match = 1;
-		Vector list = new Vector();
-		Iterator it = tMap.keySet().iterator();
+		Vector<String> list = new Vector<String>();
+		Iterator<String> it = tMap.keySet().iterator();
 
-		String str = (String) it.next();
+		String str = it.next();
 		int i = 0;
 		while(it.hasNext())
 		{
-			String key =(String) it.next();
+			String key = it.next();
 			//create a list of the words to be added in the same subindex
 			if(key.substring(0, prefix).equals(str.substring(0, prefix))) 
 			{i++;
@@ -536,20 +542,20 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				//generate the appropriate subindex with the current list
 				generateSubIndex(prefix,list);
 				str = key;
-				list = new Vector();
+				list = new Vector<String>();
 			}
 		}
 
 		generateSubIndex(prefix,list);
 	}
 	
-	private synchronized Vector subVector(Vector list, int begin, int end){
-		Vector tmp = new Vector();
+	private synchronized Vector<String> subVector(Vector<String> list, int begin, int end) {
+		Vector<String> tmp = new Vector<String>();
 		for(int i = begin;i<end+1;i++) tmp.add(list.elementAt(i));
 		return tmp;
 	}
 
-	private synchronized void generateSubIndex(int p,Vector list) throws Exception{
+	private synchronized void generateSubIndex(int p, Vector<String> list) throws Exception {
 		boolean logMINOR = Logger.shouldLog(Logger.MINOR, this);
 		/*
 		 * if the list is less than max allowed entries in a file then directly generate the xml 
@@ -574,11 +580,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			if(match <= p) match = p+1; 
 			int prefix = p+1;
 			int i =0;
-			String str = (String) list.elementAt(i);
+			String str = list.elementAt(i);
 			int index=0;
 			while(i<list.size())
 			{
-				String key = (String) list.elementAt(i);
+				String key = list.elementAt(i);
 				if((key.substring(0, prefix)).equals(str.substring(0, prefix))) 
 				{
 					i++;
@@ -602,9 +608,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * @param prefix number of matching bits of md5
 	 * @throws Exception
 	 */
-	public synchronized void generateXML (Vector list, int prefix) throws TooBigIndexException, Exception
+	public synchronized void generateXML(Vector<String> list, int prefix) throws TooBigIndexException, Exception
 	{
-		String p = ((String) list.elementAt(0)).substring(0, prefix);
+		String p = list.elementAt(0).substring(0, prefix);
 		indices.add(p);
 		File outputFile = new File(DEFAULT_INDEX_DIR+"index_"+p+".xml");
 		BufferedOutputStream fos = new BufferedOutputStream(new FileOutputStream(outputFile));
@@ -647,13 +653,13 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		/* Adding word index */
 		Element keywordsElement = xmlDoc.createElement("keywords");
-		Vector fileid = new Vector();
+		Vector<Integer> fileid = new Vector<Integer>();
 		for(int i =0;i<list.size();i++)
 		{
 			Element wordElement = xmlDoc.createElement("word");
-			String str = (String) tMap.get(list.elementAt(i));
+			String str = tMap.get(list.elementAt(i));
 			wordElement.setAttribute("v",str );
-			Integer[] idsForWord = (Integer[]) idsByWord.get(str);
+			Integer[] idsForWord = idsByWord.get(str);
 			for (int j = 0; j < idsForWord.length; j++) {
 				Integer id = idsForWord[j];
 				Integer x = id;
@@ -678,7 +684,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				
 				/* Position by position */
 
-				HashMap positionsForGivenWord = (HashMap)positionsByWordById.get(x);
+				HashMap positionsForGivenWord = positionsByWordById.get(x);
 				Integer[] positions = (Integer[])positionsForGivenWord.get(str);
 				StringBuilder positionList = new StringBuilder();
 
@@ -943,12 +949,12 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		ctx.maxNonSplitfileRetries = 10;
 		ctx.maxTempLength = 2 * 1024 * 1024;
 		ctx.maxOutputLength = 2 * 1024 * 1024;
-		allowedMIMETypes = new HashSet();
+		allowedMIMETypes = new HashSet<String>();
 		allowedMIMETypes.add(new String("text/html"));
 		allowedMIMETypes.add(new String("text/plain"));
 		allowedMIMETypes.add(new String("application/xhtml+xml"));
 
-		ctx.allowedMIMETypes = new HashSet(allowedMIMETypes);
+		ctx.allowedMIMETypes = new HashSet<String>(allowedMIMETypes);
 
 		tProducedIndex = System.currentTimeMillis();
 		stopped = false;
@@ -1009,15 +1015,16 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
  */
 	private synchronized void appendList(String listname, StringBuilder out, String stylesheet)
 	{
-		Iterator it = (runningFetchesByURI.keySet()).iterator();
+		Iterator<FreenetURI> it = (runningFetchesByURI.keySet()).iterator();
 		if(listname.equals("running"))
 			it = (runningFetchesByURI.keySet()).iterator();
 		if(listname.equals("visited"))
-			it = (new HashSet(visitedURIs)).iterator();
+			it = (new HashSet<FreenetURI>(visitedURIs)).iterator();
 		if(listname.startsWith("queued"))
-			it = (new ArrayList(queuedURIList[Integer.parseInt(listname.substring("queued".length()))])).iterator();
+			it = (new ArrayList<FreenetURI>(queuedURIList[Integer.parseInt(listname.substring("queued".length()))]))
+			        .iterator();
 		if(listname.equals("failed"))
-			it = (new HashSet(failedURIs)).iterator();
+			it = (new HashSet<FreenetURI>(failedURIs)).iterator();
 		while(it.hasNext())
 			out.append("<code>"+it.next().toString()+"</code><br/>");
 	}
@@ -1032,16 +1039,16 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		out.append("Add uri:");
 		out.append("<form method=\"GET\"><input type=\"text\" name=\"adduri\" /><br/><br/>");
 		out.append("<input type=\"submit\" value=\"Add uri\" /></form>");
-		Set runningFetches;
-		Set visited;
-		Set failed;
+		Set<FreenetURI> runningFetches;
+		Set<FreenetURI> visited;
+		Set<FreenetURI> failed;
 		List[] queued = new List[queuedURIList.length];
 		synchronized(this) {
-			visited = new HashSet(visitedURIs);
-			failed = new HashSet(failedURIs);
+			visited = new HashSet<FreenetURI>(visitedURIs);
+			failed = new HashSet<FreenetURI>(failedURIs);
 			for(int i=0;i<queuedURIList.length;i++)
 				queued[i] = new ArrayList(queuedURIList[i]);
-			runningFetches = new HashSet(runningFetchesByURI.keySet());
+			runningFetches = new HashSet<FreenetURI>(runningFetchesByURI.keySet());
 		}
 		out.append("<p><h3>Running Fetches</h3></p>");
 		out.append("<br/>Size :"+runningFetches.size()+"<br/>");
@@ -1085,8 +1092,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}
 
 
-	private void appendList(Set  list,StringBuilder out, String stylesheet){
-		Iterator it = list.iterator();
+	private void appendList(Set<FreenetURI> list, StringBuilder out, String stylesheet) {
+		Iterator<FreenetURI> it = list.iterator();
 		int i = 0;
 		while(it.hasNext()){
 			if(i<=maxShownURIs){
@@ -1181,7 +1188,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			 */
 			String[] words = s.split("[^\\p{L}\\{N}]");
 			Integer lastPosition = null;
-			lastPosition = (Integer)lastPositionById.get(id);
+			lastPosition = lastPositionById.get(id);
 
 			if(lastPosition == null)
 				lastPosition = new Integer(1); 
@@ -1212,18 +1219,33 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			if(word.length() < 3)
 				return;
 
-			Integer[] ids = (Integer[]) idsByWord.get(word);
+			Integer[] ids = idsByWord.get(word);
 			idsWithWords.add(id);
 
 			/* Word position indexation */
-			HashMap wordPositionsForOneUri = (HashMap)positionsByWordById.get(id); /* For a given URI, take as key a word, and gives position */
+			HashMap<String, Integer[]> wordPositionsForOneUri = positionsByWordById.get(id); /*
+																								 * For
+																								 * a
+																								 * given
+																								 * URI
+																								 * ,
+																								 * take
+																								 * as
+																								 * key
+																								 * a
+																								 * word
+																								 * ,
+																								 * and
+																								 * gives
+																								 * position
+																								 */
 			if(wordPositionsForOneUri == null) {
-				wordPositionsForOneUri = new HashMap();
+				wordPositionsForOneUri = new HashMap<String, Integer[]>();
 				wordPositionsForOneUri.put(word, new Integer[] { new Integer(position) });
 				positionsByWordById.put(id, wordPositionsForOneUri);
 			} 
 			else {
-				Integer[] positions = (Integer[])wordPositionsForOneUri.get(word);
+				Integer[] positions = wordPositionsForOneUri.get(word);
 				if(positions == null) {
 					positions = new Integer[] { new Integer(position) };
 					wordPositionsForOneUri.put(word, positions);
