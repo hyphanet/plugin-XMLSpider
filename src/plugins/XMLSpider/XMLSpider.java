@@ -87,9 +87,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	// URIs visited, or fetching, or queued. Added once then forgotten about.
 	/**
 	 * 
-	 * Lists the uris that have been vistied by the spider
+	 * Lists the md5 of uris that have been vistied by the spider
 	 */
-	public final HashSet<FreenetURI> visitedURIs = new HashSet<FreenetURI>();
+	public final HashSet<String> visitedURIMD5s = new HashSet<String>();
 	private final HashSet<Integer> idsWithWords = new HashSet<Integer>();
 	/**
 	 * Lists the uris that were visited but failed.
@@ -195,9 +195,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			catch(Exception e){}
 		}
 
-		if ((!visitedURIs.contains(uri)) && queuedURISet.add(uri)) {
+		if ((!visitedURIMD5s.contains(MD5(uri.toString()))) && queuedURISet.add(uri)) {
 			queuedURIList[0].addLast(uri);
-			visitedURIs.add(uri);
+			visitedURIMD5s.add(MD5(uri.toString()));
 			uriIds.put(uri, id);
 			idUris.put(id, uri);
 			id++;
@@ -802,14 +802,21 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	/*
 	 * calculate the md5 for a given string
 	 */
-	private static String MD5(String text) throws NoSuchAlgorithmException, UnsupportedEncodingException  {
-		MessageDigest md;
-		md = MessageDigest.getInstance("MD5");
-		byte[] md5hash = new byte[32];
-		byte[] b = text.getBytes("UTF-8");
-		md.update(b, 0, b.length);
-		md5hash = md.digest();
-		return convertToHex(md5hash);
+	private static String MD5(String text) {
+		try {
+			MessageDigest md = MessageDigest.getInstance("MD5");
+			byte[] md5hash = new byte[32];
+			byte[] b = text.getBytes("UTF-8");
+			md.update(b, 0, b.length);
+			md5hash = md.digest();
+			return convertToHex(md5hash);
+		} catch (NoSuchAlgorithmException e) {
+			// impossible
+			throw new RuntimeException("MD5 not supported", e);
+		} catch (UnsupportedEncodingException e) {
+			// impossible
+			throw new RuntimeException("UTF-8 not supported", e);
+		}
 	}
 
 	public void generateSubIndex(String filename){
@@ -995,8 +1002,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			try {
 				FreenetURI uri = new FreenetURI(uriParam);
 				synchronized (this) {
+					visitedURIMD5s.remove(MD5(uri.toString()));
 					failedURIs.remove(uri);
-					visitedURIs.remove(uri);
 				}
 				out.append("<p>URI added :"+uriParam+"</p>");
 				queueURI(uri);
@@ -1012,11 +1019,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
  */
 	private synchronized void appendList(String listname, StringBuilder out, String stylesheet)
 	{
-		Iterator<FreenetURI> it = (runningFetchesByURI.keySet()).iterator();
+		Iterator it = (runningFetchesByURI.keySet()).iterator();
 		if(listname.equals("running"))
 			it = (runningFetchesByURI.keySet()).iterator();
 		if(listname.equals("visited"))
-			it = (new HashSet<FreenetURI>(visitedURIs)).iterator();
+			it = (new HashSet<String>(visitedURIMD5s)).iterator();
 		if(listname.startsWith("queued"))
 			it = (new ArrayList<FreenetURI>(queuedURIList[Integer.parseInt(listname.substring("queued".length()))]))
 			        .iterator();
@@ -1037,11 +1044,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		out.append("<form method=\"GET\"><input type=\"text\" name=\"adduri\" /><br/><br/>");
 		out.append("<input type=\"submit\" value=\"Add uri\" /></form>");
 		Set<FreenetURI> runningFetches;
-		Set<FreenetURI> visited;
+		Set<String> visited;
 		Set<FreenetURI> failed;
 		List[] queued = new List[queuedURIList.length];
 		synchronized(this) {
-			visited = new HashSet<FreenetURI>(visitedURIs);
+			visited = new HashSet<String>(visitedURIMD5s);
 			failed = new HashSet<FreenetURI>(failedURIs);
 			for(int i=0;i<queuedURIList.length;i++)
 				queued[i] = new ArrayList(queuedURIList[i]);
@@ -1065,7 +1072,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			}
 			out.append("<p><a href=\"?list="+"queued"+j+"\">Show all</a><br/></p>");
 		}
-		out.append("<p><h3>Visited URIs</h3></p>");
+		out.append("<p><h3>Visited URIs MD5</h3></p>");
 		out.append("<br/>Size :"+visited.size()+"<br/>");
 		appendList(visited,out,stylesheet);
 		out.append("<p><a href=\"?list="+"visited"+"\">Show all</a><br/></p>");
@@ -1089,8 +1096,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}
 
 
-	private void appendList(Set<FreenetURI> list, StringBuilder out, String stylesheet) {
-		Iterator<FreenetURI> it = list.iterator();
+	private void appendList(Set<?> list, StringBuilder out, String stylesheet) {
+		Iterator<?> it = list.iterator();
 		int i = 0;
 		while(it.hasNext()){
 			if(i<=maxShownURIs){
