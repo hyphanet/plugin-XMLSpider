@@ -1323,8 +1323,14 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 	public void onFoundEdition(long l, USK key){
 		FreenetURI uri = key.getURI();
+		/*-
+		 * FIXME this code don't make sense 
+		 *  (1) runningFetchesByURI contain SSK, not USK
+		 *  (2) onFoundEdition always have the edition set
+		 *  
 		if(runningFetchesByURI.containsKey(uri)) runningFetchesByURI.remove(uri);
 		uri = key.getURI().setSuggestedEdition(l);
+		 */
 		queueURI(uri);
 	}
 
