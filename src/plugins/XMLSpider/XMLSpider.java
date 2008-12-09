@@ -46,8 +46,6 @@ import freenet.client.async.BaseClientPutter;
 import freenet.client.async.ClientCallback;
 import freenet.client.async.ClientGetter;
 import freenet.client.async.USKCallback;
-import freenet.clients.http.ToadletContext;
-import freenet.clients.http.ToadletContextClosedException;
 import freenet.clients.http.filter.ContentFilter;
 import freenet.clients.http.filter.FoundURICallback;
 import freenet.clients.http.filter.UnsafeContentTypeException;
@@ -370,18 +368,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		startSomeRequests();
 	}
 
-	public void onSuccess(BaseClientPutter state) {
-		// Ignore
-	}
-
-	public void onFailure(InsertException e, BaseClientPutter state) {
-		// Ignore
-	}
-
-	public void onGeneratedURI(FreenetURI uri, BaseClientPutter state) {
-		// Ignore
-	}
-
 	/**
 	 * generates the main index file that can be used by librarian for searching in the list of
 	 * subindices
@@ -605,7 +591,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * @param prefix number of matching bits of md5
 	 * @throws Exception
 	 */
-	public synchronized void generateXML(List<String> list, int prefix) throws TooBigIndexException, Exception
+	protected synchronized void generateXML(List<String> list, int prefix) throws TooBigIndexException, Exception
 	{
 		String p = list.get(0).substring(0, prefix);
 		indices.add(p);
@@ -681,7 +667,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				
 				/* Position by position */
 
-				HashMap positionsForGivenWord = positionsByWordById.get(x);
+				HashMap<String, Integer[]> positionsForGivenWord = positionsByWordById.get(x);
 				Integer[] positions = (Integer[])positionsForGivenWord.get(str);
 				StringBuilder positionList = new StringBuilder();
 
@@ -737,52 +723,13 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			Logger.minor(this, "Spider: indexes regenerated.");
 	}
 
-
-	public void handleGet(HTTPRequest request, ToadletContext context) throws IOException, ToadletContextClosedException {
-		/*
-		 * ignore
-		 */
-	}
-
-
-	public void handlePost(HTTPRequest request, ToadletContext context) throws IOException {
-		/*
-		 * ignore
-		 */
-	}
-
 	/**
 	 * @see freenet.oldplugins.plugin.Plugin#getPluginName()
 	 */
 	public String getPluginName() {
 		return pluginName;
 	}
-
-	/**
-	 * @see freenet.oldplugins.plugin.Plugin#startPlugin()
-	 */
-	public void startPlugin() {
-		stopped = false;
-	}
-
-	/**
-	 * @see freenet.oldplugins.plugin.Plugin#stopPlugin()
-	 */
-	public void stopPlugin() {
-		synchronized (this) {
-			stopped = true;
-			for(int i=0;i<queuedURIList.length;i++)
-				queuedURIList[i].clear();
-		}
-	}
-
-	public void onMajorProgress() {
-		// Ignore
-	}
-
-	public void onFetchable(BaseClientPutter state) {
-		// Ignore
-	}
+	
 	private static String convertToHex(byte[] data) {
 		StringBuilder buf = new StringBuilder();
 		for (int i = 0; i < data.length; i++) {
@@ -1039,12 +986,12 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		Set<FreenetURI> runningFetches;
 		Set<FreenetURI> visited;
 		Set<FreenetURI> failed;
-		List[] queued = new List[queuedURIList.length];
+		List<FreenetURI>[] queued = new List[queuedURIList.length];
 		synchronized(this) {
 			visited = new HashSet<FreenetURI>(visitedURIs);
 			failed = new HashSet<FreenetURI>(failedURIs);
 			for(int i=0;i<queuedURIList.length;i++)
-				queued[i] = new ArrayList(queuedURIList[i]);
+				queued[i] = new ArrayList<FreenetURI>(queuedURIList[i]);
 			runningFetches = new HashSet<FreenetURI>(runningFetchesByURI.keySet());
 		}
 		out.append("<p><h3>Running Fetches</h3></p>");
@@ -1055,7 +1002,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			out.append("<p><h3>Queued URIs ("+j+")</h3></p>");
 			out.append("<br/>Size :"+queued[j].size()+"<br/>");
 			int i = 0;
-			Iterator it=queued[j].iterator();
+			Iterator<FreenetURI> it = queued[j].iterator();
 			while(it.hasNext()){
 				if(i<=maxShownURIs){
 					out.append("<code>"+it.next().toString()+"</code><br/>");
@@ -1340,9 +1287,5 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 	public short getPollingPriorityProgress() {
 		return PRIORITY_CLASS;
-	}
-
-	public boolean persistent() {
-		return false;
 	}
 }
