@@ -88,7 +88,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
         FredPluginHTTPAdvanced, USKCallback {
 	static enum Status {
 		/** For simplicity, running is also mark as QUEUED */
-		QUEUED, SUCCESSED, FAILED
+		QUEUED, SUCCEEDED, FAILED
 	};
 	
 	static class Page {
@@ -334,7 +334,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 */
 	public void onSuccess(FetchResult result, ClientGetter state, Page page) {
 		FreenetURI uri = state.getURI();
-		page.status = Status.SUCCESSED; // Content filter may throw, but we mark it as success anyway
+		page.status = Status.SUCCEEDED; // Content filter may throw, but we mark it as success anyway
 
 		try {
 			ClientMetadata cm = result.getMetadata();
@@ -380,7 +380,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				queueURI(fe.newURI);
 
 				runningFetch.remove(page);
-				page.status = Status.SUCCESSED;
+				page.status = Status.SUCCEEDED;
 				page.lastChange = System.currentTimeMillis();
 				db.store(page);
 			} else if (fe.isFatal() || tries > 3) {
@@ -997,7 +997,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 					if (page != null) {
 						// We have no reliable way to stop a request,
 						// requeue only if it is successed / failed
-						if (page.status == Status.SUCCESSED || page.status == Status.FAILED) {
+						if (page.status == Status.SUCCEEDED || page.status == Status.FAILED) {
 							page.lastChange = System.currentTimeMillis();
 							page.status = Status.QUEUED;
 
@@ -1025,7 +1025,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		} else if (listname.equals("visited")) {
 			Query query = db.query();
 			query.constrain(Page.class);
-			query.descend("status").constrain(Status.SUCCESSED);
+			query.descend("status").constrain(Status.SUCCEEDED);
 			query.descend("lastChange").orderAscending();
 			ObjectSet<Page> set = query.execute();
 
@@ -1083,7 +1083,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			visitedSnapshot = new ArrayList<Page>(maxShownURIs);
 			Query query = db.query();
 			query.constrain(Page.class);
-			query.descend("status").constrain(Status.SUCCESSED);
+			query.descend("status").constrain(Status.SUCCEEDED);
 			query.descend("lastChange").orderAscending();
 			ObjectSet<Page> set = query.execute();
 			for (int i = 0; set.hasNext() && i < maxShownURIs; i++)
