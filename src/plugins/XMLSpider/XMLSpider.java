@@ -593,6 +593,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			Logger.minor(this, "Generating subindex for "+list.size()+" entries with prefix length "+p);
 
 		try {
+			if (list.size() == 0)
+				return;
 			if (list.size() < MAX_ENTRIES)
 			{	
 				generateXML(list,p);
