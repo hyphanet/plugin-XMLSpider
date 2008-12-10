@@ -363,7 +363,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			}
 		} finally {
 			synchronized (this) {
-				runningFetch.remove(page.id);
+				runningFetch.remove(page);
 				page.lastChange = System.currentTimeMillis();
 				db.store(page);
 			}
