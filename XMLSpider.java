@@ -1413,6 +1413,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		cfg.queries().evaluationMode(QueryEvaluationMode.LAZY);
 		cfg.diagnostic().addListener(new DiagnosticToConsole());
 
+		new File("XMLSpider-" + version + ".db4o").delete();
+
 		return Db4o.openFile(cfg, "XMLSpider-" + version + ".db4o");
 	}
 	
