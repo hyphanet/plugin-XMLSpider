@@ -888,6 +888,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		this.pr = pr;
 		this.id = 0;
 		this.core = pr.getNode().clientCore;
+
+		/* Initialize Fetch Context */
 		this.ctx = core.makeClient((short) 0).getFetchContext();
 		ctx.maxSplitfileBlockRetries = 10;
 		ctx.maxNonSplitfileRetries = 10;
@@ -897,7 +899,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		allowedMIMETypes.add("text/html");
 		allowedMIMETypes.add("text/plain");
 		allowedMIMETypes.add("application/xhtml+xml");
-
 		ctx.allowedMIMETypes = new HashSet<String>(allowedMIMETypes);
 
 		tProducedIndex = System.currentTimeMillis();
