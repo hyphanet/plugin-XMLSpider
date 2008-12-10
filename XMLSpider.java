@@ -154,14 +154,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	private static final String indexTitle= "XMLSpider index";
 	private static final String indexOwner = "Freenet";
 	private static final String indexOwnerEmail = null;
-	private final HashMap<String, Long> sizeOfURIs = new HashMap<String, Long>(); /*
-																				 * String (URI) ->
-																				 * Long
-																				 */
-	private final HashMap<String, String> mimeOfURIs = new HashMap<String, String>(); /*
-																					 * String (URI)
-																					 * -> String
-																					 */
+	
 //	private final HashMap lastPositionByURI = new HashMap(); /* String (URI) -> Integer */ /* Use to determine word position on each uri */
 	private final HashMap<Integer, Integer> lastPositionById = new HashMap<Integer, Integer>();
 //	private final HashMap positionsByWordByURI = new HashMap(); /* String (URI) -> HashMap (String (word) -> Integer[] (Positions)) */
@@ -317,8 +310,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			
 			Integer id;
 			synchronized(this) {
-				sizeOfURIs.put(uri.toString(), new Long(data.size()));
-				mimeOfURIs.put(uri.toString(), mimeType);
 				id = uriIds.get(uri);
 //				inlinks.put(page.id, new Vector());
 //				outlinks.put(page.id, new Vector());
