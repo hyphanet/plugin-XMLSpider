@@ -904,11 +904,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		tProducedIndex = System.currentTimeMillis();
 		stopped = false;
 		count = 0;
-		try{
-		Runtime.getRuntime().exec("mkdir "+DEFAULT_INDEX_DIR);
-		}
-		catch(Exception e){
-			Logger.error(this, "Could not create default index directory "+e.toString(), e);
+		
+		if (!new File(DEFAULT_INDEX_DIR).mkdirs()) {
+			Logger.error(this, "Could not create default index directory ");
 		}
 		//startPlugin();
 		pr.getNode().executor.execute(new Runnable() {
