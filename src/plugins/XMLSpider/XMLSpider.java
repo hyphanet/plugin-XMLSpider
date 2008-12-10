@@ -574,6 +574,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				str = key;
 				currentPrefix = str.substring(0, prefix);
 				list = new Vector<String>();
+				list.add(key);
 			}
 		}
 
