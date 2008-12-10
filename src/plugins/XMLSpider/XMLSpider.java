@@ -572,6 +572,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				//generate the appropriate subindex with the current list
 				generateSubIndex(prefix,list);
 				str = key;
+				currentPrefix = str.substring(0, prefix);
 				list = new Vector<String>();
 			}
 		}
