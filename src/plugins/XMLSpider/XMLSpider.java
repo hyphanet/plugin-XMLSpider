@@ -18,11 +18,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.Vector;
+import java.util.concurrent.atomic.AtomicLong;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -36,6 +37,14 @@ import org.w3c.dom.DOMImplementation;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Text;
+
+import com.db4o.Db4o;
+import com.db4o.ObjectContainer;
+import com.db4o.ObjectSet;
+import com.db4o.config.Configuration;
+import com.db4o.config.QueryEvaluationMode;
+import com.db4o.diagnostic.DiagnosticToConsole;
+import com.db4o.query.Query;
 
 import freenet.client.ClientMetadata;
 import freenet.client.FetchContext;
@@ -58,6 +67,7 @@ import freenet.pluginmanager.FredPlugin;
 import freenet.pluginmanager.FredPluginHTTP;
 import freenet.pluginmanager.FredPluginHTTPAdvanced;
 import freenet.pluginmanager.FredPluginThreadless;
+import freenet.pluginmanager.FredPluginVersioned;
 import freenet.pluginmanager.PluginHTTPException;
 import freenet.pluginmanager.PluginRespirator;
 import freenet.support.Logger;
@@ -74,59 +84,67 @@ import freenet.support.io.NullBucketFactory;
  *  @author swati goyal
  *  
  */
-public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless,  FredPluginHTTPAdvanced, USKCallback {
+public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless, FredPluginVersioned,
+        FredPluginHTTPAdvanced, USKCallback {
+	static enum Status {
+		/** For simplicity, running is also mark as QUEUED */
+		QUEUED, SUCCESSED, FAILED
+	};
+	
+	static class Page {
+		/** Page Id */
+		long id;
+		/** URI of the page */
+		String uri;
+		/** Title */
+		String pageTitle;
+		/** Status */
+		Status status = Status.QUEUED;
+		/** Queued Time */
+		long lastChange = System.currentTimeMillis();
+		/** Document Frequency (DF) */
+		long df;
+
+		@Override
+		public int hashCode() {
+			return (int) (id ^ (id >>> 32));
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+
+			return id == ((Page) obj).id;
+		}
+
+		@Override
+		public String toString() {
+			return "[PAGE: id=" + id + ", title=" + pageTitle + ", uri=" + uri + ", status=" + status + ", df=" + df
+			+ "]";
+		}
+	}
+
+	/** Document ID of fetching documents */
+	protected Map<Page, ClientGetter> runningFetch = new HashMap<Page, ClientGetter>();
 
 	long tProducedIndex;
 	/**
 	 * Stores the found words along with md5
 	 */
 	public TreeMap<String, String> tMap = new TreeMap<String, String>();
-	long count;
-	// URIs visited, or fetching, or queued. Added once then forgotten about.
-	/**
-	 * 
-	 * Lists the uris that have been vistied by the spider
-	 */
-	public final HashSet<FreenetURI> visitedURIs = new HashSet<FreenetURI>();
-	private final HashSet<Long> idsWithWords = new HashSet<Long>();
-	/**
-	 * Lists the uris that were visited but failed.
-	 */
-	public final HashSet<FreenetURI> failedURIs = new HashSet<FreenetURI>();
-
-	private final HashSet<FreenetURI> queuedURISet = new HashSet<FreenetURI>();
-	/**
-	 * 
-	 * Lists the uris that are still queued.
-	 * 
-	 * Since we have limited RAM, and we don't want stuff to be on the cooldown queue for a 
-	 * long period, we use 2 retries (to stay off the cooldown queue), and we go over the queued
-	 * list 3 times for each key.
-	 */
-	public final LinkedList<FreenetURI>[] queuedURIList = new LinkedList[] { new LinkedList<FreenetURI>(),
-	        new LinkedList<FreenetURI>(), new LinkedList<FreenetURI>() };
-	private final HashMap<FreenetURI, ClientGetter> runningFetchesByURI = new HashMap<FreenetURI, ClientGetter>();
-
-	private final HashMap<String, Long[]> idsByWord = new HashMap<String, Long[]>();
-
-	private final HashMap<Long, String> titlesOfIds = new HashMap<Long, String>();
-	private final HashMap<FreenetURI, Long> uriIds = new HashMap<FreenetURI, Long>();
-	private final HashMap<Long, FreenetURI> idUris = new HashMap<Long, FreenetURI>();
+	protected AtomicLong maxId;
 	
-	// Re-enable outlinks/inlinks when we publish them or use them for ranking.
-	/**
-	 * Lists the outlinks from a particular page, 
-	 * </br> indexed by the id of page uri
-	 */
-//	public final HashMap outlinks = new HashMap();
-	/**
-	 * Lists the inlinks to a particular page,
-	 *  indexed by the id of page uri.
-	 */
-//	public final HashMap inlinks = new HashMap();
+	private final HashSet<Long> idsWithWords = new HashSet<Long>();
+	
+	private final HashMap<String, Long[]> idsByWord = new HashMap<String, Long[]>();
+	
 	private Vector<String> indices;
 	private int match;
-	private Long id;
 	private long time_taken;
 /*
  * minTimeBetweenEachIndexRewriting in seconds 
@@ -143,8 +161,13 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public Set<String> allowedMIMETypes;
 	private static final int MAX_ENTRIES = 2000;
 	private static final long MAX_SUBINDEX_UNCOMPRESSED_SIZE = 4*1024*1024;
-	private static int version = 32;
-	private static final String pluginName = "XML spider "+version;
+	private static int version = 33;
+	private static final String pluginName = "XML spider " + version;
+
+	public String getVersion() {
+		return version + " r" + Version.getSvnRevision();
+	}
+
 	/**
 	 * Gives the allowed fraction of total time spent on generating indices with
 	 * maximum value = 1; minimum value = 0. 
@@ -186,81 +209,86 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			catch(Exception e){}
 		}
 
-		if ((!visitedURIs.contains(uri)) && queuedURISet.add(uri)) {
-			queuedURIList[0].addLast(uri);
-			visitedURIs.add(uri);
-			uriIds.put(uri, id);
-			idUris.put(id, uri);
-			id++;
+		if (getPageByURI(uri) == null) {
+			Page page = new Page();
+			page.uri = uri.toString();
+			page.id = maxId.incrementAndGet();
+
+			db.store(page);
 		}
 	}
 
 	private void startSomeRequests() {
-
-
 		FreenetURI[] initialURIs = core.getBookmarkURIs();
 		for (int i = 0; i < initialURIs.length; i++)
-		{
 			queueURI(initialURIs[i]);
-		}
 
 		ArrayList<ClientGetter> toStart = null;
 		synchronized (this) {
 			if (stopped) {
 				return;
 			}
-			int running = runningFetchesByURI.size();
-			int queued = queuedURIList[0].size() + queuedURIList[1].size() + queuedURIList[2].size();
+			int running = runningFetch.size();
+			
+			Query query = db.query();
+			query.constrain(Page.class);
+			query.descend("status").constrain(Status.QUEUED);
+			query.descend("lastChange").orderAscending();
+			ObjectSet<Page> queuedSet = query.execute();
 
-			if ((running >= maxParallelRequests) || (queued == 0))
+			if ((running >= maxParallelRequests) || (queuedSet.size() - running <= 0))
 				return;
 
-			toStart = new ArrayList<ClientGetter>(Math.min(maxParallelRequests - running, queued));
+			toStart = new ArrayList<ClientGetter>(maxParallelRequests - running);
 
 			for (int i = running; i < maxParallelRequests; i++) {
-				boolean found = false;
-				for(int j=0;j<queuedURIList.length;j++) {
-					if(queuedURIList[j].isEmpty()) continue;
-					FreenetURI uri = (FreenetURI) queuedURIList[j].removeFirst();
-					if(j == queuedURIList.length) queuedURISet.remove(uri);
-					ClientGetter getter = makeGetter(uri, j);
-					toStart.add(getter);
-					found = true;
+				if (!queuedSet.hasNext())
 					break;
+
+				Page page = queuedSet.next();
+				if (runningFetch.containsKey(page))
+					continue;
+
+				try {
+					ClientGetter getter = makeGetter(page, 0);
+
+					Logger.minor(this, "Starting " + getter + " " + page);
+					toStart.add(getter);
+					runningFetch.put(page, getter);
+				} catch (MalformedURLException e) {
+					Logger.error(this, "IMPOSSIBLE-Malformed URI: " + page, e);
+
+					page.status = Status.FAILED;
+					page.lastChange = System.currentTimeMillis();
+					db.store(page);
 				}
-				if(!found) break;
 			}
 		}
-		for (int i = 0; i < toStart.size(); i++) {
-
-			ClientGetter g = toStart.get(i);
+		
+		for (ClientGetter g : toStart) {
 			try {
-				runningFetchesByURI.put(g.getURI(), g);
 				g.start();
+				Logger.minor(this, g + " started");
 			} catch (FetchException e) {
-				onFailure(e, g, ((MyClientCallback)g.getClientCallback()).tries);
+                Logger.error(this, "Fetch Exception: " + g, e);
+				onFailure(e, g, ((MyClientCallback) g.getClientCallback()).page, ((MyClientCallback) g
+				        .getClientCallback()).tries);
 			}
 		}
 	}
 
-	private final ClientCallback[] clientCallbacks =
-		new ClientCallback[] {
-			new MyClientCallback(0),
-			new MyClientCallback(1),
-			new MyClientCallback(2)
-	};
 
 	private class MyClientCallback implements ClientCallback {
-
+		final Page page;
 		final int tries;
 		
-		public MyClientCallback(int x) {
-			tries = x;
-			// TODO Auto-generated constructor stub
+		public MyClientCallback(Page page, int tries) {
+			this.page = page;
+			this.tries = tries;
 		}
 
 		public void onFailure(FetchException e, ClientGetter state) {
-			XMLSpider.this.onFailure(e, state, tries);
+			XMLSpider.this.onFailure(e, state, page, tries);
 		}
 
 		public void onFailure(InsertException e, BaseClientPutter state) {
@@ -280,51 +308,52 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 
 		public void onSuccess(FetchResult result, ClientGetter state) {
-			XMLSpider.this.onSuccess(result, state);
+			XMLSpider.this.onSuccess(result, state, page);
 		}
 
 		public void onSuccess(BaseClientPutter state) {
 			// Ignore
 		}
 		
+		public String toString() {
+			return super.toString() + ":" + "tries=" + tries + ",page=" + page;
+		}		
 	}
 	
-	private ClientGetter makeGetter(FreenetURI uri, int retries) {
-		ClientGetter g = new ClientGetter(clientCallbacks[retries], core.requestStarters.chkFetchScheduler, core.requestStarters.sskFetchScheduler, uri, ctx, PRIORITY_CLASS, this, null, null);
-		return g;
+	private ClientGetter makeGetter(Page page, int tries) throws MalformedURLException {
+		ClientGetter getter = new ClientGetter(new MyClientCallback(page, tries),
+		        core.requestStarters.chkFetchScheduler, core.requestStarters.sskFetchScheduler,
+		        new FreenetURI(page.uri), ctx, PRIORITY_CLASS, this, null, null);
+		return getter;
 	}
+
 	/**
 	 * Processes the successfully fetched uri for further outlinks.
 	 * 
 	 * @param result
 	 * @param state
+	 * @param page
 	 */
-	public void onSuccess(FetchResult result, ClientGetter state) {
+	public void onSuccess(FetchResult result, ClientGetter state, Page page) {
 		FreenetURI uri = state.getURI();
+		page.status = Status.SUCCESSED; // Content filter may throw, but we mark it as success anyway
 
 		try {
-		
 			ClientMetadata cm = result.getMetadata();
 			Bucket data = result.asBucket();
-			String mimeType = cm.getMIMEType();
+			String mimeType = cm.getMIMEType();			
 			
-			Long id;
-			synchronized(this) {
-				id = uriIds.get(uri);
-//				inlinks.put(page.id, new Vector());
-//				outlinks.put(page.id, new Vector());
-			}
 			/*
 			 * instead of passing the current object, the pagecallback object for every page is passed to the content filter
 			 * this has many benefits to efficiency, and allows us to identify trivially which page is being indexed.
 			 * (we CANNOT rely on the base href provided).
 			 */
-			PageCallBack page = new PageCallBack(id);
-			Logger.minor(this, "Successful: "+uri+" : "+page.id);
+			PageCallBack pageCallBack = new PageCallBack(page);
+			Logger.minor(this, "Successful: " + uri + " : " + page.id);
 			
 			try {
-				Logger.minor(this, "Filtering "+uri+" : "+page.id);
-				ContentFilter.filter(data, new NullBucketFactory(), mimeType, uri.toURI("http://127.0.0.1:8888/"), page);
+				ContentFilter.filter(data, new NullBucketFactory(), mimeType, uri.toURI("http://127.0.0.1:8888/"), pageCallBack);
+				Logger.minor(this, "Filtered " + uri + " : " + page.id);
 			} catch (UnsafeContentTypeException e) {
 				return; // Ignore
 			} catch (IOException e) {
@@ -336,27 +365,51 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			}
 		} finally {
 			synchronized (this) {
-				runningFetchesByURI.remove(uri);
+				runningFetch.remove(page.id);
+				page.lastChange = System.currentTimeMillis();
+				db.store(page);
 			}
 			startSomeRequests();
 		}
 	}
 
-	public void onFailure(FetchException e, ClientGetter state, int tries) {
-		FreenetURI uri = state.getURI();
-		Logger.minor(this, "Failed: "+uri+" : "+e);
+	public void onFailure(FetchException fe, ClientGetter state, Page page, int tries) {
+		Logger.minor(this, "Failed: [" + tries + "] " + page + " : " + fe, fe);
 
 		synchronized (this) {
-			runningFetchesByURI.remove(uri);
-			failedURIs.add(uri);
-			tries++;
-			if(tries < queuedURIList.length && !e.isFatal())
-				queuedURIList[tries].addLast(uri);
-		}
-		if (e.newURI != null)
-			queueURI(e.newURI);
+			if (fe.newURI != null) {
+				// redirect, mark as successed
+				queueURI(fe.newURI);
 
-		startSomeRequests();
+				runningFetch.remove(page);
+				page.status = Status.SUCCESSED;
+				page.lastChange = System.currentTimeMillis();
+				db.store(page);
+			} else if (fe.isFatal() || tries > 3) {
+				// too many tries or fatal, mark as failed
+				runningFetch.remove(page.id);
+				page.status = Status.FAILED;
+				page.lastChange = System.currentTimeMillis();
+				db.store(page);
+			} else if (!stopped) {
+				// Retry  
+				// FIXME why? the original version say this keep off the cooldown queue
+				ClientGetter getter = null;
+				try {
+					getter = makeGetter(page, tries + 1);
+					getter.start();
+					runningFetch.put(page, getter);
+				} catch (MalformedURLException e) {
+					Logger.error(this, "IMPOSSIBLE-Malformed URI: " + page, e);
+				} catch (FetchException e) {
+					onFailure(e, getter, ((MyClientCallback) getter.getClientCallback()).page,
+							((MyClientCallback) getter.getClientCallback()).tries);
+				}
+			}
+		}
+
+		if (!stopped)
+			startSomeRequests();
 	}
 
 	/**
@@ -540,7 +593,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			Logger.minor(this, "Generating subindex for "+list.size()+" entries with prefix length "+p);
 
 		try {
-			if(list.size() > 0 && list.size() < MAX_ENTRIES)
+			if (list.size() < MAX_ENTRIES)
 			{	
 				generateXML(list,p);
 				return;
@@ -641,6 +694,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 					Logger.error(this, "Eh?");
 					continue;
 				}
+				
+				Page page = getPageById(id);
+				
 				/*
 				 * adding file information
 				 * uriElement - lists the id of the file containing a particular word
@@ -650,11 +706,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				Element fileElement = xmlDoc.createElement("file");
 				uriElement.setAttribute("id", x.toString());
 				fileElement.setAttribute("id", x.toString());
-				fileElement.setAttribute("key",(idUris.get(id)).toString());
-				if(titlesOfIds.containsKey(id))
-					fileElement.setAttribute("title",(titlesOfIds.get(id)).toString());
-				else 
-					fileElement.setAttribute("title",(idUris.get(id)).toString());
+				fileElement.setAttribute("key", page.uri);
+				fileElement.setAttribute("title", page.pageTitle != null ? page.pageTitle : page.uri);
 				
 				/* Position by position */
 
@@ -714,13 +767,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			Logger.minor(this, "Spider: indexes regenerated.");
 	}
 
-	/**
-	 * @see freenet.oldplugins.plugin.Plugin#getPluginName()
-	 */
-	public String getPluginName() {
-		return pluginName;
-	}
-	
 	private static String convertToHex(byte[] data) {
 		StringBuilder buf = new StringBuilder();
 		for (int i = 0; i < data.length; i++) {
@@ -870,14 +916,14 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public void terminate(){
 		synchronized (this) {
 			stopped = true;
-			for(int i=0;i<queuedURIList.length;i++)
-				queuedURIList[i].clear();
+			for (Map.Entry<Page, ClientGetter> me : runningFetch.entrySet()) {
+				me.getValue().cancel();
+			}
 		}
 	}
 
 	public void runPlugin(PluginRespirator pr){
 		this.pr = pr;
-		this.id = 0L;
 		this.core = pr.getNode().clientCore;
 
 		/* Initialize Fetch Context */
@@ -894,12 +940,26 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		tProducedIndex = System.currentTimeMillis();
 		stopped = false;
-		count = 0;
 		
 		if (!new File(DEFAULT_INDEX_DIR).mkdirs()) {
 			Logger.error(this, "Could not create default index directory ");
 		}
-		//startPlugin();
+
+		// Initial DB4O
+		db = initDB4O();
+		
+		// Find max Page ID
+		{
+			Query query = db.query();
+			query.constrain(Page.class);
+			query.descend("id").orderDescending();
+			ObjectSet<Page> set = query.execute();
+			if (set.hasNext())
+				maxId = new AtomicLong(set.next().id);
+			else
+				maxId = new AtomicLong(0);
+		}
+		
 		pr.getNode().executor.execute(new Runnable() {
 			public void run() {
 				try{
@@ -922,7 +982,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		{
 			appendDefaultHeader(out,null);
 			out.append("<p><h4>"+listname+" URIs</h4></p>");
-			appendList(listname,out,null);
+			appendList(listname, out);
 			return out.toString();
 		}
 		appendDefaultPageStart(out,null);
@@ -932,8 +992,18 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			try {
 				FreenetURI uri = new FreenetURI(uriParam);
 				synchronized (this) {
-					failedURIs.remove(uri);
-					visitedURIs.remove(uri);
+					// Check if queued already
+					Page page = getPageByURI(uri);
+					if (page != null) {
+						// We have no reliable way to stop a request,
+						// requeue only if it is successed / failed
+						if (page.status == Status.SUCCESSED || page.status == Status.FAILED) {
+							page.lastChange = System.currentTimeMillis();
+							page.status = Status.QUEUED;
+
+							db.store(page);
+						}
+					}
 				}
 				out.append("<p>URI added :"+uriParam+"</p>");
 				queueURI(uri);
@@ -947,20 +1017,39 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 /*
  * List the visited, queued, failed and running fetches on the web interface
  */
-	private synchronized void appendList(String listname, StringBuilder out, String stylesheet)
-	{
-		Iterator<FreenetURI> it = (runningFetchesByURI.keySet()).iterator();
-		if(listname.equals("running"))
-			it = (runningFetchesByURI.keySet()).iterator();
-		if(listname.equals("visited"))
-			it = (new HashSet<FreenetURI>(visitedURIs)).iterator();
-		if(listname.startsWith("queued"))
-			it = (new ArrayList<FreenetURI>(queuedURIList[Integer.parseInt(listname.substring("queued".length()))]))
-			        .iterator();
-		if(listname.equals("failed"))
-			it = (new HashSet<FreenetURI>(failedURIs)).iterator();
-		while(it.hasNext())
-			out.append("<code>"+it.next().toString()+"</code><br/>");
+	private synchronized void appendList(String listname, StringBuilder out) {
+		Iterable<Page> it = runningFetch.keySet();
+
+		if (listname.equals("running")) {
+			it = runningFetch.keySet();
+		} else if (listname.equals("visited")) {
+			Query query = db.query();
+			query.constrain(Page.class);
+			query.descend("status").constrain(Status.SUCCESSED);
+			query.descend("lastChange").orderAscending();
+			ObjectSet<Page> set = query.execute();
+
+			it = set;
+		} else if (listname.equals("queued")) {
+			Query query = db.query();
+			query.constrain(Page.class);
+			query.descend("status").constrain(Status.QUEUED);
+			query.descend("lastChange").orderAscending();
+			ObjectSet<Page> set = query.execute();
+
+			it = set;
+		} else if (listname.equals("failed")) {
+			Query query = db.query();
+			query.constrain(Page.class);
+			query.descend("status").constrain(Status.FAILED);
+			query.descend("lastChange").orderAscending();
+			ObjectSet<Page> set = query.execute();
+
+			it = set;
+		}
+		
+		for (Page page : it)
+			out.append("<code>" + page.uri + "</code><br/>");
 	}
 
 	private void appendDefaultPageStart(StringBuilder out, String stylesheet) {
@@ -973,42 +1062,79 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		out.append("Add uri:");
 		out.append("<form method=\"GET\"><input type=\"text\" name=\"adduri\" /><br/><br/>");
 		out.append("<input type=\"submit\" value=\"Add uri\" /></form>");
-		Set<FreenetURI> runningFetches;
-		Set<FreenetURI> visited;
-		Set<FreenetURI> failed;
-		List<FreenetURI>[] queued = new List[queuedURIList.length];
+		List<Page> runningFetchesSnapshot;
+		long runningFetchesSnapshotSize;
+		List<Page> visitedSnapshot;
+		long visitedSnapshotSize;
+		List<Page> failedSnapshot;
+		long failedSnapshotSize;
+		List<Page> queuedSnapshot;
+		long queuedSnapshotSize;
+		
 		synchronized(this) {
-			visited = new HashSet<FreenetURI>(visitedURIs);
-			failed = new HashSet<FreenetURI>(failedURIs);
-			for(int i=0;i<queuedURIList.length;i++)
-				queued[i] = new ArrayList<FreenetURI>(queuedURIList[i]);
-			runningFetches = new HashSet<FreenetURI>(runningFetchesByURI.keySet());
-		}
-		out.append("<p><h3>Running Fetches</h3></p>");
-		out.append("<br/>Size :"+runningFetches.size()+"<br/>");
-		appendList(runningFetches,out,stylesheet);
-		out.append("<p><a href=\"?list="+"running"+"\">Show all</a><br/></p>");
-		for(int j=0;j<queued.length;j++) {
-			out.append("<p><h3>Queued URIs ("+j+")</h3></p>");
-			out.append("<br/>Size :"+queued[j].size()+"<br/>");
-			int i = 0;
-			Iterator<FreenetURI> it = queued[j].iterator();
-			while(it.hasNext()){
-				if(i<=maxShownURIs){
-					out.append("<code>"+it.next().toString()+"</code><br/>");
-				}
-				else break;
-				i++;
+			runningFetchesSnapshot = new ArrayList<Page>(maxShownURIs);
+			{
+				Iterator<Page> it = this.runningFetch.keySet().iterator();
+				for (int i = 0; it.hasNext() && i < maxShownURIs; i++)
+					runningFetchesSnapshot.add(it.next());
+				runningFetchesSnapshotSize = runningFetch.size();
 			}
-			out.append("<p><a href=\"?list="+"queued"+j+"\">Show all</a><br/></p>");
+
+			visitedSnapshot = new ArrayList<Page>(maxShownURIs);
+			Query query = db.query();
+			query.constrain(Page.class);
+			query.descend("status").constrain(Status.SUCCESSED);
+			query.descend("lastChange").orderAscending();
+			ObjectSet<Page> set = query.execute();
+			for (int i = 0; set.hasNext() && i < maxShownURIs; i++)
+				visitedSnapshot.add(set.next());
+			visitedSnapshotSize = set.size();
+
+			failedSnapshot = new ArrayList<Page>(maxShownURIs);
+			query = db.query();
+			query.constrain(Page.class);
+			query.descend("status").constrain(Status.FAILED);
+			query.descend("lastChange").orderAscending();
+			set = query.execute();
+			for (int i = 0; set.hasNext() && i < maxShownURIs; i++)
+				failedSnapshot.add(set.next());
+			failedSnapshotSize = set.size();
+
+			queuedSnapshot = new ArrayList<Page>(maxShownURIs);
+			query = db.query();
+			query.constrain(Page.class);
+			query.descend("status").constrain(Status.QUEUED);
+			query.descend("lastChange").orderAscending();
+			set = query.execute();
+			for (int i = 0; set.hasNext() && i < maxShownURIs; i++)
+				queuedSnapshot.add(set.next());
+			queuedSnapshotSize = set.size();
 		}
+		
+		out.append("<p><h3>Running Fetches</h3></p>");
+		out.append("<br/>Size :" + runningFetchesSnapshotSize + "<br/>");
+		for (Page page : runningFetchesSnapshot)
+			out.append("<code>" + page.uri + "</code><br/>");
+		out.append("<p><a href=\"?list="+"running"+"\">Show all</a><br/></p>");
+
+		
+		out.append("<p><h3>Queued URIs</h3></p>");
+		out.append("<br/>Size :" + queuedSnapshotSize + "<br/>");
+		for (Page page : queuedSnapshot)
+			out.append("<code>" + page.uri + "</code><br/>");
+		out.append("<p><a href=\"?list=\">Show all</a><br/></p>");
+	
+	
 		out.append("<p><h3>Visited URIs</h3></p>");
-		out.append("<br/>Size :"+visited.size()+"<br/>");
-		appendList(visited,out,stylesheet);
+		out.append("<br/>Size :" + visitedSnapshotSize + "<br/>");
+		for (Page page : visitedSnapshot)
+			out.append("<code>" + page.uri + "</code><br/>");
 		out.append("<p><a href=\"?list="+"visited"+"\">Show all</a><br/></p>");
+		
 		out.append("<p><h3>Failed URIs</h3></p>");
-		out.append("<br/>Size :"+failed.size()+"<br/>");
-		appendList(failed,out,stylesheet);
+		out.append("<br/>Size :" + failedSnapshotSize + "<br/>");
+		for (Page page : failedSnapshot)
+			out.append("<code>" + page.uri + "</code><br/>");
 		out.append("<p><a href=\"?list="+"failed"+"\">Show all</a><br/></p>");
 		out.append("<p>Time taken in generating index = "+time_taken+"</p>");
 	}
@@ -1025,21 +1151,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		out.append("<input type=\"submit\" value=\"Add uri\" /></form>");
 	}
 
-
-	private void appendList(Set<FreenetURI> list, StringBuilder out, String stylesheet) {
-		Iterator<FreenetURI> it = list.iterator();
-		int i = 0;
-		while(it.hasNext()){
-			if(i<=maxShownURIs){
-				out.append("<code>"+it.next().toString()+"</code><br/>");
-			}
-			else{
-				break;
-			}
-			i++;
-		}
-	}
-
 	/**
 	 * creates the callback object for each page.
 	 *<p>Used to create inlinks and outlinks for each page separately.
@@ -1047,12 +1158,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 *
 	 */
 	public class PageCallBack implements FoundURICallback{
-		final Long id;
-		/*
-		 * id of the page as refrenced in uriIds
-		 */	
-		PageCallBack(Long i) {
-			id = i;
+		final Page page;
+
+		PageCallBack(Page page) {
+			this.page = page;
 		}
 
 		public void foundURI(FreenetURI uri){
@@ -1061,7 +1170,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		
 		public void foundURI(FreenetURI uri, boolean inline){
 
-			Logger.minor(this, "foundURI "+uri+" on "+id);
+			Logger.minor(this, "foundURI " + uri + " on " + page);
 			queueURI(uri);
 			// FIXME re-enable outlinks/inlinks when we can do something useful with them
 //			synchronized(XMLSpider.this) {
@@ -1105,14 +1214,14 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		public void onText(String s, String type, URI baseURI){
 			
-			Logger.minor(this, "onText on "+id+" ("+baseURI+")");
+			Logger.minor(this, "onText on " + page.id + " (" + baseURI + ")");
 
 			if((type != null) && (type.length() != 0) && type.toLowerCase().equals("title")
 					&& (s != null) && (s.length() != 0) && (s.indexOf('\n') < 0)) {
 				/*
 				 * title of the page 
 				 */
-				titlesOfIds.put(id, s);
+				page.pageTitle = s;
 				type = "title";
 			}
 			else type = null;
@@ -1122,7 +1231,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			 */
 			String[] words = s.split("[^\\p{L}\\{N}]");
 			Integer lastPosition = null;
-			lastPosition = lastPositionById.get(id);
+			lastPosition = lastPositionById.get(page.id);
 
 			if(lastPosition == null)
 				lastPosition = 1; 
@@ -1134,16 +1243,16 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				word = word.intern();
 				try{
 					if(type == null)
-						addWord(word, lastPosition.intValue() + i, id);
+						addWord(word, lastPosition.intValue() + i, page.id);
 					else
-						addWord(word, -1 * (i+1), id);
+						addWord(word, -1 * (i + 1), page.id);
 				}
 				catch (Exception e){}
 			}
 
 			if(type == null) {
 				lastPosition = lastPosition + words.length;
-				lastPositionById.put(id, lastPosition);
+				lastPositionById.put(page.id, lastPosition);
 			}
 
 		}
@@ -1238,7 +1347,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 	private void scheduleMakeIndex() {
 		core.getTicker().queueTimedJob(new PrioRunnable() {
-
 			public void run() {
 				try {
 					makeIndex();
@@ -1277,5 +1385,58 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 	public short getPollingPriorityProgress() {
 		return PRIORITY_CLASS;
+	}
+	
+	/**
+	 * Initializes DB4O.
+	 * 
+	 * @return db4o's connector
+	 */
+	protected ObjectContainer db;
+
+	private ObjectContainer initDB4O() {
+		Configuration cfg = Db4o.newConfiguration();
+
+		//- Page
+		cfg.objectClass(Page.class).objectField("id").indexed(true);
+		cfg.objectClass(Page.class).objectField("uri").indexed(true);
+		cfg.objectClass(Page.class).objectField("status").indexed(true);
+		cfg.objectClass(Page.class).objectField("lastChange").indexed(true);		
+
+		cfg.objectClass(Page.class).cascadeOnActivate(true);
+		cfg.objectClass(Page.class).cascadeOnUpdate(true);
+		cfg.objectClass(Page.class).cascadeOnDelete(true);
+
+		//- Other
+		cfg.activationDepth(4);
+		cfg.updateDepth(4);
+		cfg.queries().evaluationMode(QueryEvaluationMode.LAZY);
+		cfg.diagnostic().addListener(new DiagnosticToConsole());
+
+		return Db4o.openFile(cfg, "XMLSpider-" + version + ".db4o");
+	}
+	
+	protected Page getPageByURI(FreenetURI uri) {
+		Query query = db.query();
+		query.constrain(Page.class);
+		query.descend("uri").constrain(uri.toString());
+		ObjectSet<Page> set = query.execute();
+
+		if (set.hasNext())
+			return set.next();
+		else
+			return null;
+	}
+
+	protected Page getPageById(long id) {
+		Query query = db.query();
+		query.constrain(Page.class);
+		query.descend("id").constrain(id);
+		ObjectSet<Page> set = query.execute();
+
+		if (set.hasNext())
+			return set.next();
+		else
+			return null;
 	}
 }
