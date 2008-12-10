@@ -241,11 +241,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 			toStart = new ArrayList<ClientGetter>(maxParallelRequests - running);
 
-			for (int i = running; i < maxParallelRequests; i++) {
-				if (!queuedSet.hasNext())
-					break;
-
+			while (running + toStart.size() < maxParallelRequests && queuedSet.hasNext()) {
 				Page page = queuedSet.next();
+
 				if (runningFetch.containsKey(page))
 					continue;
 
