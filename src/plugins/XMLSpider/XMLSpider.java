@@ -558,6 +558,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		String str = it.next();
 		String currentPrefix = str.substring(0, prefix);
+		list.add(str);
 				
 		int i = 0;
 		while(it.hasNext())
