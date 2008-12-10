@@ -385,7 +385,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				db.store(page);
 			} else if (fe.isFatal() || tries > 3) {
 				// too many tries or fatal, mark as failed
-				runningFetch.remove(page.id);
+				runningFetch.remove(page);
 				page.status = Status.FAILED;
 				page.lastChange = System.currentTimeMillis();
 				db.store(page);
