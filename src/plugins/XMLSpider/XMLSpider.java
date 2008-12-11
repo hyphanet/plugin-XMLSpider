@@ -1434,7 +1434,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		cfg.objectClass(Page.class).objectField("status").indexed(true);
 		cfg.objectClass(Page.class).objectField("lastChange").indexed(true);		
 
-		cfg.objectClass(Page.class).callConstructors(true);
+		cfg.objectClass(Page.class).callConstructor(true);
 
 		cfg.objectClass(Page.class).cascadeOnActivate(true);
 		cfg.objectClass(Page.class).cascadeOnUpdate(true);
