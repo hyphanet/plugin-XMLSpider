@@ -956,8 +956,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		/* Initialize Fetch Context */
 		this.ctx = core.makeClient((short) 0).getFetchContext();
-		ctx.maxSplitfileBlockRetries = 10;
-		ctx.maxNonSplitfileRetries = 10;
+		ctx.maxSplitfileBlockRetries = 2;
+		ctx.maxNonSplitfileRetries = 2;
 		ctx.maxTempLength = 2 * 1024 * 1024;
 		ctx.maxOutputLength = 2 * 1024 * 1024;
 		allowedMIMETypes = new HashSet<String>();
