@@ -392,34 +392,26 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		Logger.minor(this, "Failed: [" + tries + "] " + page + " : " + fe, fe);
 
 		synchronized (this) {
+			runningFetch.remove(page);
+
 			if (fe.newURI != null) {
 				// redirect, mark as successed
 				queueURI(fe.newURI, "redirect from " + state.getURI());
 
-				runningFetch.remove(page);
 				page.status = Status.SUCCEEDED;
 				page.lastChange = System.currentTimeMillis();
 				db.store(page);
 			} else if (fe.isFatal() || tries > 3) {
 				// too many tries or fatal, mark as failed
-				runningFetch.remove(page);
 				page.status = Status.FAILED;
 				page.lastChange = System.currentTimeMillis();
 				db.store(page);
 			} else if (!stopped) {
-				// Retry  
-				// FIXME why? the original version say this keep off the cooldown queue
-				ClientGetter getter = null;
-				try {
-					getter = makeGetter(page, tries + 1);
-					getter.start();
-					runningFetch.put(page, getter);
-				} catch (MalformedURLException e) {
-					Logger.error(this, "IMPOSSIBLE-Malformed URI: " + page, e);
-				} catch (FetchException e) {
-					onFailure(e, getter, ((MyClientCallback) getter.getClientCallback()).page,
-							((MyClientCallback) getter.getClientCallback()).tries);
-				}
+				// requeue at back
+				page.status = Status.QUEUED;
+				page.lastChange = System.currentTimeMillis();
+
+				db.store(page);
 			}
 		}
 
