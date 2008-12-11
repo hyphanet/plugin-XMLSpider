@@ -1352,6 +1352,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	private boolean mustWriteIndex = false;
 	
 	public void makeIndex() throws Exception {
+		synchronized(this) {
+			db.commit();
+		}
+
 		try {
 			synchronized(this) {
 				if(!mustWriteIndex) {
