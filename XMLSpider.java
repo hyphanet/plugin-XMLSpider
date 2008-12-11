@@ -206,6 +206,15 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			sURI.endsWith(".css") ||
 			sURI.endsWith(".gif") ||
 			sURI.endsWith(".zip") ||
+			sURI.endsWith(".jar") ||
+			sURI.endsWith(".tar.gz") ||
+			sURI.endsWith(".tar.bz2") ||
+			sURI.endsWith(".tbz2") ||
+			sURI.endsWith(".tgz") ||
+			sURI.endsWith(".tar") ||
+			sURI.endsWith(".exe") ||
+			sURI.endsWith(".rar") ||
+			sURI.endsWith(".7z") ||
 			sURI.endsWith(".avi") ||
 			sURI.endsWith(".ico") ||
 			sURI.endsWith(".xpi") ||
