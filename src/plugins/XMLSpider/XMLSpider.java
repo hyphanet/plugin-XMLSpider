@@ -102,8 +102,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		Status status = Status.QUEUED;
 		/** Queued Time */
 		long lastChange = System.currentTimeMillis();
-		/** Document Frequency (DF) */
-		long df;
+		/** Comment, for debugging */
+		String comment;
 
 		@Override
 		public int hashCode() {
@@ -124,7 +124,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		@Override
 		public String toString() {
-			return "[PAGE: id=" + id + ", title=" + pageTitle + ", uri=" + uri + ", status=" + status + ", df=" + df
+			return "[PAGE: id=" + id + ", title=" + pageTitle + ", uri=" + uri + ", status=" + status + ", comment="
+			        + comment
 			+ "]";
 		}
 	}
@@ -198,7 +199,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * Adds the found uri to the list of to-be-retrieved uris. <p>Every usk uri added as ssk.
 	 * @param uri the new uri that needs to be fetched for further indexing
 	 */
-	public synchronized void queueURI(FreenetURI uri) {
+	public synchronized void queueURI(FreenetURI uri, String comment) {
 		String sURI = uri.toString();
 		if (sURI.endsWith(".png") ||
 			sURI.endsWith(".jpg") ||
@@ -225,6 +226,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			Page page = new Page();
 			page.uri = uri.toString();
 			page.id = maxId.incrementAndGet();
+			page.comment = comment;
 
 			db.store(page);
 		}
@@ -233,7 +235,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	private void startSomeRequests() {
 		FreenetURI[] initialURIs = core.getBookmarkURIs();
 		for (int i = 0; i < initialURIs.length; i++)
-			queueURI(initialURIs[i]);
+			queueURI(initialURIs[i], "bookmark");
 
 		ArrayList<ClientGetter> toStart = null;
 		synchronized (this) {
@@ -389,7 +391,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		synchronized (this) {
 			if (fe.newURI != null) {
 				// redirect, mark as successed
-				queueURI(fe.newURI);
+				queueURI(fe.newURI, "redirect from " + state.getURI());
 
 				runningFetch.remove(page);
 				page.status = Status.SUCCEEDED;
@@ -1021,7 +1023,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 					}
 				}
 				out.append("<p>URI added :"+uriParam+"</p>");
-				queueURI(uri);
+				queueURI(uri, "manually");
 				startSomeRequests();
 			} catch (MalformedURLException mue1) {
 				out.append("<p>MalFormed URI: "+uriParam+"</p");
@@ -1064,7 +1066,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 		
 		for (Page page : it)
-			out.append("<code>" + page.uri + "</code><br/>");
+			out.append("<code title=\"" + page.comment.replace("\"", "&#34;") + "\">" + page.uri + "</code><br/>");
 	}
 
 	private void appendDefaultPageStart(StringBuilder out, String stylesheet) {
@@ -1129,27 +1131,27 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		out.append("<p><h3>Running Fetches</h3></p>");
 		out.append("<br/>Size :" + runningFetchesSnapshotSize + "<br/>");
 		for (Page page : runningFetchesSnapshot)
-			out.append("<code>" + page.uri + "</code><br/>");
+			out.append("<code title=\"" + page.comment.replace("\"", "&#34;") + "\">" + page.uri + "</code><br/>");
 		out.append("<p><a href=\"?list="+"running"+"\">Show all</a><br/></p>");
 
 		
 		out.append("<p><h3>Queued URIs</h3></p>");
 		out.append("<br/>Size :" + queuedSnapshotSize + "<br/>");
 		for (Page page : queuedSnapshot)
-			out.append("<code>" + page.uri + "</code><br/>");
+			out.append("<code title=\"" + page.comment.replace("\"", "&#34;") + "\">" + page.uri + "</code><br/>");
 		out.append("<p><a href=\"?list=\">Show all</a><br/></p>");
 	
 	
 		out.append("<p><h3>Visited URIs</h3></p>");
 		out.append("<br/>Size :" + visitedSnapshotSize + "<br/>");
 		for (Page page : visitedSnapshot)
-			out.append("<code>" + page.uri + "</code><br/>");
+			out.append("<code title=\"" + page.comment.replace("\"", "&#34;") + "\">" + page.uri + "</code><br/>");
 		out.append("<p><a href=\"?list="+"visited"+"\">Show all</a><br/></p>");
 		
 		out.append("<p><h3>Failed URIs</h3></p>");
 		out.append("<br/>Size :" + failedSnapshotSize + "<br/>");
 		for (Page page : failedSnapshot)
-			out.append("<code>" + page.uri + "</code><br/>");
+			out.append("<code title=\"" + page.comment.replace("\"", "&#34;") + "\">" + page.uri + "</code><br/>");
 		out.append("<p><a href=\"?list="+"failed"+"\">Show all</a><br/></p>");
 		out.append("<p>Time taken in generating index = "+time_taken+"</p>");
 	}
@@ -1186,7 +1188,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		public void foundURI(FreenetURI uri, boolean inline){
 
 			Logger.minor(this, "foundURI " + uri + " on " + page);
-			queueURI(uri);
+			queueURI(uri, "Added from " + page.uri);
 			// FIXME re-enable outlinks/inlinks when we can do something useful with them
 //			synchronized(XMLSpider.this) {
 //			Integer iduri = (Integer) uriIds.get(uri);
@@ -1390,7 +1392,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		if(runningFetchesByURI.containsKey(uri)) runningFetchesByURI.remove(uri);
 		uri = key.getURI().setSuggestedEdition(l);
 		 */
-		queueURI(uri);
+		queueURI(uri, "USK found edition");
 	}
 
 	public short getPollingPriorityNormal() {
