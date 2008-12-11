@@ -1228,8 +1228,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 
 		public void onText(String s, String type, URI baseURI){
-			
-			Logger.minor(this, "onText on " + page.id + " (" + baseURI + ")");
+			Logger.debug(this, "onText on " + page.id + " (" + baseURI + ")");
 
 			if((type != null) && (type.length() != 0) && type.toLowerCase().equals("title")
 					&& (s != null) && (s.length() != 0) && (s.indexOf('\n') < 0)) {
