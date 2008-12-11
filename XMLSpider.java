@@ -199,6 +199,18 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * @param uri the new uri that needs to be fetched for further indexing
 	 */
 	public synchronized void queueURI(FreenetURI uri) {
+		String sURI = uri.toString();
+		if (sURI.endsWith(".png") ||
+			sURI.endsWith(".jpg") ||
+			sURI.endsWith(".css") ||
+			sURI.endsWith(".gif") ||
+			sURI.endsWith(".zip") ||
+			sURI.endsWith(".avi") ||
+			sURI.endsWith(".ico") ||
+			sURI.endsWith(".xpi") ||
+			sURI.endsWith(".iso"))
+			return;	// be smart
+
 		if (uri.isUSK()) {
 			if(uri.getSuggestedEdition() < 0)
 				uri = uri.setSuggestedEdition((-1)* uri.getSuggestedEdition());
