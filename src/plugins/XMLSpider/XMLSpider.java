@@ -182,9 +182,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	private static final String indexOwnerEmail = null;
 	
 //	private final HashMap lastPositionByURI = new HashMap(); /* String (URI) -> Integer */ /* Use to determine word position on each uri */
-	private final HashMap<Long, Integer> lastPositionById = new HashMap<Long, Integer>();
+	private final HashMap<Long, Long> lastPositionById = new HashMap<Long, Long>();
 //	private final HashMap positionsByWordByURI = new HashMap(); /* String (URI) -> HashMap (String (word) -> Integer[] (Positions)) */
-	private final HashMap<Long, HashMap<String, Integer[]>> positionsByWordById = new HashMap<Long, HashMap<String, Integer[]>>();
+	private final HashMap<Long, HashMap<String, Long[]>> positionsByWordById = new HashMap<Long, HashMap<String, Long[]>>();
 	// Can have many; this limit only exists to save memory.
 	private static final int maxParallelRequests = 100;
 	private int maxShownURIs = 15;
@@ -739,8 +739,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				
 				/* Position by position */
 
-				HashMap<String, Integer[]> positionsForGivenWord = positionsByWordById.get(x);
-				Integer[] positions = (Integer[])positionsForGivenWord.get(str);
+				HashMap<String, Long[]> positionsForGivenWord = positionsByWordById.get(x);
+				Long[] positions = positionsForGivenWord.get(str);
 				StringBuilder positionList = new StringBuilder();
 
 				for(int k=0; k < positions.length ; k++) {
@@ -1257,11 +1257,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			 * FIXME - replace with a real tokenizor
 			 */
 			String[] words = s.split("[^\\p{L}\\{N}]");
-			Integer lastPosition = null;
+			Long lastPosition = null;
 			lastPosition = lastPositionById.get(page.id);
 
 			if(lastPosition == null)
-				lastPosition = 1; 
+				lastPosition = 1L; 
 			for (int i = 0; i < words.length; i++) {
 				String word = words[i];
 				if ((word == null) || (word.length() == 0))
@@ -1284,7 +1284,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		}
 
-		private void addWord(String word, int position, Long id) throws Exception {
+		private void addWord(String word, long position, Long id) throws Exception {
 			synchronized(XMLSpider.this) {
 			if(word.length() < 3)
 				return;
@@ -1293,7 +1293,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			idsWithWords.add(id);
 
 			/* Word position indexation */
-			HashMap<String, Integer[]> wordPositionsForOneUri = positionsByWordById.get(id); /*
+			HashMap<String, Long[]> wordPositionsForOneUri = positionsByWordById.get(id); /*
 																								 * For
 																								 * a
 																								 * given
@@ -1310,18 +1310,18 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 																								 * position
 																								 */
 			if(wordPositionsForOneUri == null) {
-				wordPositionsForOneUri = new HashMap<String, Integer[]>();
-				wordPositionsForOneUri.put(word, new Integer[] { position });
+				wordPositionsForOneUri = new HashMap<String, Long[]>();
+				wordPositionsForOneUri.put(word, new Long[] { position });
 				positionsByWordById.put(id, wordPositionsForOneUri);
 			} 
 			else {
-				Integer[] positions = wordPositionsForOneUri.get(word);
+				Long[] positions = wordPositionsForOneUri.get(word);
 				if(positions == null) {
-					positions = new Integer[] { position };
+					positions = new Long[] { position };
 					wordPositionsForOneUri.put(word, positions);
 				} 
 				else {
-					Integer[] newPositions = new Integer[positions.length + 1];
+					Long[] newPositions = new Long[positions.length + 1];
 					System.arraycopy(positions, 0, newPositions, 0, positions.length);
 					newPositions[positions.length] = position;
 					wordPositionsForOneUri.put(word, newPositions);
