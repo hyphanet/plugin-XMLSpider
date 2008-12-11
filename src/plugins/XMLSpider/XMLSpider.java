@@ -182,7 +182,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	private static final String indexOwnerEmail = null;
 	
 //	private final HashMap lastPositionByURI = new HashMap(); /* String (URI) -> Integer */ /* Use to determine word position on each uri */
-	private final HashMap<Long, Long> lastPositionById = new HashMap<Long, Long>();
 //	private final HashMap positionsByWordByURI = new HashMap(); /* String (URI) -> HashMap (String (word) -> Integer[] (Positions)) */
 	private final HashMap<Long, HashMap<String, Long[]>> positionsByWordById = new HashMap<Long, HashMap<String, Long[]>>();
 	// Can have many; this limit only exists to save memory.
@@ -1239,7 +1238,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			startSomeRequests();
 		}
 
-
+		Long lastPosition = null;
+		
 		public void onText(String s, String type, URI baseURI){
 			Logger.debug(this, "onText on " + page.id + " (" + baseURI + ")");
 
@@ -1257,8 +1257,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			 * FIXME - replace with a real tokenizor
 			 */
 			String[] words = s.split("[^\\p{L}\\{N}]");
-			Long lastPosition = null;
-			lastPosition = lastPositionById.get(page.id);
 
 			if(lastPosition == null)
 				lastPosition = 1L; 
@@ -1279,9 +1277,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 			if(type == null) {
 				lastPosition = lastPosition + words.length;
-				lastPositionById.put(page.id, lastPosition);
 			}
-
 		}
 
 		private void addWord(String word, long position, Long id) throws Exception {
