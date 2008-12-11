@@ -105,6 +105,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		/** Comment, for debugging */
 		String comment;
 
+		public Page() {}	// for db4o callConstructors(true)
+
 		@Override
 		public int hashCode() {
 			return (int) (id ^ (id >>> 32));
@@ -1427,6 +1429,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		cfg.objectClass(Page.class).objectField("uri").indexed(true);
 		cfg.objectClass(Page.class).objectField("status").indexed(true);
 		cfg.objectClass(Page.class).objectField("lastChange").indexed(true);		
+
+		cfg.objectClass(Page.class).callConstructors(true);
 
 		cfg.objectClass(Page.class).cascadeOnActivate(true);
 		cfg.objectClass(Page.class).cascadeOnUpdate(true);
