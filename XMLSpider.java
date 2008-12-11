@@ -142,8 +142,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public TreeMap<String, String> tMap = new TreeMap<String, String>();
 	protected AtomicLong maxPageId;
 	
-	private final HashSet<Long> idsWithWords = new HashSet<Long>();
-	
 	private final HashMap<String, Long[]> idsByWord = new HashMap<String, Long[]>();
 	
 	private Vector<String> indices;
@@ -446,7 +444,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	private synchronized void produceIndex2() throws IOException,NoSuchAlgorithmException {
 		// Produce the main index file.
 
-		if (idsByWord.isEmpty() || idsWithWords.isEmpty()) {
+		if (idsByWord.isEmpty()) {
 			System.out.println("No URIs with words");
 			return;
 		}
@@ -569,7 +567,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	private synchronized void generateIndex2() throws Exception{
 		Logger.normal(this, "Generating index...");
 		//using the tMap generate the xml indices
-		if (idsByWord.isEmpty() || idsWithWords.isEmpty()) {
+		if (idsByWord.isEmpty()) {
 			System.out.println("No URIs with words");
 			return;
 		}
@@ -1286,7 +1284,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				return;
 
 			Long[] ids = idsByWord.get(word);
-			idsWithWords.add(id);
 
 			/* Word position indexation */
 			HashMap<String, Long[]> wordPositionsForOneUri = positionsByWordById.get(id); /*
