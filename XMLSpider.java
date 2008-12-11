@@ -285,7 +285,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				g.start();
 				Logger.minor(this, g + " started");
 			} catch (FetchException e) {
-                Logger.error(this, "Fetch Exception: " + g, e);
+                Logger.minor(this, "Fetch Exception: " + g, e);
 				onFailure(e, g, ((MyClientCallback) g.getClientCallback()).page, ((MyClientCallback) g
 				        .getClientCallback()).tries);
 			}
@@ -389,7 +389,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}
 
 	public void onFailure(FetchException fe, ClientGetter state, Page page, int tries) {
-		Logger.minor(this, "Failed: [" + tries + "] " + page + " : " + fe, fe);
+		Logger.minor(this, "Failed: [" + tries + "] " + page + " : " + state, fe);
 
 		synchronized (this) {
 			runningFetch.remove(page);
