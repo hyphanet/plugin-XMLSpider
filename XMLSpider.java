@@ -140,7 +140,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * Stores the found words along with md5
 	 */
 	public TreeMap<String, String> tMap = new TreeMap<String, String>();
-	protected AtomicLong maxId;
+	protected AtomicLong maxPageId;
 	
 	private final HashSet<Long> idsWithWords = new HashSet<Long>();
 	
@@ -236,7 +236,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		if (getPageByURI(uri) == null) {
 			Page page = new Page();
 			page.uri = uri.toString();
-			page.id = maxId.incrementAndGet();
+			page.id = maxPageId.incrementAndGet();
 			page.comment = comment;
 
 			db.store(page);
@@ -983,9 +983,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			query.descend("id").orderDescending();
 			ObjectSet<Page> set = query.execute();
 			if (set.hasNext())
-				maxId = new AtomicLong(set.next().id);
+				maxPageId = new AtomicLong(set.next().id);
 			else
-				maxId = new AtomicLong(0);
+				maxPageId = new AtomicLong(0);
 		}
 		
 		pr.getNode().executor.execute(new Runnable() {
