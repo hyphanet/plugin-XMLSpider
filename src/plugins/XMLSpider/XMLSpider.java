@@ -1196,7 +1196,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		
 		public void foundURI(FreenetURI uri, boolean inline){
 
-			Logger.minor(this, "foundURI " + uri + " on " + page);
+			Logger.debug(this, "foundURI " + uri + " on " + page);
 			queueURI(uri, "Added from " + page.uri);
 			// FIXME re-enable outlinks/inlinks when we can do something useful with them
 //			synchronized(XMLSpider.this) {
