@@ -194,31 +194,26 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	private boolean stopped = true;
 	PluginRespirator pr;
 
+	private final static String[] BADLIST_EXTENSTION = new String[] { 
+		".ico", ".bmp", ".png", ".jpg", ".gif",		// image
+		".zip", ".jar", ".gz" , ".bz2", ".rar",		// archive
+		".7z" , ".rar", ".arj", ".rpm",	".deb",
+		".xpi", ".ace", ".cab", ".lza", ".lzh",
+		".ace",
+		".exe", ".iso",								// binary
+		".mpg", ".ogg", ".mp3", ".avi",				// media
+		".css", ".sig"								// other
+	};
+
 	/**
 	 * Adds the found uri to the list of to-be-retrieved uris. <p>Every usk uri added as ssk.
 	 * @param uri the new uri that needs to be fetched for further indexing
 	 */
 	public synchronized void queueURI(FreenetURI uri, String comment) {
 		String sURI = uri.toString();
-		if (sURI.endsWith(".png") ||
-			sURI.endsWith(".jpg") ||
-			sURI.endsWith(".css") ||
-			sURI.endsWith(".gif") ||
-			sURI.endsWith(".zip") ||
-			sURI.endsWith(".jar") ||
-			sURI.endsWith(".tar.gz") ||
-			sURI.endsWith(".tar.bz2") ||
-			sURI.endsWith(".tbz2") ||
-			sURI.endsWith(".tgz") ||
-			sURI.endsWith(".tar") ||
-			sURI.endsWith(".exe") ||
-			sURI.endsWith(".rar") ||
-			sURI.endsWith(".7z") ||
-			sURI.endsWith(".avi") ||
-			sURI.endsWith(".ico") ||
-			sURI.endsWith(".xpi") ||
-			sURI.endsWith(".iso"))
-			return;	// be smart
+		for (String ext : BADLIST_EXTENSTION)
+			if (sURI.endsWith(ext))
+				return;	// be smart
 
 		if (uri.isUSK()) {
 			if(uri.getSuggestedEdition() < 0)
