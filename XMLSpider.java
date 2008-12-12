@@ -560,7 +560,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 
 		indices = new Vector<String>();
-		int prefix = 1;
+		int prefix = (int)(( Math.log(tMap.size()) - Math.log(MAX_ENTRIES) ) / Math.log(16));
+		if (prefix == 0) prefix = 1;
 		match = 1;
 		Vector<String> list = new Vector<String>();
 		Iterator<String> it = tMap.keySet().iterator();
