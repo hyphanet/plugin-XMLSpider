@@ -70,6 +70,7 @@ import freenet.pluginmanager.FredPluginThreadless;
 import freenet.pluginmanager.FredPluginVersioned;
 import freenet.pluginmanager.PluginHTTPException;
 import freenet.pluginmanager.PluginRespirator;
+import freenet.support.HTMLEncoder;
 import freenet.support.Logger;
 import freenet.support.api.Bucket;
 import freenet.support.api.HTTPRequest;
@@ -1059,7 +1060,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 		
 		for (Page page : it)
-			out.append("<code title=\"" + page.comment.replace("\"", "&#34;") + "\">" + page.uri + "</code><br/>");
+			out.append("<code title=\"" + HTMLEncoder.encode(page.comment) + "\">" + HTMLEncoder.encode(page.uri)
+			        + "</code><br/>");
 	}
 
 	private void appendDefaultPageStart(StringBuilder out, String stylesheet) {
@@ -1124,27 +1126,31 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		out.append("<p><h3>Running Fetches</h3></p>");
 		out.append("<br/>Size :" + runningFetchesSnapshotSize + "<br/>");
 		for (Page page : runningFetchesSnapshot)
-			out.append("<code title=\"" + page.comment.replace("\"", "&#34;") + "\">" + page.uri + "</code><br/>");
+			out.append("<code title=\"" + HTMLEncoder.encode(page.comment) + "\">" + HTMLEncoder.encode(page.uri)
+			        + "</code><br/>");
 		out.append("<p><a href=\"?list="+"running"+"\">Show all</a><br/></p>");
 
 		
 		out.append("<p><h3>Queued URIs</h3></p>");
 		out.append("<br/>Size :" + queuedSnapshotSize + "<br/>");
 		for (Page page : queuedSnapshot)
-			out.append("<code title=\"" + page.comment.replace("\"", "&#34;") + "\">" + page.uri + "</code><br/>");
+			out.append("<code title=\"" + HTMLEncoder.encode(page.comment) + "\">" + HTMLEncoder.encode(page.uri)
+			        + "</code><br/>");
 		out.append("<p><a href=\"?list=\">Show all</a><br/></p>");
 	
 	
 		out.append("<p><h3>Visited URIs</h3></p>");
 		out.append("<br/>Size :" + visitedSnapshotSize + "<br/>");
 		for (Page page : visitedSnapshot)
-			out.append("<code title=\"" + page.comment.replace("\"", "&#34;") + "\">" + page.uri + "</code><br/>");
+			out.append("<code title=\"" + HTMLEncoder.encode(page.comment) + "\">" + HTMLEncoder.encode(page.uri)
+			        + "</code><br/>");
 		out.append("<p><a href=\"?list="+"visited"+"\">Show all</a><br/></p>");
 		
 		out.append("<p><h3>Failed URIs</h3></p>");
 		out.append("<br/>Size :" + failedSnapshotSize + "<br/>");
 		for (Page page : failedSnapshot)
-			out.append("<code title=\"" + page.comment.replace("\"", "&#34;") + "\">" + page.uri + "</code><br/>");
+			out.append("<code title=\"" + HTMLEncoder.encode(page.comment) + "\">" + HTMLEncoder.encode(page.uri)
+			        + "</code><br/>");
 		out.append("<p><a href=\"?list="+"failed"+"\">Show all</a><br/></p>");
 		out.append("<p>Time taken in generating index = "+time_taken+"</p>");
 	}
