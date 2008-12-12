@@ -100,7 +100,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		String pageTitle;
 		/** Status */
 		Status status = Status.QUEUED;
-		/** Queued Time */
+		/** Last Change Time */
 		long lastChange = System.currentTimeMillis();
 		/** Comment, for debugging */
 		String comment;
