@@ -295,15 +295,13 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 	private class MyClientCallback implements ClientCallback {
 		final Page page;
-		final int tries;
 		
-		public MyClientCallback(Page page, int tries) {
+		public MyClientCallback(Page page) {
 			this.page = page;
-			this.tries = tries;
 		}
 
 		public void onFailure(FetchException e, ClientGetter state) {
-			XMLSpider.this.onFailure(e, state, page, tries);
+			XMLSpider.this.onFailure(e, state, page);
 		}
 
 		public void onFailure(InsertException e, BaseClientPutter state) {
@@ -388,20 +386,20 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 	}
 
-	public void onFailure(FetchException fe, ClientGetter state, Page page, int tries) {
-		Logger.minor(this, "Failed: [" + tries + "] " + page + " : " + state, fe);
+	public void onFailure(FetchException fe, ClientGetter state, Page page) {
+		Logger.minor(this, "Failed: " + page + " : " + state, fe);
 
 		synchronized (this) {
 			runningFetch.remove(page);
 
 			if (fe.newURI != null) {
-				// redirect, mark as successed
+				// redirect, mark as succeeded
 				queueURI(fe.newURI, "redirect from " + state.getURI());
 
 				page.status = Status.SUCCEEDED;
 				page.lastChange = System.currentTimeMillis();
 				db.store(page);
-			} else if (fe.isFatal() || tries > 3) {
+			} else if (fe.isFatal()) {
 				// too many tries or fatal, mark as failed
 				page.status = Status.FAILED;
 				page.lastChange = System.currentTimeMillis();
