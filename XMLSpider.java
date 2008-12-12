@@ -1427,9 +1427,13 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		cfg.queries().evaluationMode(QueryEvaluationMode.LAZY);
 		cfg.diagnostic().addListener(new DiagnosticToConsole());
 
-		new File("XMLSpider-" + version + ".db4o").delete();
+		File db = new File("XMLSpider-" + version + ".db4o");
+		db.delete();
 
-		return Db4o.openFile(cfg, "XMLSpider-" + version + ".db4o");
+		ObjectContainer oc = Db4o.openFile(cfg, "XMLSpider-" + version + ".db4o");
+		db.deleteOnExit();
+
+		return oc;
 	}
 	
 	protected Page getPageByURI(FreenetURI uri) {
