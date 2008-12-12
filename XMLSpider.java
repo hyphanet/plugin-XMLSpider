@@ -265,7 +265,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 					continue;
 
 				try {
-					ClientGetter getter = makeGetter(page, 0);
+					ClientGetter getter = makeGetter(page);
 
 					Logger.minor(this, "Starting " + getter + " " + page);
 					toStart.add(getter);
@@ -286,8 +286,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				Logger.minor(this, g + " started");
 			} catch (FetchException e) {
                 Logger.minor(this, "Fetch Exception: " + g, e);
-				onFailure(e, g, ((MyClientCallback) g.getClientCallback()).page, ((MyClientCallback) g
-				        .getClientCallback()).tries);
+				onFailure(e, g, ((MyClientCallback) g.getClientCallback()).page);
 			}
 		}
 	}
@@ -329,12 +328,12 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 		
 		public String toString() {
-			return super.toString() + ":" + "tries=" + tries + ",page=" + page;
+			return super.toString() + ":" + page;
 		}		
 	}
 	
-	private ClientGetter makeGetter(Page page, int tries) throws MalformedURLException {
-		ClientGetter getter = new ClientGetter(new MyClientCallback(page, tries),
+	private ClientGetter makeGetter(Page page) throws MalformedURLException {
+		ClientGetter getter = new ClientGetter(new MyClientCallback(page),
 		        core.requestStarters.chkFetchScheduler, core.requestStarters.sskFetchScheduler,
 		        new FreenetURI(page.uri), ctx, PRIORITY_CLASS, this, null, null);
 		return getter;
