@@ -1224,7 +1224,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			startSomeRequests();
 		}
 
-		Long lastPosition = null;
+		Integer lastPosition = null;
 		
 		public void onText(String s, String type, URI baseURI){
 			Logger.debug(this, "onText on " + page.id + " (" + baseURI + ")");
