@@ -133,6 +133,21 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 	}
 
+	static class Term {
+		/** MD5 of the term */
+		String md5;
+		/** Term */
+		String word;
+
+		public Term(String word) {
+			this.word = word;
+			md5 = MD5(word);
+		}
+
+		public Term() {
+		}
+	}
+	
 	/** Document ID of fetching documents */
 	protected Map<Page, ClientGetter> runningFetch = new HashMap<Page, ClientGetter>();
 
@@ -797,14 +812,19 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	/*
 	 * calculate the md5 for a given string
 	 */
-	private static String MD5(String text) throws NoSuchAlgorithmException, UnsupportedEncodingException  {
-		MessageDigest md;
-		md = MessageDigest.getInstance("MD5");
-		byte[] md5hash = new byte[32];
-		byte[] b = text.getBytes("UTF-8");
-		md.update(b, 0, b.length);
-		md5hash = md.digest();
-		return convertToHex(md5hash);
+	private static String MD5(String text) {
+		try {
+			MessageDigest md = MessageDigest.getInstance("MD5");
+			byte[] md5hash = new byte[32];
+			byte[] b = text.getBytes("UTF-8");
+			md.update(b, 0, b.length);
+			md5hash = md.digest();
+			return convertToHex(md5hash);
+		} catch (UnsupportedEncodingException e) {
+			throw new RuntimeException("UTF-8 not supported", e);
+		} catch (NoSuchAlgorithmException e) {
+			throw new RuntimeException("MD5 not supported", e);
+		}
 	}
 
 	public void generateSubIndex(String filename){
