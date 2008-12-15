@@ -220,7 +220,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * Adds the found uri to the list of to-be-retrieved uris. <p>Every usk uri added as ssk.
 	 * @param uri the new uri that needs to be fetched for further indexing
 	 */
-	public synchronized void queueURI(FreenetURI uri, String comment) {
+	public void queueURI(FreenetURI uri, String comment) {
 		String sURI = uri.toString();
 		for (String ext : BADLIST_EXTENSTION)
 			if (sURI.endsWith(ext))
@@ -236,13 +236,15 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			catch(Exception e){}
 		}
 
-		if (getPageByURI(uri) == null) {
-			Page page = new Page();
-			page.uri = uri.toString();
-			page.id = maxPageId.incrementAndGet();
-			page.comment = comment;
+		synchronized (this) {
+			if (getPageByURI(uri) == null) {
+				Page page = new Page();
+				page.uri = uri.toString();
+				page.id = maxPageId.incrementAndGet();
+				page.comment = comment;
 
-			db.store(page);
+				db.store(page);
+			}
 		}
 	}
 
