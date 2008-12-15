@@ -255,9 +255,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		ArrayList<ClientGetter> toStart = null;
 		synchronized (this) {
-			if (stopped) {
+			if (stopped) 
 				return;
-			}
+			
 			int running = runningFetch.size();
 			
 			Query query = db.query();
@@ -360,6 +360,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * @param page
 	 */
 	public void onSuccess(FetchResult result, ClientGetter state, Page page) {
+		synchronized (this) {
+			if (stopped)
+				return;
+		}
+		
 		FreenetURI uri = state.getURI();
 		page.status = Status.SUCCEEDED; // Content filter may throw, but we mark it as success anyway
 
@@ -402,8 +407,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		Logger.minor(this, "Failed: " + page + " : " + state, fe);
 
 		synchronized (this) {
-			runningFetch.remove(page);
+			if (stopped)
+				return;
 
+			runningFetch.remove(page);
+			
 			if (fe.newURI != null) {
 				// redirect, mark as succeeded
 				queueURI(fe.newURI, "redirect from " + state.getURI());
@@ -416,7 +424,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				page.status = Status.FAILED;
 				page.lastChange = System.currentTimeMillis();
 				db.store(page);
-			} else if (!stopped) {
+			} else {
 				// requeue at back
 				page.status = Status.QUEUED;
 				page.lastChange = System.currentTimeMillis();
@@ -424,9 +432,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				db.store(page);
 			}
 		}
-
-		if (!stopped)
-			startSomeRequests();
+		
+		startSomeRequests();
 	}
 
 	/**
@@ -951,6 +958,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			for (Map.Entry<Page, ClientGetter> me : runningFetch.entrySet()) {
 				me.getValue().cancel();
 			}
+			runningFetch.clear();
 		}
 	}
 
@@ -1304,10 +1312,15 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}
 
 	private boolean mustWriteIndex = false;
+	private boolean writingIndex;
 	
 	public void makeIndex() throws Exception {
 		synchronized(this) {
+			if (writingIndex || stopped)
+				return;
+			
 			db.commit();
+			writingIndex = true;
 		}
 
 		try {
@@ -1326,7 +1339,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		tProducedIndex = System.currentTimeMillis();
 		if(Logger.shouldLog(Logger.MINOR, this)) Logger.minor(this, "Made index, took "+time_taken);
 		} finally {
-			scheduleMakeIndex();
+			if (!stopped)
+				scheduleMakeIndex();
+			writingIndex = false;
 		}
 	}
 
