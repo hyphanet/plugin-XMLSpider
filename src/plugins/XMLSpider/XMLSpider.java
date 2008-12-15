@@ -447,6 +447,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 */
 	private synchronized void makeMainIndex() throws IOException,NoSuchAlgorithmException {
 		// Produce the main index file.
+		Logger.minor(this, "Producing top index...");
 
 		if (idsByWord.isEmpty()) {
 			System.out.println("No URIs with words");
@@ -1318,7 +1319,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		synchronized(this) {
 			if (writingIndex || stopped)
 				return;
-			
+
 			db.commit();
 			writingIndex = true;
 		}
@@ -1326,18 +1327,20 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		try {
 			synchronized(this) {
 				if(!mustWriteIndex) {
-					if(Logger.shouldLog(Logger.MINOR, this)) Logger.minor(this, "Not making index, no data added since last time");
+					Logger.minor(this, "Not making index, no data added since last time");
 					return;
 				}
 				mustWriteIndex = false;
 			}
-		time_taken = System.currentTimeMillis();
-		makeSubIndices();
-		if(Logger.shouldLog(Logger.MINOR, this)) Logger.minor(this, "Producing top index...");
-		makeMainIndex();
-		time_taken = System.currentTimeMillis() - time_taken;
-		tProducedIndex = System.currentTimeMillis();
-		if(Logger.shouldLog(Logger.MINOR, this)) Logger.minor(this, "Made index, took "+time_taken);
+			time_taken = System.currentTimeMillis();
+
+			makeSubIndices();
+			makeMainIndex();
+
+			time_taken = System.currentTimeMillis() - time_taken;
+			tProducedIndex = System.currentTimeMillis();
+
+			Logger.minor(this, "Made index, took " + time_taken);
 		} finally {
 			if (!stopped)
 				scheduleMakeIndex();
