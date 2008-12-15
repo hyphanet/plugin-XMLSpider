@@ -15,6 +15,7 @@ import java.net.URISyntaxException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -54,6 +55,7 @@ import freenet.client.async.BaseClientPutter;
 import freenet.client.async.ClientCallback;
 import freenet.client.async.ClientGetter;
 import freenet.client.async.USKCallback;
+import freenet.clients.http.PageMaker;
 import freenet.clients.http.filter.ContentFilter;
 import freenet.clients.http.filter.FoundURICallback;
 import freenet.clients.http.filter.UnsafeContentTypeException;
@@ -69,7 +71,7 @@ import freenet.pluginmanager.FredPluginThreadless;
 import freenet.pluginmanager.FredPluginVersioned;
 import freenet.pluginmanager.PluginHTTPException;
 import freenet.pluginmanager.PluginRespirator;
-import freenet.support.HTMLEncoder;
+import freenet.support.HTMLNode;
 import freenet.support.Logger;
 import freenet.support.api.Bucket;
 import freenet.support.api.HTTPRequest;
@@ -160,7 +162,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}
 	
 	/** Document ID of fetching documents */
-	protected Map<Page, ClientGetter> runningFetch = new HashMap<Page, ClientGetter>();
+	protected Map<Page, ClientGetter> runningFetch = Collections.synchronizedMap(new HashMap<Page, ClientGetter>());
 
 	long tProducedIndex;
 	protected AtomicLong maxPageId;
@@ -210,7 +212,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	// Any lower makes it very difficult to debug. Maybe reduce for production - after solving the ARK bugs.
 	private final short PRIORITY_CLASS = RequestStarter.IMMEDIATE_SPLITFILE_PRIORITY_CLASS;
 	private boolean stopped = true;
-	PluginRespirator pr;
+	
+	private PageMaker pageMaker;
 
 	private final static String[] BADLIST_EXTENSTION = new String[] { 
 		".ico", ".bmp", ".png", ".jpg", ".gif",		// image
@@ -971,11 +974,14 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}
 
 	public void runPlugin(PluginRespirator pr){
-		this.pr = pr;
 		this.core = pr.getNode().clientCore;
 
+		this.pageMaker = pr.getPageMaker();
+		pageMaker.addNavigationLink("/plugins/plugins.XMLSpider.XMLSpider", "Home", "Home page", false, null);
+		pageMaker.addNavigationLink("/plugins/", "Plugins page", "Back to Plugins page", false, null);
+
 		/* Initialize Fetch Context */
-		this.ctx = core.makeClient((short) 0).getFetchContext();
+		this.ctx = pr.getHLSimpleClient().getFetchContext();
 		ctx.maxSplitfileBlockRetries = 2;
 		ctx.maxNonSplitfileRetries = 2;
 		ctx.maxTempLength = 2 * 1024 * 1024;
@@ -1018,192 +1024,85 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			}
 		}, "Spider Plugin Starter");
 	}
+	
+	private long getPageCount(Status status) {
+		Query query = db.query();
+		query.constrain(Page.class);
+		query.descend("status").constrain(status);
+		ObjectSet<Page> set = query.execute();
+
+		return set.size();
+	}
+	
+	private void listPage(Status status, HTMLNode parent) {
+		Query query = db.query();
+		query.constrain(Page.class);
+		query.descend("status").constrain(status);
+		query.descend("lastChange").orderDescending();
+		ObjectSet<Page> set = query.execute();
+
+		HTMLNode list = parent.addChild("ol", "style", "overflow: scroll");
+
+		for (int i = 0; i < maxShownURIs && set.hasNext(); i++) {
+			Page page = set.next();
+			list.addChild("li", new String[] { "title" }, new String[] { page.comment }, page.uri);
+		}
+	}
 
 	/**
 	 * Interface to the Spider data
 	 */
 	public String handleHTTPGet(HTTPRequest request) throws PluginHTTPException{
-		StringBuilder out = new StringBuilder();
+		HTMLNode pageNode = pageMaker.getPageNode(pluginName, null);
+		HTMLNode contentNode = pageMaker.getContentNode(pageNode);
 
-		String listname = request.getParam("list");
-		if(listname.length() != 0)
-		{
-			appendDefaultHeader(out,null);
-			out.append("<p><h4>"+listname+" URIs</h4></p>");
-			appendList(listname, out);
-			return out.toString();
-		}
-		appendDefaultPageStart(out,null);
-		String uriParam = request.getParam("adduri");
-		if(uriParam != null && uriParam.length() != 0)
-		{
-			try {
-				FreenetURI uri = new FreenetURI(uriParam);
-				synchronized (this) {
-					// Check if queued already
-					Page page = getPageByURI(uri);
-					if (page != null) {
-						// We have no reliable way to stop a request,
-						// requeue only if it is successed / failed
-						if (page.status == Status.SUCCEEDED || page.status == Status.FAILED) {
-							page.lastChange = System.currentTimeMillis();
-							page.status = Status.QUEUED;
+		HTMLNode overviewTable = contentNode.addChild("table", "class", "column");
+		HTMLNode overviewTableRow = overviewTable.addChild("tr");
 
-							db.store(page);
-						}
-					}
-				}
-				out.append("<p>URI added :"+uriParam+"</p>");
-				queueURI(uri, "manually");
-				startSomeRequests();
-			} catch (MalformedURLException mue1) {
-				out.append("<p>MalFormed URI: "+uriParam+"</p");
+		// Column 1
+		HTMLNode nextTableCell = overviewTableRow.addChild("td", "class", "first");
+		HTMLNode statusBox = pageMaker.getInfobox("Spider Status");
+		statusBox.addChild("%", "Running Request: " + runningFetch.size() + "/" + maxParallelRequests);
+		statusBox.addChild("br");
+		statusBox.addChild("%", "Queued: " + getPageCount(Status.QUEUED));
+		statusBox.addChild("br");
+		statusBox.addChild("%", "Succeeded: " + getPageCount(Status.SUCCEEDED));
+		statusBox.addChild("br");
+		statusBox.addChild("%", "Failed: " + getPageCount(Status.FAILED));
+		nextTableCell.addChild(statusBox);
+
+		// Column 2
+		nextTableCell = overviewTableRow.addChild("td", "class", "second");
+		statusBox = pageMaker.getInfobox("Spider Status");
+		nextTableCell.addChild(statusBox);		
+		
+		HTMLNode runningList = pageMaker.getInfobox("Running URI");
+		synchronized (runningFetch) {
+			HTMLNode list = runningList.addChild("ol", "style", "overflow: scroll");
+
+			Iterator<Page> pi = runningFetch.keySet().iterator();
+			for (int i = 0; i < maxShownURIs && pi.hasNext(); i++) {
+				Page page = pi.next();
+				list.addChild("li", new String[] { "title" }, new String[] { page.comment }, page.uri);
 			}
 		}
-		return out.toString();
+		contentNode.addChild(runningList);
+
+		HTMLNode queuedList = pageMaker.getInfobox("Queued URI");
+		listPage(Status.QUEUED, queuedList);
+		contentNode.addChild(queuedList);
+
+		HTMLNode succeededList = pageMaker.getInfobox("Succeeded URI");
+		listPage(Status.SUCCEEDED, succeededList);
+		contentNode.addChild(succeededList);
+
+		HTMLNode failedList = pageMaker.getInfobox("Failed URI");
+		listPage(Status.FAILED, failedList);
+		contentNode.addChild(failedList);
+
+		return pageNode.generate();
 	}
-/*
- * List the visited, queued, failed and running fetches on the web interface
- */
-	private synchronized void appendList(String listname, StringBuilder out) {
-		Iterable<Page> it = runningFetch.keySet();
-
-		if (listname.equals("running")) {
-			it = runningFetch.keySet();
-		} else if (listname.equals("visited")) {
-			Query query = db.query();
-			query.constrain(Page.class);
-			query.descend("status").constrain(Status.SUCCEEDED);
-			query.descend("lastChange").orderAscending();
-			ObjectSet<Page> set = query.execute();
-
-			it = set;
-		} else if (listname.equals("queued")) {
-			Query query = db.query();
-			query.constrain(Page.class);
-			query.descend("status").constrain(Status.QUEUED);
-			query.descend("lastChange").orderAscending();
-			ObjectSet<Page> set = query.execute();
-
-			it = set;
-		} else if (listname.equals("failed")) {
-			Query query = db.query();
-			query.constrain(Page.class);
-			query.descend("status").constrain(Status.FAILED);
-			query.descend("lastChange").orderAscending();
-			ObjectSet<Page> set = query.execute();
-
-			it = set;
-		}
-		
-		for (Page page : it)
-			out.append("<code title=\"" + HTMLEncoder.encode(page.comment) + "\">" + HTMLEncoder.encode(page.uri)
-			        + "</code><br/>");
-	}
-
-	private void appendDefaultPageStart(StringBuilder out, String stylesheet) {
-
-		out.append("<HTML><HEAD><TITLE>" + pluginName + "</TITLE>");
-		if(stylesheet != null)
-			out.append("<link href=\""+stylesheet+"\" type=\"text/css\" rel=\"stylesheet\" />");
-		out.append("</HEAD><BODY>\n");
-		out.append("<CENTER><H1>" + pluginName + "</H1><BR/><BR/><BR/>\n");
-		out.append("Add uri:");
-		out.append("<form method=\"GET\"><input type=\"text\" name=\"adduri\" /><br/><br/>");
-		out.append("<input type=\"submit\" value=\"Add uri\" /></form>");
-		List<Page> runningFetchesSnapshot;
-		long runningFetchesSnapshotSize;
-		List<Page> visitedSnapshot;
-		long visitedSnapshotSize;
-		List<Page> failedSnapshot;
-		long failedSnapshotSize;
-		List<Page> queuedSnapshot;
-		long queuedSnapshotSize;
-		
-		synchronized(this) {
-			runningFetchesSnapshot = new ArrayList<Page>(maxShownURIs);
-			{
-				Iterator<Page> it = this.runningFetch.keySet().iterator();
-				for (int i = 0; it.hasNext() && i < maxShownURIs; i++)
-					runningFetchesSnapshot.add(it.next());
-				runningFetchesSnapshotSize = runningFetch.size();
-			}
-
-			visitedSnapshot = new ArrayList<Page>(maxShownURIs);
-			Query query = db.query();
-			query.constrain(Page.class);
-			query.descend("status").constrain(Status.SUCCEEDED);
-			query.descend("lastChange").orderAscending();
-			ObjectSet<Page> set = query.execute();
-			for (int i = 0; set.hasNext() && i < maxShownURIs; i++)
-				visitedSnapshot.add(set.next());
-			visitedSnapshotSize = set.size();
-
-			failedSnapshot = new ArrayList<Page>(maxShownURIs);
-			query = db.query();
-			query.constrain(Page.class);
-			query.descend("status").constrain(Status.FAILED);
-			query.descend("lastChange").orderAscending();
-			set = query.execute();
-			for (int i = 0; set.hasNext() && i < maxShownURIs; i++)
-				failedSnapshot.add(set.next());
-			failedSnapshotSize = set.size();
-
-			queuedSnapshot = new ArrayList<Page>(maxShownURIs);
-			query = db.query();
-			query.constrain(Page.class);
-			query.descend("status").constrain(Status.QUEUED);
-			query.descend("lastChange").orderAscending();
-			set = query.execute();
-			for (int i = 0; set.hasNext() && i < maxShownURIs; i++)
-				queuedSnapshot.add(set.next());
-			queuedSnapshotSize = set.size();
-		}
-		
-		out.append("<p><h3>Running Fetches</h3></p>");
-		out.append("<br/>Size :" + runningFetchesSnapshotSize + "<br/>");
-		for (Page page : runningFetchesSnapshot)
-			out.append("<code title=\"" + HTMLEncoder.encode(page.comment) + "\">" + HTMLEncoder.encode(page.uri)
-			        + "</code><br/>");
-		out.append("<p><a href=\"?list="+"running"+"\">Show all</a><br/></p>");
-
-		
-		out.append("<p><h3>Queued URIs</h3></p>");
-		out.append("<br/>Size :" + queuedSnapshotSize + "<br/>");
-		for (Page page : queuedSnapshot)
-			out.append("<code title=\"" + HTMLEncoder.encode(page.comment) + "\">" + HTMLEncoder.encode(page.uri)
-			        + "</code><br/>");
-		out.append("<p><a href=\"?list=\">Show all</a><br/></p>");
 	
-	
-		out.append("<p><h3>Visited URIs</h3></p>");
-		out.append("<br/>Size :" + visitedSnapshotSize + "<br/>");
-		for (Page page : visitedSnapshot)
-			out.append("<code title=\"" + HTMLEncoder.encode(page.comment) + "\">" + HTMLEncoder.encode(page.uri)
-			        + "</code><br/>");
-		out.append("<p><a href=\"?list="+"visited"+"\">Show all</a><br/></p>");
-		
-		out.append("<p><h3>Failed URIs</h3></p>");
-		out.append("<br/>Size :" + failedSnapshotSize + "<br/>");
-		for (Page page : failedSnapshot)
-			out.append("<code title=\"" + HTMLEncoder.encode(page.comment) + "\">" + HTMLEncoder.encode(page.uri)
-			        + "</code><br/>");
-		out.append("<p><a href=\"?list="+"failed"+"\">Show all</a><br/></p>");
-		out.append("<p>Time taken in generating index = "+time_taken+"</p>");
-	}
-
-
-	private void appendDefaultHeader(StringBuilder out, String stylesheet){
-		out.append("<HTML><HEAD><TITLE>" + pluginName + "</TITLE>");
-		if(stylesheet != null)
-			out.append("<link href=\""+stylesheet+"\" type=\"text/css\" rel=\"stylesheet\" />");
-		out.append("</HEAD><BODY>\n");
-		out.append("<CENTER><H1>" + pluginName + "</H1><BR/><BR/><BR/>\n");
-		out.append("Add uri:");
-		out.append("<form method=\"GET\"><input type=\"text\" name=\"adduri\" /><br/><br/>");
-		out.append("<input type=\"submit\" value=\"Add uri\" /></form>");
-	}
-
 	/**
 	 * creates the callback object for each page.
 	 *<p>Used to create inlinks and outlinks for each page separately.
