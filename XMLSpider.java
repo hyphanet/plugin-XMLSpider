@@ -147,14 +147,24 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 	}
 	
+	static class TermPosition {
+		/** Term */
+		String word;
+		/** Page id */
+		long pageId;
+		/** Position List */
+		int[] positions;
+
+		public TermPosition() {
+		}
+	}
+	
 	/** Document ID of fetching documents */
 	protected Map<Page, ClientGetter> runningFetch = new HashMap<Page, ClientGetter>();
 
 	long tProducedIndex;
 	protected AtomicLong maxPageId;
-	
-	private final HashMap<String, Long[]> idsByWord = new HashMap<String, Long[]>();
-	
+		
 	private Vector<String> indices;
 	private int match;
 	private long time_taken;
@@ -190,9 +200,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	private static final String indexOwner = "Freenet";
 	private static final String indexOwnerEmail = null;
 	
-//	private final HashMap lastPositionByURI = new HashMap(); /* String (URI) -> Integer */ /* Use to determine word position on each uri */
-//	private final HashMap positionsByWordByURI = new HashMap(); /* String (URI) -> HashMap (String (word) -> Integer[] (Positions)) */
-	private final HashMap<Long, HashMap<String, Integer[]>> positionsByWordById = new HashMap<Long, HashMap<String, Integer[]>>();
 	// Can have many; this limit only exists to save memory.
 	private static final int maxParallelRequests = 100;
 	private int maxShownURIs = 15;
@@ -361,8 +368,16 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 */
 	public void onSuccess(FetchResult result, ClientGetter state, Page page) {
 		synchronized (this) {
+			while (writingIndex && !stopped) {
+				try {
+					wait();
+				} catch (InterruptedException e) {
+					return;
+				}
+			}
+
 			if (stopped)
-				return;
+				return;    				
 		}
 		
 		FreenetURI uri = state.getURI();
@@ -449,10 +464,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		// Produce the main index file.
 		Logger.minor(this, "Producing top index...");
 
-		if (idsByWord.isEmpty()) {
-			System.out.println("No URIs with words");
-			return;
-		}
 		//the main index file 
 		File outputFile = new File(DEFAULT_INDEX_DIR+"index.xml");
 		// Use a stream so we can explicitly close - minimise number of filehandles used.
@@ -568,11 +579,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 */
 	private synchronized void makeSubIndices() throws Exception{
 		Logger.normal(this, "Generating index...");
-		//using the tMap generate the xml indices
-		if (idsByWord.isEmpty()) {
-			System.out.println("No URIs with words");
-			return;
-		}
 
 		Query query = db.query();
 		query.constrain(Term.class);
@@ -716,18 +722,20 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		for(int i =0;i<list.size();i++)
 		{
 			Element wordElement = xmlDoc.createElement("word");
-			String str = getTermByMd5(list.get(i)).word;
-			wordElement.setAttribute("v",str );
-			Long[] idsForWord = idsByWord.get(str);
-			for (int j = 0; j < idsForWord.length; j++) {
-				Long id = idsForWord[j];
-					Long x = id;
-				if (x == null) {
-					Logger.error(this, "Eh?");
-					continue;
-				}
-				
-				Page page = getPageById(id);
+			Term term = getTermByMd5(list.get(i));
+			wordElement.setAttribute("v", term.word);
+
+				Query query = db.query();
+				query.constrain(TermPosition.class);
+
+				query.descend("word").constrain(term.word);
+				ObjectSet<TermPosition> set = query.execute();
+
+				for (TermPosition termPos : set) {
+					synchronized (termPos) {
+						Page page = getPageById(termPos.pageId);
+						
+						synchronized (page) {
 				
 				/*
 				 * adding file information
@@ -736,28 +744,29 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				 */
 				Element uriElement = xmlDoc.createElement("file");
 				Element fileElement = xmlDoc.createElement("file");
-				uriElement.setAttribute("id", x.toString());
-				fileElement.setAttribute("id", x.toString());
+				uriElement.setAttribute("id", Long.toString(page.id));
+					fileElement.setAttribute("id", Long.toString(page.id));
 				fileElement.setAttribute("key", page.uri);
 				fileElement.setAttribute("title", page.pageTitle != null ? page.pageTitle : page.uri);
 				
 				/* Position by position */
-
-				HashMap<String, Integer[]> positionsForGivenWord = positionsByWordById.get(x);
-				Integer[] positions = (Integer[])positionsForGivenWord.get(str);
+					int[] positions = termPos.positions;
+			
 				StringBuilder positionList = new StringBuilder();
 
 				for(int k=0; k < positions.length ; k++) {
 					if(k!=0)
 						positionList.append(',');
-					positionList.append(positions[k].toString());
+					positionList.append(positions[k]);
 				}
 				uriElement.appendChild(xmlDoc.createTextNode(positionList.toString()));
 				wordElement.appendChild(uriElement);
-				if(!fileid.contains(x))
+				if (!fileid.contains(page.id))
 				{
-					fileid.add(x);
+					fileid.add(page.id);
 					filesElement.appendChild(fileElement);
+				}
+						}
 				}
 			}
 			keywordsElement.appendChild(wordElement);
@@ -1245,9 +1254,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				word = word.intern();
 				try{
 					if(type == null)
-						addWord(word, lastPosition.intValue() + i, page.id);
+						addWord(word, lastPosition.intValue() + i);
 					else
-						addWord(word, -1 * (i + 1), page.id);
+						addWord(word, -1 * (i + 1));
 				}
 				catch (Exception e){}
 			}
@@ -1257,55 +1266,22 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			}
 		}
 
-		private void addWord(String word, int position, Long id) throws Exception {
-			synchronized(XMLSpider.this) {
-				if (word.length() < 3)
-					return;
+		private void addWord(String word, int position) throws Exception {
+			if (word.length() < 3)
+				return;
+			Term term = getTermByWord(word, true);
+			TermPosition termPos = getTermPosition(term, page, true);
 
-				Long[] ids = idsByWord.get(word);
+			synchronized (termPos) {
+				int[] newPositions = new int[termPos.positions.length + 1];
+				System.arraycopy(termPos.positions, 0, newPositions, 0, termPos.positions.length);
+				newPositions[termPos.positions.length] = position;
 
-				/* Word position indexation */
-				HashMap<String, Integer[]> wordPositionsForOneUri = positionsByWordById.get(id);
-				/* For a given URI , take as key a word , and gives position */
-				if (wordPositionsForOneUri == null) {
-					wordPositionsForOneUri = new HashMap<String, Integer[]>();
-					wordPositionsForOneUri.put(word, new Integer[] { position });
-					positionsByWordById.put(id, wordPositionsForOneUri);
-				} 
-				else {
-					Integer[] positions = wordPositionsForOneUri.get(word);
-					if (positions == null) {
-						positions = new Integer[] { position };
-						wordPositionsForOneUri.put(word, positions);
-					} else {
-						Integer[] newPositions = new Integer[positions.length + 1];
-						System.arraycopy(positions, 0, newPositions, 0, positions.length);
-						newPositions[positions.length] = position;
-						wordPositionsForOneUri.put(word, newPositions);
-					}
-				}
-
-				if (ids == null) {
-					idsByWord.put(word, new Long[] { id });
-				} else {
-					for (int i = 0; i < ids.length; i++) {
-						if (ids[i].equals(id))
-							return;
-					}
-					Long[] newIDs = new Long[ids.length + 1];
-					System.arraycopy(ids, 0, newIDs, 0, ids.length);
-					newIDs[ids.length] = id;
-					idsByWord.put(word, newIDs);
-				}
-
-				synchronized (db) {
-					if (getTermByWord(word) == null)
-						db.store(new Term(word));
-				}
-				//long time_indexing = System.currentTimeMillis();
-				//			FileWriter outp = new FileWriter("logfile",true);
-				mustWriteIndex = true;
+				termPos.positions = newPositions;
+				db.store(termPos);						
 			}
+
+			mustWriteIndex = true;
 		}
 	}
 
@@ -1343,7 +1319,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		} finally {
 			if (!stopped)
 				scheduleMakeIndex();
-			writingIndex = false;
+			synchronized (this) {
+				writingIndex = false;
+				notifyAll();
+			}
 		}
 	}
 
@@ -1421,6 +1400,16 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		cfg.objectClass(Term.class).cascadeOnUpdate(true);
 		cfg.objectClass(Term.class).cascadeOnDelete(true);
 
+		//- TermPosition
+		cfg.objectClass(TermPosition.class).objectField("pageId").indexed(true);
+		cfg.objectClass(TermPosition.class).objectField("word").indexed(true);
+
+		cfg.objectClass(TermPosition.class).callConstructor(true);
+
+		cfg.objectClass(TermPosition.class).cascadeOnActivate(true);
+		cfg.objectClass(TermPosition.class).cascadeOnUpdate(true);
+		cfg.objectClass(TermPosition.class).cascadeOnDelete(true);
+		
 		//- Other
 		cfg.activationDepth(1);
 		cfg.updateDepth(1);
@@ -1472,7 +1461,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			return null;
 	}
 
-	protected Term getTermByWord(String word) {
+	protected Term getTermByWord(String word, boolean create) {
+		synchronized (this) {
 		Query query = db.query();
 		query.constrain(Term.class);
 		query.descend("word").constrain(word);
@@ -1480,7 +1470,39 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		if (set.hasNext())
 			return set.next();
-		else
+		else if (create) {
+			Term term = new Term(word);
+			db.store(term);
+			return term;
+		} else
 			return null;
+		}
+	}
+	
+	protected TermPosition getTermPosition(Term term, Page page, boolean create) {
+		synchronized (term) {
+			synchronized (page) {
+				Query query = db.query();
+				query.constrain(TermPosition.class);
+
+				query.descend("word").constrain(term.word);
+				query.descend("pageId").constrain(page.id);
+				ObjectSet<TermPosition> set = query.execute();
+
+				if (set.hasNext()) {
+					return set.next();
+				} else if (create) {
+					TermPosition termPos = new TermPosition();
+					termPos.word = term.word;
+					termPos.pageId = page.id;
+					termPos.positions = new int[0];
+
+					db.store(termPos);
+					return termPos;
+				} else {
+					return null;
+				}
+			}
+		}
 	}
 }
