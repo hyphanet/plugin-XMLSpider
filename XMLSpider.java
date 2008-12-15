@@ -1289,67 +1289,52 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		private void addWord(String word, int position, Long id) throws Exception {
 			synchronized(XMLSpider.this) {
-			if(word.length() < 3)
-				return;
+				if (word.length() < 3)
+					return;
 
-			Long[] ids = idsByWord.get(word);
+				Long[] ids = idsByWord.get(word);
 
-			/* Word position indexation */
-			HashMap<String, Integer[]> wordPositionsForOneUri = positionsByWordById.get(id); /*
-																								 * For
-																								 * a
-																								 * given
-																								 * URI
-																								 * ,
-																								 * take
-																								 * as
-																								 * key
-																								 * a
-																								 * word
-																								 * ,
-																								 * and
-																								 * gives
-																								 * position
-																								 */
-			if(wordPositionsForOneUri == null) {
-				wordPositionsForOneUri = new HashMap<String, Integer[]>();
-				wordPositionsForOneUri.put(word, new Integer[] { position });
-				positionsByWordById.put(id, wordPositionsForOneUri);
-			} 
-			else {
-				Integer[] positions = wordPositionsForOneUri.get(word);
-				if(positions == null) {
-					positions = new Integer[] { position };
-					wordPositionsForOneUri.put(word, positions);
+				/* Word position indexation */
+				HashMap<String, Integer[]> wordPositionsForOneUri = positionsByWordById.get(id);
+				/* For a given URI , take as key a word , and gives position */
+				if (wordPositionsForOneUri == null) {
+					wordPositionsForOneUri = new HashMap<String, Integer[]>();
+					wordPositionsForOneUri.put(word, new Integer[] { position });
+					positionsByWordById.put(id, wordPositionsForOneUri);
 				} 
 				else {
-					Integer[] newPositions = new Integer[positions.length + 1];
-					System.arraycopy(positions, 0, newPositions, 0, positions.length);
-					newPositions[positions.length] = position;
-					wordPositionsForOneUri.put(word, newPositions);
+					Integer[] positions = wordPositionsForOneUri.get(word);
+					if (positions == null) {
+						positions = new Integer[] { position };
+						wordPositionsForOneUri.put(word, positions);
+					} else {
+						Integer[] newPositions = new Integer[positions.length + 1];
+						System.arraycopy(positions, 0, newPositions, 0, positions.length);
+						newPositions[positions.length] = position;
+						wordPositionsForOneUri.put(word, newPositions);
+					}
 				}
-			}
 
-			if (ids == null) {
-				idsByWord.put(word, new Long[] { id });
-			} else {
-				for (int i = 0; i < ids.length; i++) {
-					if (ids[i].equals(id))
-						return;
+				if (ids == null) {
+					idsByWord.put(word, new Long[] { id });
+				} else {
+					for (int i = 0; i < ids.length; i++) {
+						if (ids[i].equals(id))
+							return;
+					}
+					Long[] newIDs = new Long[ids.length + 1];
+					System.arraycopy(ids, 0, newIDs, 0, ids.length);
+					newIDs[ids.length] = id;
+					idsByWord.put(word, newIDs);
 				}
-				Long[] newIDs = new Long[ids.length + 1];
-				System.arraycopy(ids, 0, newIDs, 0, ids.length);
-				newIDs[ids.length] = id;
-				idsByWord.put(word, newIDs);
-			}
 
-			synchronized (db) {
+				synchronized (db) {
 					if (getTermByWord(word) == null)
 						db.store(new Term(word));
 				}
-			//long time_indexing = System.currentTimeMillis();
-//			FileWriter outp = new FileWriter("logfile",true);
-			mustWriteIndex = true;
+				//long time_indexing = System.currentTimeMillis();
+				//			FileWriter outp = new FileWriter("logfile",true);
+				mustWriteIndex = true;
 			}
 		}
 	}
