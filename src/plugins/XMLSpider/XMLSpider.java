@@ -445,7 +445,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * @throws IOException
 	 * @throws NoSuchAlgorithmException
 	 */
-	private synchronized void produceIndex2() throws IOException,NoSuchAlgorithmException {
+	private synchronized void makeMainIndex() throws IOException,NoSuchAlgorithmException {
 		// Produce the main index file.
 
 		if (idsByWord.isEmpty()) {
@@ -568,7 +568,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * of the hash code of the words
 	 * @throws Exception
 	 */
-	private synchronized void generateIndex2() throws Exception{
+	private synchronized void makeSubIndices() throws Exception{
 		Logger.normal(this, "Generating index...");
 		//using the tMap generate the xml indices
 		if (idsByWord.isEmpty()) {
@@ -1332,9 +1332,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				mustWriteIndex = false;
 			}
 		time_taken = System.currentTimeMillis();
-		generateIndex2();
+		makeSubIndices();
 		if(Logger.shouldLog(Logger.MINOR, this)) Logger.minor(this, "Producing top index...");
-		produceIndex2();
+		makeMainIndex();
 		time_taken = System.currentTimeMillis() - time_taken;
 		tProducedIndex = System.currentTimeMillis();
 		if(Logger.shouldLog(Logger.MINOR, this)) Logger.minor(this, "Made index, took "+time_taken);
