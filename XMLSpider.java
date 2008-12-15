@@ -554,9 +554,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			fos.close();
 		}
 
-		if(Logger.shouldLog(Logger.MINOR, this))
-			Logger.minor(this, "Spider: indexes regenerated - tProducedIndex="+(System.currentTimeMillis()-tProducedIndex)+"ms ago time taken="+time_taken+"ms");
-
 		//The main xml file is generated 
 		//As each word is generated enter it into the respective subindex
 		//The parsing will start and nodes will be added as needed 
@@ -1338,9 +1335,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			makeMainIndex();
 
 			time_taken = System.currentTimeMillis() - time_taken;
-			tProducedIndex = System.currentTimeMillis();
 
-			Logger.minor(this, "Made index, took " + time_taken);
+			Logger.minor(this, "Spider: indexes regenerated - tProducedIndex="
+			        + (System.currentTimeMillis() - tProducedIndex) + "ms ago time taken=" + time_taken + "ms");
+			
+			tProducedIndex = System.currentTimeMillis();
 		} finally {
 			if (!stopped)
 				scheduleMakeIndex();
