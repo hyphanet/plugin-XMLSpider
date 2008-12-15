@@ -21,7 +21,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.Vector;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -133,14 +132,25 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 	}
 
+	static class Term {
+		/** MD5 of the term */
+		String md5;
+		/** Term */
+		String word;
+
+		public Term(String word) {
+			this.word = word;
+			md5 = MD5(word);
+		}
+
+		public Term() {
+		}
+	}
+	
 	/** Document ID of fetching documents */
 	protected Map<Page, ClientGetter> runningFetch = new HashMap<Page, ClientGetter>();
 
 	long tProducedIndex;
-	/**
-	 * Stores the found words along with md5
-	 */
-	public TreeMap<String, String> tMap = new TreeMap<String, String>();
 	protected AtomicLong maxPageId;
 	
 	private final HashMap<String, Long[]> idsByWord = new HashMap<String, Long[]>();
@@ -557,21 +567,25 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			return;
 		}
 
+		Query query = db.query();
+		query.constrain(Term.class);
+		query.descend("md5").orderAscending();
+		ObjectSet<Term> termSet = query.execute();
+		
 		indices = new Vector<String>();
-		int prefix = (int)(( Math.log(tMap.size()) - Math.log(MAX_ENTRIES) ) / Math.log(16)) - 1;
+		int prefix = (int) ((Math.log(termSet.size()) - Math.log(MAX_ENTRIES)) / Math.log(16)) - 1;
 		if (prefix <= 0) prefix = 1;
 		match = 1;
 		Vector<String> list = new Vector<String>();
-		Iterator<String> it = tMap.keySet().iterator();
 
-		String str = it.next();
+		String str = termSet.get(0).md5;
 		String currentPrefix = str.substring(0, prefix);
 		list.add(str);
 				
 		int i = 0;
-		while(it.hasNext())
+		for (Term term : termSet)
 		{
-			String key = it.next();
+			String key = term.md5;
 			//create a list of the words to be added in the same subindex
 			if (key.startsWith(currentPrefix)) 
 			{i++;
@@ -695,7 +709,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		for(int i =0;i<list.size();i++)
 		{
 			Element wordElement = xmlDoc.createElement("word");
-			String str = tMap.get(list.get(i));
+			String str = getTermByMd5(list.get(i)).word;
 			wordElement.setAttribute("v",str );
 			Long[] idsForWord = idsByWord.get(str);
 			for (int j = 0; j < idsForWord.length; j++) {
@@ -797,14 +811,19 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	/*
 	 * calculate the md5 for a given string
 	 */
-	private static String MD5(String text) throws NoSuchAlgorithmException, UnsupportedEncodingException  {
-		MessageDigest md;
-		md = MessageDigest.getInstance("MD5");
-		byte[] md5hash = new byte[32];
-		byte[] b = text.getBytes("UTF-8");
-		md.update(b, 0, b.length);
-		md5hash = md.digest();
-		return convertToHex(md5hash);
+	private static String MD5(String text) {
+		try {
+			MessageDigest md = MessageDigest.getInstance("MD5");
+			byte[] md5hash = new byte[32];
+			byte[] b = text.getBytes("UTF-8");
+			md.update(b, 0, b.length);
+			md5hash = md.digest();
+			return convertToHex(md5hash);
+		} catch (UnsupportedEncodingException e) {
+			throw new RuntimeException("UTF-8 not supported", e);
+		} catch (NoSuchAlgorithmException e) {
+			throw new RuntimeException("MD5 not supported", e);
+		}
 	}
 
 	public void generateSubIndex(String filename){
@@ -1324,7 +1343,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				idsByWord.put(word, newIDs);
 			}
 
-			tMap.put(MD5(word), word);
+			synchronized (db) {
+					if (getTermByWord(word) == null)
+						db.store(new Term(word));
+				}
 			//long time_indexing = System.currentTimeMillis();
 //			FileWriter outp = new FileWriter("logfile",true);
 			mustWriteIndex = true;
@@ -1422,10 +1444,20 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		cfg.objectClass(Page.class).cascadeOnActivate(true);
 		cfg.objectClass(Page.class).cascadeOnUpdate(true);
 		cfg.objectClass(Page.class).cascadeOnDelete(true);
+		
+		//- Term
+		cfg.objectClass(Term.class).objectField("md5").indexed(true);
+		cfg.objectClass(Term.class).objectField("word").indexed(true);
+
+		cfg.objectClass(Term.class).callConstructor(true);
+
+		cfg.objectClass(Term.class).cascadeOnActivate(true);
+		cfg.objectClass(Term.class).cascadeOnUpdate(true);
+		cfg.objectClass(Term.class).cascadeOnDelete(true);
 
 		//- Other
-		cfg.activationDepth(4);
-		cfg.updateDepth(4);
+		cfg.activationDepth(1);
+		cfg.updateDepth(1);
 		cfg.queries().evaluationMode(QueryEvaluationMode.LAZY);
 		cfg.diagnostic().addListener(new DiagnosticToConsole());
 
@@ -1455,6 +1487,30 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		query.constrain(Page.class);
 		query.descend("id").constrain(id);
 		ObjectSet<Page> set = query.execute();
+
+		if (set.hasNext())
+			return set.next();
+		else
+			return null;
+	}
+	
+	protected Term getTermByMd5(String md5) {
+		Query query = db.query();
+		query.constrain(Term.class);
+		query.descend("md5").constrain(md5);
+		ObjectSet<Term> set = query.execute();
+
+		if (set.hasNext())
+			return set.next();
+		else
+			return null;
+	}
+
+	protected Term getTermByWord(String word) {
+		Query query = db.query();
+		query.constrain(Term.class);
+		query.descend("word").constrain(word);
+		ObjectSet<Term> set = query.execute();
 
 		if (set.hasNext())
 			return set.next();
