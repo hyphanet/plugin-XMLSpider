@@ -1204,46 +1204,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 		
 		public void foundURI(FreenetURI uri, boolean inline){
-
 			Logger.debug(this, "foundURI " + uri + " on " + page);
 			queueURI(uri, "Added from " + page.uri);
-			// FIXME re-enable outlinks/inlinks when we can do something useful with them
-//			synchronized(XMLSpider.this) {
-//			Integer iduri = (Integer) uriIds.get(uri);
-/*
- * update the outlink information for the current page
- */
-//			if(outlinks.containsKey(id)){
-//				Vector outlink = (Vector) outlinks.get(id);
-//				if(!outlink.contains(iduri))	
-//					outlink.add(iduri);
-//				outlinks.remove(id);
-//				outlinks.put(id, outlink);
-//			}
-//			else 
-//			{
-//				Vector outlink = new Vector();
-//				outlink.add(iduri);
-//				outlinks.put(id, outlink);
-//			}
-/*
- * update the inlink information for the new link 
- */
-//			if(inlinks.containsKey(iduri)){
-//				Vector inlink = (Vector) inlinks.get(iduri);
-//				if(!inlink.contains(id)) inlink.add(id);
-//				inlinks.remove(iduri);
-//				inlinks.put(iduri, inlink);
-//			}
-//			else 
-//			{
-//				Vector inlink = new Vector();
-//				inlink.add(id);
-//				inlinks.put(iduri, inlink);
-//			}
-//			} // synchronized
-			
-			startSomeRequests();
 		}
 
 		Integer lastPosition = null;
