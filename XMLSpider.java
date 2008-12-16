@@ -67,7 +67,6 @@ import freenet.node.PrioRunnable;
 import freenet.node.RequestStarter;
 import freenet.pluginmanager.FredPlugin;
 import freenet.pluginmanager.FredPluginHTTP;
-import freenet.pluginmanager.FredPluginHTTPAdvanced;
 import freenet.pluginmanager.FredPluginThreadless;
 import freenet.pluginmanager.FredPluginVersioned;
 import freenet.pluginmanager.PluginHTTPException;
@@ -87,8 +86,7 @@ import freenet.support.io.NullBucketFactory;
  *  @author swati goyal
  *  
  */
-public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless, FredPluginVersioned,
-        FredPluginHTTPAdvanced, USKCallback {
+public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless, FredPluginVersioned, USKCallback {
 	static enum Status {
 		/** For simplicity, running is also mark as QUEUED */
 		QUEUED, SUCCEEDED, FAILED
