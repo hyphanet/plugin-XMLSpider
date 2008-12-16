@@ -1043,11 +1043,12 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		query.descend("lastChange").orderDescending();
 		ObjectSet<Page> set = query.execute();
 
-		HTMLNode list = parent.addChild("ol", "style", "overflow: scroll");
+		HTMLNode list = parent.addChild("ol", "style", "overflow: auto; white-space: nowrap;");
 
 		for (int i = 0; i < maxShownURIs && set.hasNext(); i++) {
 			Page page = set.next();
-			list.addChild("li", new String[] { "title" }, new String[] { page.comment }, page.uri);
+			HTMLNode litem = list.addChild("li", "title", page.comment);
+			litem.addChild("a", "href", "/freenet:" + page.uri, page.uri);
 		}
 	}
 
@@ -1081,29 +1082,34 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		nextTableCell.addChild(statusBox2);		
 		
 		HTMLNode runningBox = pageMaker.getInfobox("Running URI");
+		runningBox.addAttribute("style", "right: 0;");
 		HTMLNode runningContent = pageMaker.getContentNode(runningBox);
 		synchronized (runningFetch) {
-			HTMLNode list = runningContent.addChild("ol", "style", "overflow: scroll");
+			HTMLNode list = runningContent.addChild("ol", "style", "overflow: auto; white-space: nowrap;");
 
 			Iterator<Page> pi = runningFetch.keySet().iterator();
 			for (int i = 0; i < maxShownURIs && pi.hasNext(); i++) {
 				Page page = pi.next();
-				list.addChild("li", new String[] { "title" }, new String[] { page.comment }, page.uri);
+				HTMLNode litem = list.addChild("li", "title", page.comment);
+				litem.addChild("a", "href", "/freenet:" + page.uri, page.uri);
 			}
 		}
 		contentNode.addChild(runningBox);
 
 		HTMLNode queuedBox = pageMaker.getInfobox("Queued URI");
+		queuedBox.addAttribute("style", "right: 0; overflow: auto;");
 		HTMLNode queuedContent = pageMaker.getContentNode(queuedBox);
 		listPage(Status.QUEUED, queuedContent);
 		contentNode.addChild(queuedBox);
 
 		HTMLNode succeededBox = pageMaker.getInfobox("Succeeded URI");
+		succeededBox.addAttribute("style", "right: 0;");
 		HTMLNode succeededContent = pageMaker.getContentNode(succeededBox);
 		listPage(Status.SUCCEEDED, succeededContent);
 		contentNode.addChild(succeededBox);
 
 		HTMLNode failedBox = pageMaker.getInfobox("Failed URI");
+		failedBox.addAttribute("style", "right: 0;");
 		HTMLNode failedContent = pageMaker.getContentNode(failedBox);
 		listPage(Status.FAILED, failedContent);
 		contentNode.addChild(failedBox);
