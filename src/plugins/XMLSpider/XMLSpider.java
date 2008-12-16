@@ -1064,23 +1064,26 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		// Column 1
 		HTMLNode nextTableCell = overviewTableRow.addChild("td", "class", "first");
 		HTMLNode statusBox = pageMaker.getInfobox("Spider Status");
-		statusBox.addChild("%", "Running Request: " + runningFetch.size() + "/" + maxParallelRequests);
-		statusBox.addChild("br");
-		statusBox.addChild("%", "Queued: " + getPageCount(Status.QUEUED));
-		statusBox.addChild("br");
-		statusBox.addChild("%", "Succeeded: " + getPageCount(Status.SUCCEEDED));
-		statusBox.addChild("br");
-		statusBox.addChild("%", "Failed: " + getPageCount(Status.FAILED));
+		HTMLNode statusContent = pageMaker.getContentNode(statusBox);
+		statusContent.addChild("%", "Running Request: " + runningFetch.size() + "/" + maxParallelRequests);
+		statusContent.addChild("br");
+		statusContent.addChild("%", "Queued: " + getPageCount(Status.QUEUED));
+		statusContent.addChild("br");
+		statusContent.addChild("%", "Succeeded: " + getPageCount(Status.SUCCEEDED));
+		statusContent.addChild("br");
+		statusContent.addChild("%", "Failed: " + getPageCount(Status.FAILED));
 		nextTableCell.addChild(statusBox);
 
 		// Column 2
 		nextTableCell = overviewTableRow.addChild("td", "class", "second");
-		statusBox = pageMaker.getInfobox("Spider Status");
-		nextTableCell.addChild(statusBox);		
+		HTMLNode statusBox2 = pageMaker.getInfobox("Spider Status");
+		HTMLNode statusContent2 = pageMaker.getContentNode(statusBox2);
+		nextTableCell.addChild(statusBox2);		
 		
-		HTMLNode runningList = pageMaker.getInfobox("Running URI");
+		HTMLNode runningBox = pageMaker.getInfobox("Running URI");
+		HTMLNode runningContent = pageMaker.getContentNode(runningBox);
 		synchronized (runningFetch) {
-			HTMLNode list = runningList.addChild("ol", "style", "overflow: scroll");
+			HTMLNode list = runningContent.addChild("ol", "style", "overflow: scroll");
 
 			Iterator<Page> pi = runningFetch.keySet().iterator();
 			for (int i = 0; i < maxShownURIs && pi.hasNext(); i++) {
@@ -1088,19 +1091,22 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				list.addChild("li", new String[] { "title" }, new String[] { page.comment }, page.uri);
 			}
 		}
-		contentNode.addChild(runningList);
+		contentNode.addChild(runningBox);
 
-		HTMLNode queuedList = pageMaker.getInfobox("Queued URI");
-		listPage(Status.QUEUED, queuedList);
-		contentNode.addChild(queuedList);
+		HTMLNode queuedBox = pageMaker.getInfobox("Queued URI");
+		HTMLNode queuedContent = pageMaker.getContentNode(queuedBox);
+		listPage(Status.QUEUED, queuedContent);
+		contentNode.addChild(queuedBox);
 
-		HTMLNode succeededList = pageMaker.getInfobox("Succeeded URI");
-		listPage(Status.SUCCEEDED, succeededList);
-		contentNode.addChild(succeededList);
+		HTMLNode succeededBox = pageMaker.getInfobox("Succeeded URI");
+		HTMLNode succeededContent = pageMaker.getContentNode(succeededBox);
+		listPage(Status.SUCCEEDED, succeededContent);
+		contentNode.addChild(succeededBox);
 
-		HTMLNode failedList = pageMaker.getInfobox("Failed URI");
-		listPage(Status.FAILED, failedList);
-		contentNode.addChild(failedList);
+		HTMLNode failedBox = pageMaker.getInfobox("Failed URI");
+		HTMLNode failedContent = pageMaker.getContentNode(failedBox);
+		listPage(Status.FAILED, failedContent);
+		contentNode.addChild(failedBox);
 
 		return pageNode.generate();
 	}
