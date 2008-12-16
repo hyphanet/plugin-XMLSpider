@@ -1084,7 +1084,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				statusContent.addChild("span", "style", "color: green; font-weight: bold;", "IDLE");
 		}
 		statusContent.addChild("br");
-		statusContent.addChild("%", "Last Written: " + new Date(tProducedIndex));
+		statusContent.addChild("%", "Last Written: "
+		        + (tProducedIndex == 0 ? "NEVER" : new Date(tProducedIndex).toString()));
 		nextTableCell.addChild(statusBox);
 
 		// Column 2
