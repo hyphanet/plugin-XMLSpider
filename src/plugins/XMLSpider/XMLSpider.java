@@ -16,6 +16,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -1073,11 +1074,22 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		statusContent.addChild("%", "Succeeded: " + getPageCount(Status.SUCCEEDED));
 		statusContent.addChild("br");
 		statusContent.addChild("%", "Failed: " + getPageCount(Status.FAILED));
+		statusContent.addChild("br");
+		statusContent.addChild("br");
+		statusContent.addChild("%", "Index Writer: ");
+		synchronized (this) {
+			if (writingIndex)
+				statusContent.addChild("span", "style", "color: red; font-weight: bold;", "RUNNING");
+			else
+				statusContent.addChild("span", "style", "color: green; font-weight: bold;", "IDLE");
+		}
+		statusContent.addChild("br");
+		statusContent.addChild("%", "Last Written: " + new Date(tProducedIndex));
 		nextTableCell.addChild(statusBox);
 
 		// Column 2
 		nextTableCell = overviewTableRow.addChild("td", "class", "second");
-		HTMLNode statusBox2 = pageMaker.getInfobox("Spider Status");
+		HTMLNode statusBox2 = pageMaker.getInfobox("Main");
 		HTMLNode statusContent2 = pageMaker.getContentNode(statusBox2);
 		nextTableCell.addChild(statusBox2);		
 		
