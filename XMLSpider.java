@@ -1047,13 +1047,13 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		if (set.isEmpty()) {
 			HTMLNode list = parent.addChild("%", "NO URI");
 		} else {
-		HTMLNode list = parent.addChild("ol", "style", "overflow: auto; white-space: nowrap;");
+			HTMLNode list = parent.addChild("ol", "style", "overflow: auto; white-space: nowrap;");
 
-		for (int i = 0; i < maxShownURIs && set.hasNext(); i++) {
-			Page page = set.next();
-			HTMLNode litem = list.addChild("li", "title", page.comment);
-			litem.addChild("a", "href", "/freenet:" + page.uri, page.uri);
-		}
+			for (int i = 0; i < maxShownURIs && set.hasNext(); i++) {
+				Page page = set.next();
+				HTMLNode litem = list.addChild("li", "title", page.comment);
+				litem.addChild("a", "href", "/freenet:" + page.uri, page.uri);
+			}
 		}
 	}
 
@@ -1089,7 +1089,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 		statusContent.addChild("br");
 		statusContent.addChild("%", "Last Written: "
-		        + (tProducedIndex == 0 ? "NEVER" : new Date(tProducedIndex).toString()));
+				+ (tProducedIndex == 0 ? "NEVER" : new Date(tProducedIndex).toString()));
 		nextTableCell.addChild(statusBox);
 
 		// Column 2
@@ -1097,7 +1097,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		HTMLNode statusBox2 = pageMaker.getInfobox("Main");
 		HTMLNode statusContent2 = pageMaker.getContentNode(statusBox2);
 		nextTableCell.addChild(statusBox2);		
-		
+
 		HTMLNode runningBox = pageMaker.getInfobox("Running URI");
 		runningBox.addAttribute("style", "right: 0;");
 		HTMLNode runningContent = pageMaker.getContentNode(runningBox);
@@ -1105,14 +1105,14 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			if (runningFetch.isEmpty()) {
 				HTMLNode list = runningContent.addChild("%", "NO URI");
 			} else {
-			HTMLNode list = runningContent.addChild("ol", "style", "overflow: auto; white-space: nowrap;");
+				HTMLNode list = runningContent.addChild("ol", "style", "overflow: auto; white-space: nowrap;");
 
-			Iterator<Page> pi = runningFetch.keySet().iterator();
-			for (int i = 0; i < maxShownURIs && pi.hasNext(); i++) {
-				Page page = pi.next();
-				HTMLNode litem = list.addChild("li", "title", page.comment);
-				litem.addChild("a", "href", "/freenet:" + page.uri, page.uri);
-			}
+				Iterator<Page> pi = runningFetch.keySet().iterator();
+				for (int i = 0; i < maxShownURIs && pi.hasNext(); i++) {
+					Page page = pi.next();
+					HTMLNode litem = list.addChild("li", "title", page.comment);
+					litem.addChild("a", "href", "/freenet:" + page.uri, page.uri);
+				}
 			}
 		}
 		contentNode.addChild(runningBox);
