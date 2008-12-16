@@ -1063,6 +1063,49 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public String handleHTTPGet(HTTPRequest request) throws PluginHTTPException{
 		HTMLNode pageNode = pageMaker.getPageNode(pluginName, null);
 		HTMLNode contentNode = pageMaker.getContentNode(pageNode);
+		
+		String addURI = request.getParam("addURI");
+		if (addURI != null && addURI.length() != 0) {
+			// Adding URI manually
+			try {
+				FreenetURI uri = new FreenetURI(addURI);
+				
+				if (uri.isUSK()) {
+					if (uri.getSuggestedEdition() < 0)
+						uri = uri.setSuggestedEdition((-1) * uri.getSuggestedEdition());
+					try {
+						uri = ((USK.create(uri)).getSSK()).getURI();
+						(ctx.uskManager).subscribe(USK.create(uri), this, false, this);
+					} catch (Exception e) {
+					}
+				}
+				
+				synchronized (this) {
+					Page page = getPageByURI(uri);
+					if (page == null) {
+						page = new Page();
+						page.uri = uri.toString();
+						page.id = maxPageId.incrementAndGet();
+						page.comment = "manualy";
+
+						db.store(page);
+					} else {
+						page.status = Status.QUEUED;
+						page.lastChange = System.currentTimeMillis();
+
+						db.store(page);
+					}
+				}
+				HTMLNode infobox = pageMaker.getInfobox("infobox infobox-success", "URI Added");
+				infobox.addChild("%", "Added " + uri);
+				contentNode.addChild(infobox);
+			} catch (Exception e) {
+				HTMLNode infobox = pageMaker.getInfobox("infobox infobox-error", "Error adding URI");
+				infobox.addChild("%", e.getMessage());
+				contentNode.addChild(infobox);
+				Logger.normal(this, "Manual added URI cause exception", e);
+			}
+		}
 
 		HTMLNode overviewTable = contentNode.addChild("table", "class", "column");
 		HTMLNode overviewTableRow = overviewTable.addChild("tr");
@@ -1094,9 +1137,13 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		// Column 2
 		nextTableCell = overviewTableRow.addChild("td", "class", "second");
-		HTMLNode statusBox2 = pageMaker.getInfobox("Main");
-		HTMLNode statusContent2 = pageMaker.getContentNode(statusBox2);
-		nextTableCell.addChild(statusBox2);		
+		HTMLNode mainBox = pageMaker.getInfobox("Main");
+		HTMLNode mainContent = pageMaker.getContentNode(mainBox);
+		HTMLNode form = mainContent.addChild("form", "method", "get");
+		form.addChild("label", "for", "addURI", "Add URI:");
+		form.addChild("input", new String[] { "name", "width" }, new String[] { "addURI", "40" });
+		form.addChild("input", "type", "submit");
+		nextTableCell.addChild(mainBox);
 
 		HTMLNode runningBox = pageMaker.getInfobox("Running URI");
 		runningBox.addAttribute("style", "right: 0;");
