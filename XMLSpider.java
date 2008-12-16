@@ -413,10 +413,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			}
 		} finally {
 			synchronized (this) {
-				runningFetch.remove(page);
 				page.lastChange = System.currentTimeMillis();
 				db.store(page);
 				db.commit();
+				runningFetch.remove(page);
 			}
 			startSomeRequests();
 		}
@@ -425,11 +425,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public void onFailure(FetchException fe, ClientGetter state, Page page) {
 		Logger.minor(this, "Failed: " + page + " : " + state, fe);
 
+		try {
 		synchronized (this) {
 			if (stopped)
 				return;
-
-			runningFetch.remove(page);
 			
 			if (fe.newURI != null) {
 				// redirect, mark as succeeded
@@ -453,6 +452,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 		
 		startSomeRequests();
+		} finally {
+			runningFetch.remove(page);
+		}
 	}
 
 	/**
