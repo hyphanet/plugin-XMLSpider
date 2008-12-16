@@ -995,7 +995,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		allowedMIMETypes.add("application/xhtml+xml");
 		ctx.allowedMIMETypes = new HashSet<String>(allowedMIMETypes);
 
-		tProducedIndex = System.currentTimeMillis();
+		tProducedIndex = 0;
 		stopped = false;
 		
 		if (!new File(DEFAULT_INDEX_DIR).mkdirs()) {
