@@ -1110,6 +1110,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				contentNode.addChild(infobox);
 				Logger.normal(this, "Manual added URI cause exception", e);
 			}
+			
+			startSomeRequests();
 		}
 
 		return generateHTML(request, pageNode, contentNode);
