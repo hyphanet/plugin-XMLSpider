@@ -1060,16 +1060,23 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	/**
 	 * Interface to the Spider data
 	 */
-	public String handleHTTPGet(HTTPRequest request) throws PluginHTTPException{
+	public String handleHTTPGet(HTTPRequest request) throws PluginHTTPException {
 		HTMLNode pageNode = pageMaker.getPageNode(pluginName, null);
 		HTMLNode contentNode = pageMaker.getContentNode(pageNode);
 		
-		String addURI = request.getParam("addURI");
+		return generateHTML(request, pageNode, contentNode);
+	}
+	
+	public String handleHTTPPost(HTTPRequest request) throws PluginHTTPException {
+		HTMLNode pageNode = pageMaker.getPageNode(pluginName, null);
+		HTMLNode contentNode = pageMaker.getContentNode(pageNode);
+
+		String addURI = request.getPartAsString("addURI", 512);
 		if (addURI != null && addURI.length() != 0) {
 			// Adding URI manually
 			try {
 				FreenetURI uri = new FreenetURI(addURI);
-				
+
 				if (uri.isUSK()) {
 					if (uri.getSuggestedEdition() < 0)
 						uri = uri.setSuggestedEdition((-1) * uri.getSuggestedEdition());
@@ -1079,7 +1086,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 					} catch (Exception e) {
 					}
 				}
-				
+
 				synchronized (this) {
 					Page page = getPageByURI(uri);
 					if (page == null) {
@@ -1107,6 +1114,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			}
 		}
 
+		return generateHTML(request, pageNode, contentNode);
+	}
+
+	private String generateHTML(HTTPRequest request, HTMLNode pageNode, HTMLNode contentNode) {
 		HTMLNode overviewTable = contentNode.addChild("table", "class", "column");
 		HTMLNode overviewTableRow = overviewTable.addChild("tr");
 
@@ -1139,9 +1150,14 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		nextTableCell = overviewTableRow.addChild("td", "class", "second");
 		HTMLNode mainBox = pageMaker.getInfobox("Main");
 		HTMLNode mainContent = pageMaker.getContentNode(mainBox);
-		HTMLNode form = mainContent.addChild("form", "method", "get");
+		HTMLNode form = mainContent.addChild("form", //
+		        new String[] { "action", "method" }, //
+		        new String[] { "plugins.XMLSpider.XMLSpider", "post" });
 		form.addChild("label", "for", "addURI", "Add URI:");
-		form.addChild("input", new String[] { "name", "width" }, new String[] { "addURI", "40" });
+		form.addChild("input", new String[] { "name", "style" }, new String[] { "addURI", "width: 20em;" });
+		form.addChild("input", //
+		        new String[] { "name", "type", "value" },//
+		        new String[] { "formPassword", "hidden", core.formPassword });
 		form.addChild("input", "type", "submit");
 		nextTableCell.addChild(mainBox);
 
@@ -1183,7 +1199,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		contentNode.addChild(failedBox);
 
 		return pageNode.generate();
-	}
+    }
 	
 	/**
 	 * creates the callback object for each page.
@@ -1323,10 +1339,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			}
 			
 		}, minTimeBetweenEachIndexRewriting * 1000);
-	}
-
-	public String handleHTTPPost(HTTPRequest request) throws PluginHTTPException{
-		return null;
 	}
 
 	public void onFoundEdition(long l, USK key){
