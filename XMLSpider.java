@@ -426,32 +426,32 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		Logger.minor(this, "Failed: " + page + " : " + state, fe);
 
 		try {
-		synchronized (this) {
-			if (stopped)
-				return;
-			
-			if (fe.newURI != null) {
-				// redirect, mark as succeeded
-				queueURI(fe.newURI, "redirect from " + state.getURI());
+			synchronized (this) {
+				if (stopped)
+					return;
 
-				page.status = Status.SUCCEEDED;
-				page.lastChange = System.currentTimeMillis();
-				db.store(page);
-			} else if (fe.isFatal()) {
-				// too many tries or fatal, mark as failed
-				page.status = Status.FAILED;
-				page.lastChange = System.currentTimeMillis();
-				db.store(page);
-			} else {
-				// requeue at back
-				page.status = Status.QUEUED;
-				page.lastChange = System.currentTimeMillis();
+				if (fe.newURI != null) {
+					// redirect, mark as succeeded
+					queueURI(fe.newURI, "redirect from " + state.getURI());
 
-				db.store(page);
+					page.status = Status.SUCCEEDED;
+					page.lastChange = System.currentTimeMillis();
+					db.store(page);
+				} else if (fe.isFatal()) {
+					// too many tries or fatal, mark as failed
+					page.status = Status.FAILED;
+					page.lastChange = System.currentTimeMillis();
+					db.store(page);
+				} else {
+					// requeue at back
+					page.status = Status.QUEUED;
+					page.lastChange = System.currentTimeMillis();
+
+					db.store(page);
+				}
 			}
-		}
-		
-		startSomeRequests();
+
+			startSomeRequests();
 		} finally {
 			runningFetch.remove(page);
 		}
