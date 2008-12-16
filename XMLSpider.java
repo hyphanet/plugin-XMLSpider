@@ -1044,12 +1044,16 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		query.descend("lastChange").orderDescending();
 		ObjectSet<Page> set = query.execute();
 
+		if (set.isEmpty()) {
+			HTMLNode list = parent.addChild("%", "NO URI");
+		} else {
 		HTMLNode list = parent.addChild("ol", "style", "overflow: auto; white-space: nowrap;");
 
 		for (int i = 0; i < maxShownURIs && set.hasNext(); i++) {
 			Page page = set.next();
 			HTMLNode litem = list.addChild("li", "title", page.comment);
 			litem.addChild("a", "href", "/freenet:" + page.uri, page.uri);
+		}
 		}
 	}
 
@@ -1098,6 +1102,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		runningBox.addAttribute("style", "right: 0;");
 		HTMLNode runningContent = pageMaker.getContentNode(runningBox);
 		synchronized (runningFetch) {
+			if (runningFetch.isEmpty()) {
+				HTMLNode list = runningContent.addChild("%", "NO URI");
+			} else {
 			HTMLNode list = runningContent.addChild("ol", "style", "overflow: auto; white-space: nowrap;");
 
 			Iterator<Page> pi = runningFetch.keySet().iterator();
@@ -1105,6 +1112,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				Page page = pi.next();
 				HTMLNode litem = list.addChild("li", "title", page.comment);
 				litem.addChild("a", "href", "/freenet:" + page.uri, page.uri);
+			}
 			}
 		}
 		contentNode.addChild(runningBox);
