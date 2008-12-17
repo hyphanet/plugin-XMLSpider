@@ -455,6 +455,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 					db.store(page);
 				}
 				}
+				db.commit();
 			runningFetch.remove(page);
 			}
 
