@@ -1052,6 +1052,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		query.descend("status").constrain(status);
 		query.descend("lastChange").orderDescending();
 
+		ObjectSet<Page> set = query.execute();
 		return set.size();
 	}
 
