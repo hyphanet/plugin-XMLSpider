@@ -25,6 +25,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Vector;
+import java.util.concurrent.Executor;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -349,8 +353,12 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			// Ignore
 		}
 
-		public void onSuccess(FetchResult result, ClientGetter state) {
-			XMLSpider.this.onSuccess(result, state, page);
+		public void onSuccess(final FetchResult result, final ClientGetter state) {
+			callbackExecutor.execute(new Runnable() {
+				public void run() {
+					XMLSpider.this.onSuccess(result, state, page);
+				}
+			});
 		}
 
 		public void onSuccess(BaseClientPutter state) {
@@ -369,6 +377,12 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		return getter;
 	}
 
+	// this is java.util.concurrent.Executor, not freenet.support.Executor
+	// allow limiting the number of thread running
+	protected Executor callbackExecutor = new ThreadPoolExecutor( //
+	        0, Runtime.getRuntime().availableProcessors(), 10 * 60, TimeUnit.SECONDS, //
+	        new LinkedBlockingQueue<Runnable>());
+	
 	/**
 	 * Processes the successfully fetched uri for further outlinks.
 	 * 
@@ -376,7 +390,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * @param state
 	 * @param page
 	 */
-	// TODO limit the number of processor running
 	protected void onSuccess(FetchResult result, ClientGetter state, Page page) {
 		synchronized (this) {
 			while ((writingIndex || writeIndexScheduled) && !stopped) {
@@ -1402,8 +1415,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			public int getPriority() {
 				return NativeThread.LOW_PRIORITY;
 			}
-		}, 3 * 60 * 1000); // wait 3 minute for cool down
-		                   // FIXME why it take that long?
+		}, 60 * 1000); // wait 1 minute for cool down
 		writeIndexScheduled = true;
 	}
 
