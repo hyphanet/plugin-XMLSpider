@@ -1401,29 +1401,17 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		cfg.objectClass(Page.class).callConstructor(true);
 
-		cfg.objectClass(Page.class).cascadeOnActivate(true);
-		cfg.objectClass(Page.class).cascadeOnUpdate(true);
-		cfg.objectClass(Page.class).cascadeOnDelete(true);
-
 		//- Term
 		cfg.objectClass(Term.class).objectField("md5").indexed(true);
 		cfg.objectClass(Term.class).objectField("word").indexed(true);
 
 		cfg.objectClass(Term.class).callConstructor(true);
 
-		cfg.objectClass(Term.class).cascadeOnActivate(true);
-		cfg.objectClass(Term.class).cascadeOnUpdate(true);
-		cfg.objectClass(Term.class).cascadeOnDelete(true);
-
 		//- TermPosition
 		cfg.objectClass(TermPosition.class).objectField("pageId").indexed(true);
 		cfg.objectClass(TermPosition.class).objectField("word").indexed(true);
 
 		cfg.objectClass(TermPosition.class).callConstructor(true);
-
-		cfg.objectClass(TermPosition.class).cascadeOnActivate(true);
-		cfg.objectClass(TermPosition.class).cascadeOnUpdate(true);
-		cfg.objectClass(TermPosition.class).cascadeOnDelete(true);
 
 		//- Other
 		cfg.activationDepth(1);
