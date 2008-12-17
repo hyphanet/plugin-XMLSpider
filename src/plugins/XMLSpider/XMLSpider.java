@@ -229,7 +229,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * Adds the found uri to the list of to-be-retrieved uris. <p>Every usk uri added as ssk.
 	 * @param uri the new uri that needs to be fetched for further indexing
 	 */
-	public void queueURI(FreenetURI uri, String comment) {
+	// synchronized: this->page
+	public void queueURI(FreenetURI uri, String comment, boolean force) {
 		String sURI = uri.toString();
 		for (String ext : BADLIST_EXTENSTION)
 			if (sURI.endsWith(ext))
@@ -246,13 +247,21 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 
 		synchronized (this) {
-			if (getPageByURI(uri) == null) {
-				Page page = new Page();
+			Page page = getPageByURI(uri);
+			if (page == null) {
+				page = new Page();
 				page.uri = uri.toString();
 				page.id = maxPageId.incrementAndGet();
 				page.comment = comment;
 
 				db.store(page);
+			} else if (force) {
+				synchronized (page) {
+					page.status = Status.QUEUED;
+					page.lastChange = System.currentTimeMillis();
+
+					db.store(page);
+				}
 			}
 		}
 	}
@@ -260,7 +269,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	private void startSomeRequests() {
 		FreenetURI[] initialURIs = core.getBookmarkURIs();
 		for (int i = 0; i < initialURIs.length; i++)
-			queueURI(initialURIs[i], "bookmark");
+			queueURI(initialURIs[i], "bookmark", false);
 
 		ArrayList<ClientGetter> toStart = null;
 		synchronized (this) {
@@ -431,7 +440,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 				if (fe.newURI != null) {
 					// redirect, mark as succeeded
-					queueURI(fe.newURI, "redirect from " + state.getURI());
+					queueURI(fe.newURI, "redirect from " + state.getURI(), false);
 
 					page.status = Status.SUCCEEDED;
 					page.lastChange = System.currentTimeMillis();
@@ -1064,43 +1073,17 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		
 		return generateHTML(request, pageNode, contentNode);
 	}
-	
+		
 	public String handleHTTPPost(HTTPRequest request) throws PluginHTTPException {
 		HTMLNode pageNode = pageMaker.getPageNode(pluginName, null);
 		HTMLNode contentNode = pageMaker.getContentNode(pageNode);
 
 		String addURI = request.getPartAsString("addURI", 512);
 		if (addURI != null && addURI.length() != 0) {
-			// Adding URI manually
 			try {
 				FreenetURI uri = new FreenetURI(addURI);
-
-				if (uri.isUSK()) {
-					if (uri.getSuggestedEdition() < 0)
-						uri = uri.setSuggestedEdition((-1) * uri.getSuggestedEdition());
-					try {
-						uri = ((USK.create(uri)).getSSK()).getURI();
-						(ctx.uskManager).subscribe(USK.create(uri), this, false, this);
-					} catch (Exception e) {
-					}
-				}
-
-				synchronized (this) {
-					Page page = getPageByURI(uri);
-					if (page == null) {
-						page = new Page();
-						page.uri = uri.toString();
-						page.id = maxPageId.incrementAndGet();
-						page.comment = "manualy";
-
-						db.store(page);
-					} else {
-						page.status = Status.QUEUED;
-						page.lastChange = System.currentTimeMillis();
-
-						db.store(page);
-					}
-				}
+				queueURI(uri, "manually", true);
+				
 				HTMLNode infobox = pageMaker.getInfobox("infobox infobox-success", "URI Added");
 				infobox.addChild("%", "Added " + uri);
 				contentNode.addChild(infobox);
@@ -1220,7 +1203,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		
 		public void foundURI(FreenetURI uri, boolean inline){
 			Logger.debug(this, "foundURI " + uri + " on " + page);
-			queueURI(uri, "Added from " + page.uri);
+			queueURI(uri, "Added from " + page.uri, false);
 		}
 
 		Integer lastPosition = null;
@@ -1351,7 +1334,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		if(runningFetchesByURI.containsKey(uri)) runningFetchesByURI.remove(uri);
 		uri = key.getURI().setSuggestedEdition(l);
 		 */
-		queueURI(uri, "USK found edition");
+		queueURI(uri, "USK found edition", true);
 	}
 
 	public short getPollingPriorityNormal() {
