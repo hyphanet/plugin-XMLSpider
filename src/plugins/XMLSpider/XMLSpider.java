@@ -282,7 +282,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				query.descend("lastChange").orderAscending();
 				ObjectSet<Page> queuedSet = query.execute();
 
-				if ((running >= maxParallelRequests) || (queuedSet.size() - running <= 0))
+				if (running >= maxParallelRequests)
 					return;
 
 				toStart = new ArrayList<ClientGetter>(maxParallelRequests - running);
@@ -1051,9 +1051,15 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		query.constrain(Page.class);
 		query.descend("status").constrain(status);
 		ObjectSet<Page> set = query.execute();
-		set.hasNext();
 
-		return set.size();
+		long i = 0;
+
+		while (set.hasNext()) {
+			set.next();
+			i++;
+		}
+
+		return i;
 	}
 
 	private void listPage(Status status, HTMLNode parent) {
