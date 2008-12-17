@@ -43,7 +43,6 @@ import com.db4o.Db4o;
 import com.db4o.ObjectContainer;
 import com.db4o.ObjectSet;
 import com.db4o.config.Configuration;
-import com.db4o.config.QueryEvaluationMode;
 import com.db4o.diagnostic.DiagnosticToConsole;
 import com.db4o.query.Query;
 
@@ -377,7 +376,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 */
 	public void onSuccess(FetchResult result, ClientGetter state, Page page) {
 		synchronized (this) {
-			while (writingIndex && !stopped) {
+			while ((writingIndex || writeIndexScheduled) && !stopped) {
 				try {
 					wait();
 				} catch (InterruptedException e) {
@@ -1089,13 +1088,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		if (request.isPartSet("createIndex")) {
 			synchronized (this) {
-				if (!writingIndex) {
-					scheduleMakeIndex();
+				scheduleMakeIndex();
 
-					HTMLNode infobox = pageMaker.getInfobox("infobox infobox-success", "Scheduled Creating Index");
-					infobox.addChild("#", "Index will start create soon.");
-					contentNode.addChild(infobox);
-				}
+				HTMLNode infobox = pageMaker.getInfobox("infobox infobox-success", "Scheduled Creating Index");
+				infobox.addChild("#", "Index will start create soon.");
+				contentNode.addChild(infobox);
 			}
 		}
 
@@ -1142,6 +1139,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		synchronized (this) {
 			if (writingIndex)
 				statusContent.addChild("span", "style", "color: red; font-weight: bold;", "RUNNING");
+			else if (writeIndexScheduled)
+				statusContent.addChild("span", "style", "color: blue; font-weight: bold;", "SCHEDULED");
 			else
 				statusContent.addChild("span", "style", "color: green; font-weight: bold;", "IDLE");
 		}
@@ -1305,6 +1304,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 	private boolean mustWriteIndex = false;
 	private boolean writingIndex;
+	private boolean writeIndexScheduled;
 
 	public void makeIndex() throws Exception {
 		synchronized(this) {
@@ -1337,12 +1337,16 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		} finally {
 			synchronized (this) {
 				writingIndex = false;
+				writeIndexScheduled = false;
 				notifyAll();
 			}
 		}
 	}
 
-	private void scheduleMakeIndex() {
+	private synchronized void scheduleMakeIndex() {
+		if (writeIndexScheduled || writingIndex)
+			return;
+		
 		core.getTicker().queueTimedJob(new PrioRunnable() {
 			public void run() {
 				try {
@@ -1355,8 +1359,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			public int getPriority() {
 				return NativeThread.LOW_PRIORITY;
 			}
-
-		}, 1);
+		}, 60000); // wait 1 minute for cool down
+		writeIndexScheduled = true;
 	}
 
 	public void onFoundEdition(long l, USK key){
