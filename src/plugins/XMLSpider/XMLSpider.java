@@ -169,10 +169,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	private Vector<String> indices;
 	private int match;
 	private long time_taken;
-/*
- * minTimeBetweenEachIndexRewriting in seconds 
- */
-	private static final int minTimeBetweenEachIndexRewriting = 600;
+
 	/**
 	 * directory where the generated indices are stored. 
 	 * Needs to be created before it can be used
@@ -229,7 +226,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * Adds the found uri to the list of to-be-retrieved uris. <p>Every usk uri added as ssk.
 	 * @param uri the new uri that needs to be fetched for further indexing
 	 */
-	// synchronized: this->page
 	public void queueURI(FreenetURI uri, String comment, boolean force) {
 		String sURI = uri.toString();
 		for (String ext : BADLIST_EXTENSTION)
@@ -273,8 +269,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		ArrayList<ClientGetter> toStart = null;
 		synchronized (this) {
-			if (stopped) 
+			if (stopped)
 				return;
+			synchronized (runningFetch) {
 			
 			int running = runningFetch.size();
 			
@@ -309,6 +306,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 					db.store(page);
 				}
 			}
+			}
 		}
 		
 		for (ClientGetter g : toStart) {
@@ -321,7 +319,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			}
 		}
 	}
-
 
 	private class MyClientCallback implements ClientCallback {
 		final Page page;
@@ -421,10 +418,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			}
 		} finally {
 			synchronized (this) {
+				runningFetch.remove(page);
 				page.lastChange = System.currentTimeMillis();
 				db.store(page);
 				db.commit();
-				runningFetch.remove(page);
 			}
 			startSomeRequests();
 		}
@@ -433,11 +430,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public void onFailure(FetchException fe, ClientGetter state, Page page) {
 		Logger.minor(this, "Failed: " + page + " : " + state, fe);
 
-		try {
 			synchronized (this) {
 				if (stopped)
 					return;
 
+				synchronized (page) {
 				if (fe.newURI != null) {
 					// redirect, mark as succeeded
 					queueURI(fe.newURI, "redirect from " + state.getURI(), false);
@@ -457,13 +454,12 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 					db.store(page);
 				}
+				}
+			runningFetch.remove(page);
 			}
 
 			startSomeRequests();
-		} finally {
-			runningFetch.remove(page);
-		}
-	}
+	} 
 
 	/**
 	 * generates the main index file that can be used by librarian for searching in the list of
@@ -474,7 +470,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * @throws IOException
 	 * @throws NoSuchAlgorithmException
 	 */
-	private synchronized void makeMainIndex() throws IOException,NoSuchAlgorithmException {
+	private void makeMainIndex() throws IOException, NoSuchAlgorithmException {
 		// Produce the main index file.
 		Logger.minor(this, "Producing top index...");
 
@@ -591,7 +587,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * of the hash code of the words
 	 * @throws Exception
 	 */
-	private synchronized void makeSubIndices() throws Exception{
+	private void makeSubIndices() throws Exception {
 		Logger.normal(this, "Generating index...");
 
 		Query query = db.query();
@@ -632,7 +628,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}
 
 
-	private synchronized void generateSubIndex(int p, List<String> list) throws Exception {
+	private void generateSubIndex(int p, List<String> list) throws Exception {
 		boolean logMINOR = Logger.shouldLog(Logger.MINOR, this);
 		/*
 		 * if the list is less than max allowed entries in a file then directly generate the xml 
@@ -687,7 +683,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * @param prefix number of matching bits of md5
 	 * @throws Exception
 	 */
-	protected synchronized void generateXML(List<String> list, int prefix) throws TooBigIndexException, Exception
+	protected void generateXML(List<String> list, int prefix) throws TooBigIndexException, Exception
 	{
 		String p = list.get(0).substring(0, prefix);
 		indices.add(p);
@@ -1030,7 +1026,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 					Thread.sleep(30 * 1000); // Let the node start up
 				} catch (InterruptedException e){}
 				startSomeRequests();
-				scheduleMakeIndex();
 			}
 		}, "Spider Plugin Starter");
 	}
@@ -1078,6 +1073,18 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		HTMLNode pageNode = pageMaker.getPageNode(pluginName, null);
 		HTMLNode contentNode = pageMaker.getContentNode(pageNode);
 
+		if (request.isPartSet("createIndex")) {
+			synchronized (this) {
+				if (!writingIndex) {
+					scheduleMakeIndex();
+					
+					HTMLNode infobox = pageMaker.getInfobox("infobox infobox-success", "Scheduled Creating Index");
+					infobox.addChild("%", "Index will start create soon.");
+					contentNode.addChild(infobox);
+				}
+			}
+		}
+		
 		String addURI = request.getPartAsString("addURI", 512);
 		if (addURI != null && addURI.length() != 0) {
 			try {
@@ -1133,16 +1140,32 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		nextTableCell = overviewTableRow.addChild("td", "class", "second");
 		HTMLNode mainBox = pageMaker.getInfobox("Main");
 		HTMLNode mainContent = pageMaker.getContentNode(mainBox);
-		HTMLNode form = mainContent.addChild("form", //
+		HTMLNode addForm = mainContent.addChild("form", //
 		        new String[] { "action", "method" }, //
 		        new String[] { "plugins.XMLSpider.XMLSpider", "post" });
-		form.addChild("label", "for", "addURI", "Add URI:");
-		form.addChild("input", new String[] { "name", "style" }, new String[] { "addURI", "width: 20em;" });
-		form.addChild("input", //
+		addForm.addChild("label", "for", "addURI", "Add URI:");
+		addForm.addChild("input", new String[] { "name", "style" }, new String[] { "addURI", "width: 20em;" });
+		addForm.addChild("input", //
 		        new String[] { "name", "type", "value" },//
 		        new String[] { "formPassword", "hidden", core.formPassword });
-		form.addChild("input", "type", "submit");
+		addForm.addChild("input", "type", "submit");
 		nextTableCell.addChild(mainBox);
+
+		HTMLNode indexBox = pageMaker.getInfobox("Create Index");
+		HTMLNode indexContent = pageMaker.getContentNode(indexBox);
+		HTMLNode indexForm = indexContent.addChild("form", //
+		        new String[] { "action", "method" }, //
+		        new String[] { "plugins.XMLSpider.XMLSpider", "post" });
+		indexForm.addChild("input", //
+		        new String[] { "name", "type", "value" },//
+		        new String[] { "formPassword", "hidden", core.formPassword });
+		indexForm.addChild("input", //
+		        new String[] { "name", "type", "value" },//
+		        new String[] { "createIndex", "hidden", "createIndex" });
+		indexForm.addChild("input", //
+		        new String[] { "type", "value" }, //
+		        new String[] { "submit", "Create Index Now" });
+		nextTableCell.addChild(indexBox);
 
 		HTMLNode runningBox = pageMaker.getInfobox("Running URI");
 		runningBox.addAttribute("style", "right: 0;");
@@ -1298,8 +1321,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			
 			tProducedIndex = System.currentTimeMillis();
 		} finally {
-			if (!stopped)
-				scheduleMakeIndex();
 			synchronized (this) {
 				writingIndex = false;
 				notifyAll();
@@ -1321,7 +1342,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				return NativeThread.LOW_PRIORITY;
 			}
 			
-		}, minTimeBetweenEachIndexRewriting * 1000);
+		}, 1);
 	}
 
 	public void onFoundEdition(long l, USK key){
