@@ -392,6 +392,16 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		page.status = Status.SUCCEEDED; // Content filter may throw, but we mark it as success anyway
 
 		try {
+			synchronized (page) {
+				// Page may be refetched if added manually
+				// Delete existing TermPosition
+				Query query = db.query();
+				query.constrain(TermPosition.class);
+				query.descend("pageId").constrain(page.id);
+				ObjectSet<TermPosition> set = query.execute();
+				for (TermPosition tp : set)
+					db.delete(tp);
+				
 			ClientMetadata cm = result.getMetadata();
 			Bucket data = result.asBucket();
 			String mimeType = cm.getMIMEType();			
@@ -415,6 +425,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				Logger.error(this, "Internal error: " + e, e);
 			} finally {
 				data.free();
+			}
 			}
 		} finally {
 			synchronized (this) {
