@@ -91,7 +91,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		/** For simplicity, running is also mark as QUEUED */
 		QUEUED, SUCCEEDED, FAILED
 	};
-	
+
 	static class Page {
 		/** Page Id */
 		long id;
@@ -128,7 +128,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		@Override
 		public String toString() {
 			return "[PAGE: id=" + id + ", title=" + pageTitle + ", uri=" + uri + ", status=" + status + ", comment="
-			        + comment
+			+ comment
 			+ "]";
 		}
 	}
@@ -147,7 +147,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		public Term() {
 		}
 	}
-	
+
 	static class TermPosition {
 		/** Term */
 		String word;
@@ -159,13 +159,13 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		public TermPosition() {
 		}
 	}
-	
+
 	/** Document ID of fetching documents */
 	protected Map<Page, ClientGetter> runningFetch = Collections.synchronizedMap(new HashMap<Page, ClientGetter>());
 
 	long tProducedIndex;
 	protected AtomicLong maxPageId;
-		
+
 	private Vector<String> indices;
 	private int match;
 	private long time_taken;
@@ -197,7 +197,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	private static final String indexTitle= "XMLSpider index";
 	private static final String indexOwner = "Freenet";
 	private static final String indexOwnerEmail = null;
-	
+
 	// Can have many; this limit only exists to save memory.
 	private static final int maxParallelRequests = 100;
 	private int maxShownURIs = 15;
@@ -208,7 +208,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	// Any lower makes it very difficult to debug. Maybe reduce for production - after solving the ARK bugs.
 	private final short PRIORITY_CLASS = RequestStarter.IMMEDIATE_SPLITFILE_PRIORITY_CLASS;
 	private boolean stopped = true;
-	
+
 	private PageMaker pageMaker;
 
 	private final static String[] BADLIST_EXTENSTION = new String[] { 
@@ -272,49 +272,49 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			if (stopped)
 				return;
 			synchronized (runningFetch) {
-			
-			int running = runningFetch.size();
-			
-			Query query = db.query();
-			query.constrain(Page.class);
-			query.descend("status").constrain(Status.QUEUED);
-			query.descend("lastChange").orderAscending();
-			ObjectSet<Page> queuedSet = query.execute();
 
-			if ((running >= maxParallelRequests) || (queuedSet.size() - running <= 0))
-				return;
+				int running = runningFetch.size();
 
-			toStart = new ArrayList<ClientGetter>(maxParallelRequests - running);
+				Query query = db.query();
+				query.constrain(Page.class);
+				query.descend("status").constrain(Status.QUEUED);
+				query.descend("lastChange").orderAscending();
+				ObjectSet<Page> queuedSet = query.execute();
 
-			while (running + toStart.size() < maxParallelRequests && queuedSet.hasNext()) {
-				Page page = queuedSet.next();
+				if ((running >= maxParallelRequests) || (queuedSet.size() - running <= 0))
+					return;
 
-				if (runningFetch.containsKey(page))
-					continue;
+				toStart = new ArrayList<ClientGetter>(maxParallelRequests - running);
 
-				try {
-					ClientGetter getter = makeGetter(page);
+				while (running + toStart.size() < maxParallelRequests && queuedSet.hasNext()) {
+					Page page = queuedSet.next();
 
-					Logger.minor(this, "Starting " + getter + " " + page);
-					toStart.add(getter);
-					runningFetch.put(page, getter);
-				} catch (MalformedURLException e) {
-					Logger.error(this, "IMPOSSIBLE-Malformed URI: " + page, e);
+					if (runningFetch.containsKey(page))
+						continue;
 
-					page.status = Status.FAILED;
-					page.lastChange = System.currentTimeMillis();
-					db.store(page);
+					try {
+						ClientGetter getter = makeGetter(page);
+
+						Logger.minor(this, "Starting " + getter + " " + page);
+						toStart.add(getter);
+						runningFetch.put(page, getter);
+					} catch (MalformedURLException e) {
+						Logger.error(this, "IMPOSSIBLE-Malformed URI: " + page, e);
+
+						page.status = Status.FAILED;
+						page.lastChange = System.currentTimeMillis();
+						db.store(page);
+					}
 				}
 			}
-			}
 		}
-		
+
 		for (ClientGetter g : toStart) {
 			try {
 				g.start();
 				Logger.minor(this, g + " started");
 			} catch (FetchException e) {
-                Logger.minor(this, "Fetch Exception: " + g, e);
+				Logger.minor(this, "Fetch Exception: " + g, e);
 				onFailure(e, g, ((MyClientCallback) g.getClientCallback()).page);
 			}
 		}
@@ -322,7 +322,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 	private class MyClientCallback implements ClientCallback {
 		final Page page;
-		
+
 		public MyClientCallback(Page page) {
 			this.page = page;
 		}
@@ -354,16 +354,16 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		public void onSuccess(BaseClientPutter state) {
 			// Ignore
 		}
-		
+
 		public String toString() {
 			return super.toString() + ":" + page;
 		}		
 	}
-	
+
 	private ClientGetter makeGetter(Page page) throws MalformedURLException {
 		ClientGetter getter = new ClientGetter(new MyClientCallback(page),
-		        core.requestStarters.chkFetchScheduler, core.requestStarters.sskFetchScheduler,
-		        new FreenetURI(page.uri), ctx, PRIORITY_CLASS, this, null, null);
+				core.requestStarters.chkFetchScheduler,
+		        core.requestStarters.sskFetchScheduler, new FreenetURI(page.uri), ctx, PRIORITY_CLASS, this, null, null);
 		return getter;
 	}
 
@@ -387,7 +387,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			if (stopped)
 				return;    				
 		}
-		
+
 		FreenetURI uri = state.getURI();
 		page.status = Status.SUCCEEDED; // Content filter may throw, but we mark it as success anyway
 
@@ -401,31 +401,33 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				ObjectSet<TermPosition> set = query.execute();
 				for (TermPosition tp : set)
 					db.delete(tp);
-				
-			ClientMetadata cm = result.getMetadata();
-			Bucket data = result.asBucket();
-			String mimeType = cm.getMIMEType();			
-			
-			/*
-			 * instead of passing the current object, the pagecallback object for every page is passed to the content filter
-			 * this has many benefits to efficiency, and allows us to identify trivially which page is being indexed.
-			 * (we CANNOT rely on the base href provided).
-			 */
-			PageCallBack pageCallBack = new PageCallBack(page);
-			Logger.minor(this, "Successful: " + uri + " : " + page.id);
-			
-			try {
-				ContentFilter.filter(data, new NullBucketFactory(), mimeType, uri.toURI("http://127.0.0.1:8888/"), pageCallBack);
-				Logger.minor(this, "Filtered " + uri + " : " + page.id);
-			} catch (UnsafeContentTypeException e) {
-				return; // Ignore
-			} catch (IOException e) {
-				Logger.error(this, "Bucket error?: " + e, e);
-			} catch (URISyntaxException e) {
-				Logger.error(this, "Internal error: " + e, e);
-			} finally {
-				data.free();
-			}
+
+				ClientMetadata cm = result.getMetadata();
+				Bucket data = result.asBucket();
+				String mimeType = cm.getMIMEType();
+
+				/*
+				 * instead of passing the current object, the pagecallback object for every page is
+				 * passed to the content filter this has many benefits to efficiency, and allows us
+				 * to identify trivially which page is being indexed. (we CANNOT rely on the base
+				 * href provided).
+				 */
+				PageCallBack pageCallBack = new PageCallBack(page);
+				Logger.minor(this, "Successful: " + uri + " : " + page.id);
+
+				try {
+					ContentFilter.filter(data, new NullBucketFactory(), mimeType, uri.toURI("http://127.0.0.1:8888/"),
+					        pageCallBack);
+					Logger.minor(this, "Filtered " + uri + " : " + page.id);
+				} catch (UnsafeContentTypeException e) {
+					return; // Ignore
+				} catch (IOException e) {
+					Logger.error(this, "Bucket error?: " + e, e);
+				} catch (URISyntaxException e) {
+					Logger.error(this, "Internal error: " + e, e);
+				} finally {
+					data.free();
+				}
 			}
 		} finally {
 			synchronized (this) {
@@ -441,11 +443,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public void onFailure(FetchException fe, ClientGetter state, Page page) {
 		Logger.minor(this, "Failed: " + page + " : " + state, fe);
 
-			synchronized (this) {
-				if (stopped)
-					return;
+		synchronized (this) {
+			if (stopped)
+				return;
 
-				synchronized (page) {
+			synchronized (page) {
 				if (fe.newURI != null) {
 					// redirect, mark as succeeded
 					queueURI(fe.newURI, "redirect from " + state.getURI(), false);
@@ -465,12 +467,12 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 					db.store(page);
 				}
-				}
-				db.commit();
-			runningFetch.remove(page);
 			}
+			db.commit();
+			runningFetch.remove(page);
+		}
 
-			startSomeRequests();
+		startSomeRequests();
 	} 
 
 	/**
@@ -494,95 +496,97 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		resultStream = new StreamResult(fos);
 
 		try {
-		/* Initialize xml builder */
-		Document xmlDoc = null;
-		DocumentBuilderFactory xmlFactory = null;
-		DocumentBuilder xmlBuilder = null;
-		DOMImplementation impl = null;
-		Element rootElement = null;
+			/* Initialize xml builder */
+			Document xmlDoc = null;
+			DocumentBuilderFactory xmlFactory = null;
+			DocumentBuilder xmlBuilder = null;
+			DOMImplementation impl = null;
+			Element rootElement = null;
 
-		xmlFactory = DocumentBuilderFactory.newInstance();
+			xmlFactory = DocumentBuilderFactory.newInstance();
 
 
-		try {
-			xmlBuilder = xmlFactory.newDocumentBuilder();
-		} catch(javax.xml.parsers.ParserConfigurationException e) {
+			try {
+				xmlBuilder = xmlFactory.newDocumentBuilder();
+			} catch (javax.xml.parsers.ParserConfigurationException e) {
 
-			Logger.error(this, "Spider: Error while initializing XML generator: "+e.toString(), e);
-			return;
-		}
+				Logger.error(this, "Spider: Error while initializing XML generator: " + e.toString(), e);
+				return;
+			}
 
-		impl = xmlBuilder.getDOMImplementation();
-		/* Starting to generate index */
-		xmlDoc = impl.createDocument(null, "main_index", null);
-		rootElement = xmlDoc.getDocumentElement();
+			impl = xmlBuilder.getDOMImplementation();
+			/* Starting to generate index */
+			xmlDoc = impl.createDocument(null, "main_index", null);
+			rootElement = xmlDoc.getDocumentElement();
 
-		/* Adding header to the index */
-		Element headerElement = xmlDoc.createElement("header");
+			/* Adding header to the index */
+			Element headerElement = xmlDoc.createElement("header");
 
-		/* -> title */
-		Element subHeaderElement = xmlDoc.createElement("title");
-		Text subHeaderText = xmlDoc.createTextNode(indexTitle);
-
-		subHeaderElement.appendChild(subHeaderText);
-		headerElement.appendChild(subHeaderElement);
-
-		/* -> owner */
-		subHeaderElement = xmlDoc.createElement("owner");
-		subHeaderText = xmlDoc.createTextNode(indexOwner);
-
-		subHeaderElement.appendChild(subHeaderText);
-		headerElement.appendChild(subHeaderElement);
-
-		/* -> owner email */
-		if(indexOwnerEmail != null) {
-			subHeaderElement = xmlDoc.createElement("email");
-			subHeaderText = xmlDoc.createTextNode(indexOwnerEmail);
+			/* -> title */
+			Element subHeaderElement = xmlDoc.createElement("title");
+			Text subHeaderText = xmlDoc.createTextNode(indexTitle);
 
 			subHeaderElement.appendChild(subHeaderText);
 			headerElement.appendChild(subHeaderElement);
-		}
-		/*
-		 * the max number of digits in md5 to be used for matching with the search query is stored in the xml
-		 */
-		Element prefixElement = xmlDoc.createElement("prefix");
-		/* Adding word index */
-		Element keywordsElement = xmlDoc.createElement("keywords");
-		for(int i = 0;i<indices.size();i++){
 
-			Element subIndexElement = xmlDoc.createElement("subIndex");
-			subIndexElement.setAttribute("key", indices.elementAt(i));
-			//the subindex element key will contain the bits used for matching in that subindex
-			keywordsElement.appendChild(subIndexElement);
-		}
+			/* -> owner */
+			subHeaderElement = xmlDoc.createElement("owner");
+			subHeaderText = xmlDoc.createTextNode(indexOwner);
 
-		prefixElement.setAttribute("value",match+"");
-		rootElement.appendChild(prefixElement);
-		rootElement.appendChild(headerElement);
-		rootElement.appendChild(keywordsElement);
+			subHeaderElement.appendChild(subHeaderText);
+			headerElement.appendChild(subHeaderElement);
 
-		/* Serialization */
-		DOMSource domSource = new DOMSource(xmlDoc);
-		TransformerFactory transformFactory = TransformerFactory.newInstance();
-		Transformer serializer;
+			/* -> owner email */
+			if (indexOwnerEmail != null) {
+				subHeaderElement = xmlDoc.createElement("email");
+				subHeaderText = xmlDoc.createTextNode(indexOwnerEmail);
 
-		try {
-			serializer = transformFactory.newTransformer();
-		} catch(javax.xml.transform.TransformerConfigurationException e) {
-			Logger.error(this, "Spider: Error while serializing XML (transformFactory.newTransformer()): "+e.toString(), e);
-			return;
-		}
+				subHeaderElement.appendChild(subHeaderText);
+				headerElement.appendChild(subHeaderElement);
+			}
+			/*
+			 * the max number of digits in md5 to be used for matching with the search query is
+			 * stored in the xml
+			 */
+			Element prefixElement = xmlDoc.createElement("prefix");
+			/* Adding word index */
+			Element keywordsElement = xmlDoc.createElement("keywords");
+			for (int i = 0; i < indices.size(); i++) {
 
-		serializer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
-		serializer.setOutputProperty(OutputKeys.INDENT,"yes");
+				Element subIndexElement = xmlDoc.createElement("subIndex");
+				subIndexElement.setAttribute("key", indices.elementAt(i));
+				//the subindex element key will contain the bits used for matching in that subindex
+				keywordsElement.appendChild(subIndexElement);
+			}
 
-		/* final step */
-		try {
-			serializer.transform(domSource, resultStream);
-		} catch(javax.xml.transform.TransformerException e) {
-			Logger.error(this, "Spider: Error while serializing XML (transform()): "+e.toString(), e);
-			return;
-		}
+			prefixElement.setAttribute("value", match + "");
+			rootElement.appendChild(prefixElement);
+			rootElement.appendChild(headerElement);
+			rootElement.appendChild(keywordsElement);
+
+			/* Serialization */
+			DOMSource domSource = new DOMSource(xmlDoc);
+			TransformerFactory transformFactory = TransformerFactory.newInstance();
+			Transformer serializer;
+
+			try {
+				serializer = transformFactory.newTransformer();
+			} catch (javax.xml.transform.TransformerConfigurationException e) {
+				Logger.error(this, "Spider: Error while serializing XML (transformFactory.newTransformer()): "
+				        + e.toString(), e);
+				return;
+			}
+
+			serializer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
+			serializer.setOutputProperty(OutputKeys.INDENT, "yes");
+
+			/* final step */
+			try {
+				serializer.transform(domSource, resultStream);
+			} catch (javax.xml.transform.TransformerException e) {
+				Logger.error(this, "Spider: Error while serializing XML (transform()): " + e.toString(), e);
+				return;
+			}
 		} finally {
 			fos.close();
 		}
@@ -606,7 +610,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		query.constrain(Term.class);
 		query.descend("md5").orderAscending();
 		ObjectSet<Term> termSet = query.execute();
-		
+
 		indices = new Vector<String>();
 		int prefix = (int) ((Math.log(termSet.size()) - Math.log(MAX_ENTRIES)) / Math.log(16)) - 1;
 		if (prefix <= 0) prefix = 1;
@@ -616,7 +620,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		String str = termSet.get(0).md5;
 		String currentPrefix = str.substring(0, prefix);
 		list.add(str);
-				
+
 		int i = 0;
 		for (Term term : termSet)
 		{
@@ -663,32 +667,31 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 		if(logMINOR)
 			Logger.minor(this, "Too big subindex for "+list.size()+" entries with prefix length "+p);
-			//prefix needs to be incremented
-			if(match <= p) match = p+1; 
-			int prefix = p+1;
-			int i =0;
-			String str = list.get(i);
-			int index=0;
-			while(i<list.size())
+		//prefix needs to be incremented
+		if (match <= p)
+			match = p + 1;
+		int prefix = p + 1;
+		int i = 0;
+		String str = list.get(i);
+		int index = 0;
+		while (i < list.size()) {
+			String key = list.get(i);
+			if ((key.substring(0, prefix)).equals(str.substring(0, prefix))) 
 			{
-				String key = list.get(i);
-				if((key.substring(0, prefix)).equals(str.substring(0, prefix))) 
-				{
-					i++;
-				}
-				else {
-					generateSubIndex(prefix, list.subList(index, i));
-					index = i;
-					str = key;
-				}
+				i++;
+			} else {
+				generateSubIndex(prefix, list.subList(index, i));
+				index = i;
+				str = key;
 			}
-			generateSubIndex(prefix, list.subList(index, i));
+		}
+		generateSubIndex(prefix, list.subList(index, i));
 	}	
 
 	private class TooBigIndexException extends Exception {
 		private static final long serialVersionUID = -6172560811504794914L;
 	}
-	
+
 	/**
 	 * generates the xml index with the given list of words with prefix number of matching bits in md5
 	 * @param list  list of the words to be added in the index
@@ -705,47 +708,46 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		resultStream = new StreamResult(fos);
 
 		try {
-		/* Initialize xml builder */
-		Document xmlDoc = null;
-		DocumentBuilderFactory xmlFactory = null;
-		DocumentBuilder xmlBuilder = null;
-		DOMImplementation impl = null;
-		Element rootElement = null;
-		xmlFactory = DocumentBuilderFactory.newInstance();
+			/* Initialize xml builder */
+			Document xmlDoc = null;
+			DocumentBuilderFactory xmlFactory = null;
+			DocumentBuilder xmlBuilder = null;
+			DOMImplementation impl = null;
+			Element rootElement = null;
+			xmlFactory = DocumentBuilderFactory.newInstance();
 
-		try {
-			xmlBuilder = xmlFactory.newDocumentBuilder();
-		} catch(javax.xml.parsers.ParserConfigurationException e) {
-			Logger.error(this, "Spider: Error while initializing XML generator: "+e.toString(), e);
-			return;
-		}
+			try {
+				xmlBuilder = xmlFactory.newDocumentBuilder();
+			} catch (javax.xml.parsers.ParserConfigurationException e) {
+				Logger.error(this, "Spider: Error while initializing XML generator: " + e.toString(), e);
+				return;
+			}
 
-		impl = xmlBuilder.getDOMImplementation();
-		/* Starting to generate index */
-		xmlDoc = impl.createDocument(null, "sub_index", null);
-		rootElement = xmlDoc.getDocumentElement();
+			impl = xmlBuilder.getDOMImplementation();
+			/* Starting to generate index */
+			xmlDoc = impl.createDocument(null, "sub_index", null);
+			rootElement = xmlDoc.getDocumentElement();
 
-		/* Adding header to the index */
-		Element headerElement = xmlDoc.createElement("header");
-		/* -> title */
-		Element subHeaderElement = xmlDoc.createElement("title");
-		Text subHeaderText = xmlDoc.createTextNode(indexTitle);
-		subHeaderElement.appendChild(subHeaderText);
-		headerElement.appendChild(subHeaderElement);
+			/* Adding header to the index */
+			Element headerElement = xmlDoc.createElement("header");
+			/* -> title */
+			Element subHeaderElement = xmlDoc.createElement("title");
+			Text subHeaderText = xmlDoc.createTextNode(indexTitle);
+			subHeaderElement.appendChild(subHeaderText);
+			headerElement.appendChild(subHeaderElement);
 
-		Element filesElement = xmlDoc.createElement("files"); /* filesElement != fileElement */
-		Element EntriesElement = xmlDoc.createElement("entries");
-		EntriesElement.setNodeValue(list.size()+"");
-		EntriesElement.setAttribute("value", list.size()+"");
+			Element filesElement = xmlDoc.createElement("files"); /* filesElement != fileElement */
+			Element EntriesElement = xmlDoc.createElement("entries");
+			EntriesElement.setNodeValue(list.size() + "");
+			EntriesElement.setAttribute("value", list.size() + "");
 
-		/* Adding word index */
-		Element keywordsElement = xmlDoc.createElement("keywords");
-		Vector<Long> fileid = new Vector<Long>();
-		for(int i =0;i<list.size();i++)
-		{
-			Element wordElement = xmlDoc.createElement("word");
-			Term term = getTermByMd5(list.get(i));
-			wordElement.setAttribute("v", term.word);
+			/* Adding word index */
+			Element keywordsElement = xmlDoc.createElement("keywords");
+			Vector<Long> fileid = new Vector<Long>();
+			for (int i = 0; i < list.size(); i++) {
+				Element wordElement = xmlDoc.createElement("word");
+				Term term = getTermByMd5(list.get(i));
+				wordElement.setAttribute("v", term.word);
 
 				Query query = db.query();
 				query.constrain(TermPosition.class);
@@ -756,68 +758,68 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				for (TermPosition termPos : set) {
 					synchronized (termPos) {
 						Page page = getPageById(termPos.pageId);
-						
+
 						synchronized (page) {
-				
-				/*
-				 * adding file information
-				 * uriElement - lists the id of the file containing a particular word
-				 * fileElement - lists the id,key,title of the files mentioned in the entire subindex
-				 */
-				Element uriElement = xmlDoc.createElement("file");
-				Element fileElement = xmlDoc.createElement("file");
-				uriElement.setAttribute("id", Long.toString(page.id));
-					fileElement.setAttribute("id", Long.toString(page.id));
-				fileElement.setAttribute("key", page.uri);
-				fileElement.setAttribute("title", page.pageTitle != null ? page.pageTitle : page.uri);
-				
-				/* Position by position */
-					int[] positions = termPos.positions;
-			
-				StringBuilder positionList = new StringBuilder();
 
-				for(int k=0; k < positions.length ; k++) {
-					if(k!=0)
-						positionList.append(',');
-					positionList.append(positions[k]);
-				}
-				uriElement.appendChild(xmlDoc.createTextNode(positionList.toString()));
-				wordElement.appendChild(uriElement);
-				if (!fileid.contains(page.id))
-				{
-					fileid.add(page.id);
-					filesElement.appendChild(fileElement);
-				}
+							/*
+							 * adding file information uriElement - lists the id of the file
+							 * containing a particular word fileElement - lists the id,key,title of
+							 * the files mentioned in the entire subindex
+							 */
+							Element uriElement = xmlDoc.createElement("file");
+							Element fileElement = xmlDoc.createElement("file");
+							uriElement.setAttribute("id", Long.toString(page.id));
+							fileElement.setAttribute("id", Long.toString(page.id));
+							fileElement.setAttribute("key", page.uri);
+							fileElement.setAttribute("title", page.pageTitle != null ? page.pageTitle : page.uri);
+
+							/* Position by position */
+							int[] positions = termPos.positions;
+
+							StringBuilder positionList = new StringBuilder();
+
+							for (int k = 0; k < positions.length; k++) {
+								if (k != 0)
+									positionList.append(',');
+								positionList.append(positions[k]);
+							}
+							uriElement.appendChild(xmlDoc.createTextNode(positionList.toString()));
+							wordElement.appendChild(uriElement);
+							if (!fileid.contains(page.id)) {
+								fileid.add(page.id);
+								filesElement.appendChild(fileElement);
+							}
 						}
+					}
 				}
+				keywordsElement.appendChild(wordElement);
 			}
-			keywordsElement.appendChild(wordElement);
-		}
-		rootElement.appendChild(EntriesElement);
-		rootElement.appendChild(headerElement);
-		rootElement.appendChild(filesElement);
-		rootElement.appendChild(keywordsElement);
+			rootElement.appendChild(EntriesElement);
+			rootElement.appendChild(headerElement);
+			rootElement.appendChild(filesElement);
+			rootElement.appendChild(keywordsElement);
 
-		/* Serialization */
-		DOMSource domSource = new DOMSource(xmlDoc);
-		TransformerFactory transformFactory = TransformerFactory.newInstance();
-		Transformer serializer;
+			/* Serialization */
+			DOMSource domSource = new DOMSource(xmlDoc);
+			TransformerFactory transformFactory = TransformerFactory.newInstance();
+			Transformer serializer;
 
-		try {
-			serializer = transformFactory.newTransformer();
-		} catch(javax.xml.transform.TransformerConfigurationException e) {
-			Logger.error(this, "Spider: Error while serializing XML (transformFactory.newTransformer()): "+e.toString(), e);
-			return;
-		}
-		serializer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
-		serializer.setOutputProperty(OutputKeys.INDENT,"yes");
-		/* final step */
-		try {
-			serializer.transform(domSource, resultStream);
-		} catch(javax.xml.transform.TransformerException e) {
-			Logger.error(this, "Spider: Error while serializing XML (transform()): "+e.toString(), e);
-			return;
-		}
+			try {
+				serializer = transformFactory.newTransformer();
+			} catch (javax.xml.transform.TransformerConfigurationException e) {
+				Logger.error(this, "Spider: Error while serializing XML (transformFactory.newTransformer()): "
+				        + e.toString(), e);
+				return;
+			}
+			serializer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
+			serializer.setOutputProperty(OutputKeys.INDENT, "yes");
+			/* final step */
+			try {
+				serializer.transform(domSource, resultStream);
+			} catch (javax.xml.transform.TransformerException e) {
+				Logger.error(this, "Spider: Error while serializing XML (transform()): " + e.toString(), e);
+				return;
+			}
 		} finally {
 			fos.close();
 		}
@@ -865,7 +867,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}
 
 	public void generateSubIndex(String filename){
-//		generates the new subIndex
+		//		generates the new subIndex
 		File outputFile = new File(filename);
 		BufferedOutputStream fos;
 		try {
@@ -875,100 +877,101 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			return;
 		}
 		try {
-		StreamResult resultStream;
-		resultStream = new StreamResult(fos);
+			StreamResult resultStream;
+			resultStream = new StreamResult(fos);
 
-		/* Initialize xml builder */
-		Document xmlDoc = null;
-		DocumentBuilderFactory xmlFactory = null;
-		DocumentBuilder xmlBuilder = null;
-		DOMImplementation impl = null;
-		Element rootElement = null;
+			/* Initialize xml builder */
+			Document xmlDoc = null;
+			DocumentBuilderFactory xmlFactory = null;
+			DocumentBuilder xmlBuilder = null;
+			DOMImplementation impl = null;
+			Element rootElement = null;
 
-		xmlFactory = DocumentBuilderFactory.newInstance();
-
-
-		try {
-			xmlBuilder = xmlFactory.newDocumentBuilder();
-		} catch(javax.xml.parsers.ParserConfigurationException e) {
-			/* Will (should ?) never happen */
-			Logger.error(this, "Spider: Error while initializing XML generator: "+e.toString(), e);
-			return;
-		}
+			xmlFactory = DocumentBuilderFactory.newInstance();
 
 
-		impl = xmlBuilder.getDOMImplementation();
-
-		/* Starting to generate index */
-
-		xmlDoc = impl.createDocument(null, "sub_index", null);
-		rootElement = xmlDoc.getDocumentElement();
-
-		/* Adding header to the index */
-		Element headerElement = xmlDoc.createElement("header");
-
-		/* -> title */
-		Element subHeaderElement = xmlDoc.createElement("title");
-		Text subHeaderText = xmlDoc.createTextNode(indexTitle);
-
-		subHeaderElement.appendChild(subHeaderText);
-		headerElement.appendChild(subHeaderElement);
-
-		/* -> owner */
-		subHeaderElement = xmlDoc.createElement("owner");
-		subHeaderText = xmlDoc.createTextNode(indexOwner);
-
-		subHeaderElement.appendChild(subHeaderText);
-		headerElement.appendChild(subHeaderElement);
+			try {
+				xmlBuilder = xmlFactory.newDocumentBuilder();
+			} catch (javax.xml.parsers.ParserConfigurationException e) {
+				/* Will (should ?) never happen */
+				Logger.error(this, "Spider: Error while initializing XML generator: " + e.toString(), e);
+				return;
+			}
 
 
-		/* -> owner email */
-		if(indexOwnerEmail != null) {
-			subHeaderElement = xmlDoc.createElement("email");
-			subHeaderText = xmlDoc.createTextNode(indexOwnerEmail);
+			impl = xmlBuilder.getDOMImplementation();
+
+			/* Starting to generate index */
+
+			xmlDoc = impl.createDocument(null, "sub_index", null);
+			rootElement = xmlDoc.getDocumentElement();
+
+			/* Adding header to the index */
+			Element headerElement = xmlDoc.createElement("header");
+
+			/* -> title */
+			Element subHeaderElement = xmlDoc.createElement("title");
+			Text subHeaderText = xmlDoc.createTextNode(indexTitle);
 
 			subHeaderElement.appendChild(subHeaderText);
 			headerElement.appendChild(subHeaderElement);
-		}
+
+			/* -> owner */
+			subHeaderElement = xmlDoc.createElement("owner");
+			subHeaderText = xmlDoc.createTextNode(indexOwner);
+
+			subHeaderElement.appendChild(subHeaderText);
+			headerElement.appendChild(subHeaderElement);
 
 
-		Element filesElement = xmlDoc.createElement("files"); /* filesElement != fileElement */
+			/* -> owner email */
+			if (indexOwnerEmail != null) {
+				subHeaderElement = xmlDoc.createElement("email");
+				subHeaderText = xmlDoc.createTextNode(indexOwnerEmail);
 
-		Element EntriesElement = xmlDoc.createElement("entries");
-		EntriesElement.setNodeValue("0");
-		EntriesElement.setAttribute("value", "0");
-		//all index files are ready
-		/* Adding word index */
-		Element keywordsElement = xmlDoc.createElement("keywords");
-
-		rootElement.appendChild(EntriesElement);
-		rootElement.appendChild(headerElement);
-		rootElement.appendChild(filesElement);
-		rootElement.appendChild(keywordsElement);
-
-		/* Serialization */
-		DOMSource domSource = new DOMSource(xmlDoc);
-		TransformerFactory transformFactory = TransformerFactory.newInstance();
-		Transformer serializer;
-
-		try {
-			serializer = transformFactory.newTransformer();
-		} catch(javax.xml.transform.TransformerConfigurationException e) {
-			Logger.error(this, "Spider: Error while serializing XML (transformFactory.newTransformer()): "+e.toString(), e);
-			return;
-		}
+				subHeaderElement.appendChild(subHeaderText);
+				headerElement.appendChild(subHeaderElement);
+			}
 
 
-		serializer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
-		serializer.setOutputProperty(OutputKeys.INDENT,"yes");
+			Element filesElement = xmlDoc.createElement("files"); /* filesElement != fileElement */
 
-		/* final step */
-		try {
-			serializer.transform(domSource, resultStream);
-		} catch(javax.xml.transform.TransformerException e) {
-			Logger.error(this, "Spider: Error while serializing XML (transform()): "+e.toString(), e);
-			return;
-		}
+			Element EntriesElement = xmlDoc.createElement("entries");
+			EntriesElement.setNodeValue("0");
+			EntriesElement.setAttribute("value", "0");
+			//all index files are ready
+			/* Adding word index */
+			Element keywordsElement = xmlDoc.createElement("keywords");
+
+			rootElement.appendChild(EntriesElement);
+			rootElement.appendChild(headerElement);
+			rootElement.appendChild(filesElement);
+			rootElement.appendChild(keywordsElement);
+
+			/* Serialization */
+			DOMSource domSource = new DOMSource(xmlDoc);
+			TransformerFactory transformFactory = TransformerFactory.newInstance();
+			Transformer serializer;
+
+			try {
+				serializer = transformFactory.newTransformer();
+			} catch (javax.xml.transform.TransformerConfigurationException e) {
+				Logger.error(this, "Spider: Error while serializing XML (transformFactory.newTransformer()): "
+				        + e.toString(), e);
+				return;
+			}
+
+
+			serializer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
+			serializer.setOutputProperty(OutputKeys.INDENT, "yes");
+
+			/* final step */
+			try {
+				serializer.transform(domSource, resultStream);
+			} catch (javax.xml.transform.TransformerException e) {
+				Logger.error(this, "Spider: Error while serializing XML (transform()): " + e.toString(), e);
+				return;
+			}
 		} finally {
 			try {
 				fos.close();
@@ -1012,14 +1015,14 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		tProducedIndex = 0;
 		stopped = false;
-		
+
 		if (!new File(DEFAULT_INDEX_DIR).mkdirs()) {
 			Logger.error(this, "Could not create default index directory ");
 		}
 
 		// Initial DB4O
 		db = initDB4O();
-		
+
 		// Find max Page ID
 		{
 			Query query = db.query();
@@ -1031,7 +1034,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			else
 				maxPageId = new AtomicLong(0);
 		}
-		
+
 		pr.getNode().executor.execute(new Runnable() {
 			public void run() {
 				try{
@@ -1041,7 +1044,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			}
 		}, "Spider Plugin Starter");
 	}
-	
+
 	private long getPageCount(Status status) {
 		Query query = db.query();
 		query.constrain(Page.class);
@@ -1050,7 +1053,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		return set.size();
 	}
-	
+
 	private void listPage(Status status, HTMLNode parent) {
 		Query query = db.query();
 		query.constrain(Page.class);
@@ -1077,10 +1080,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public String handleHTTPGet(HTTPRequest request) throws PluginHTTPException {
 		HTMLNode pageNode = pageMaker.getPageNode(pluginName, null);
 		HTMLNode contentNode = pageMaker.getContentNode(pageNode);
-		
+
 		return generateHTML(request, pageNode, contentNode);
 	}
-		
+
 	public String handleHTTPPost(HTTPRequest request) throws PluginHTTPException {
 		HTMLNode pageNode = pageMaker.getPageNode(pluginName, null);
 		HTMLNode contentNode = pageMaker.getContentNode(pageNode);
@@ -1089,20 +1092,20 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			synchronized (this) {
 				if (!writingIndex) {
 					scheduleMakeIndex();
-					
+
 					HTMLNode infobox = pageMaker.getInfobox("infobox infobox-success", "Scheduled Creating Index");
 					infobox.addChild("%", "Index will start create soon.");
 					contentNode.addChild(infobox);
 				}
 			}
 		}
-		
+
 		String addURI = request.getPartAsString("addURI", 512);
 		if (addURI != null && addURI.length() != 0) {
 			try {
 				FreenetURI uri = new FreenetURI(addURI);
 				queueURI(uri, "manually", true);
-				
+
 				HTMLNode infobox = pageMaker.getInfobox("infobox infobox-success", "URI Added");
 				infobox.addChild("%", "Added " + uri);
 				contentNode.addChild(infobox);
@@ -1112,7 +1115,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				contentNode.addChild(infobox);
 				Logger.normal(this, "Manual added URI cause exception", e);
 			}
-			
+
 			startSomeRequests();
 		}
 
@@ -1153,12 +1156,12 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		HTMLNode mainBox = pageMaker.getInfobox("Main");
 		HTMLNode mainContent = pageMaker.getContentNode(mainBox);
 		HTMLNode addForm = mainContent.addChild("form", //
-		        new String[] { "action", "method" }, //
+				new String[] { "action", "method" }, //
 		        new String[] { "plugins.XMLSpider.XMLSpider", "post" });
 		addForm.addChild("label", "for", "addURI", "Add URI:");
 		addForm.addChild("input", new String[] { "name", "style" }, new String[] { "addURI", "width: 20em;" });
 		addForm.addChild("input", //
-		        new String[] { "name", "type", "value" },//
+				new String[] { "name", "type", "value" },//
 		        new String[] { "formPassword", "hidden", core.formPassword });
 		addForm.addChild("input", "type", "submit");
 		nextTableCell.addChild(mainBox);
@@ -1166,16 +1169,16 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		HTMLNode indexBox = pageMaker.getInfobox("Create Index");
 		HTMLNode indexContent = pageMaker.getContentNode(indexBox);
 		HTMLNode indexForm = indexContent.addChild("form", //
-		        new String[] { "action", "method" }, //
+				new String[] { "action", "method" }, //
 		        new String[] { "plugins.XMLSpider.XMLSpider", "post" });
 		indexForm.addChild("input", //
-		        new String[] { "name", "type", "value" },//
+				new String[] { "name", "type", "value" },//
 		        new String[] { "formPassword", "hidden", core.formPassword });
 		indexForm.addChild("input", //
-		        new String[] { "name", "type", "value" },//
+				new String[] { "name", "type", "value" },//
 		        new String[] { "createIndex", "hidden", "createIndex" });
 		indexForm.addChild("input", //
-		        new String[] { "type", "value" }, //
+				new String[] { "type", "value" }, //
 		        new String[] { "submit", "Create Index Now" });
 		nextTableCell.addChild(indexBox);
 
@@ -1217,8 +1220,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		contentNode.addChild(failedBox);
 
 		return pageNode.generate();
-    }
-	
+	}
+
 	/**
 	 * creates the callback object for each page.
 	 *<p>Used to create inlinks and outlinks for each page separately.
@@ -1235,14 +1238,14 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		public void foundURI(FreenetURI uri){
 			// Ignore
 		}
-		
+
 		public void foundURI(FreenetURI uri, boolean inline){
 			Logger.debug(this, "foundURI " + uri + " on " + page);
 			queueURI(uri, "Added from " + page.uri, false);
 		}
 
 		Integer lastPosition = null;
-		
+
 		public void onText(String s, String type, URI baseURI){
 			Logger.debug(this, "onText on " + page.id + " (" + baseURI + ")");
 
@@ -1303,7 +1306,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 	private boolean mustWriteIndex = false;
 	private boolean writingIndex;
-	
+
 	public void makeIndex() throws Exception {
 		synchronized(this) {
 			if (writingIndex || stopped)
@@ -1329,8 +1332,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			time_taken = System.currentTimeMillis() - time_taken;
 
 			Logger.minor(this, "Spider: indexes regenerated - tProducedIndex="
-			        + (System.currentTimeMillis() - tProducedIndex) + "ms ago time taken=" + time_taken + "ms");
-			
+					+ (System.currentTimeMillis() - tProducedIndex) + "ms ago time taken=" + time_taken + "ms");
+
 			tProducedIndex = System.currentTimeMillis();
 		} finally {
 			synchronized (this) {
@@ -1353,7 +1356,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			public int getPriority() {
 				return NativeThread.LOW_PRIORITY;
 			}
-			
+
 		}, 1);
 	}
 
@@ -1378,7 +1381,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public short getPollingPriorityProgress() {
 		return PRIORITY_CLASS;
 	}
-	
+
 	/**
 	 * Initializes DB4O.
 	 * 
@@ -1400,7 +1403,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		cfg.objectClass(Page.class).cascadeOnActivate(true);
 		cfg.objectClass(Page.class).cascadeOnUpdate(true);
 		cfg.objectClass(Page.class).cascadeOnDelete(true);
-		
+
 		//- Term
 		cfg.objectClass(Term.class).objectField("md5").indexed(true);
 		cfg.objectClass(Term.class).objectField("word").indexed(true);
@@ -1420,7 +1423,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		cfg.objectClass(TermPosition.class).cascadeOnActivate(true);
 		cfg.objectClass(TermPosition.class).cascadeOnUpdate(true);
 		cfg.objectClass(TermPosition.class).cascadeOnDelete(true);
-		
+
 		//- Other
 		cfg.activationDepth(1);
 		cfg.updateDepth(1);
@@ -1431,7 +1434,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		return oc;
 	}
-	
+
 	protected Page getPageByURI(FreenetURI uri) {
 		Query query = db.query();
 		query.constrain(Page.class);
@@ -1455,7 +1458,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		else
 			return null;
 	}
-	
+
 	protected Term getTermByMd5(String md5) {
 		Query query = db.query();
 		query.constrain(Term.class);
@@ -1470,22 +1473,22 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 	protected Term getTermByWord(String word, boolean create) {
 		synchronized (this) {
-		Query query = db.query();
-		query.constrain(Term.class);
-		query.descend("word").constrain(word);
-		ObjectSet<Term> set = query.execute();
+			Query query = db.query();
+			query.constrain(Term.class);
+			query.descend("word").constrain(word);
+			ObjectSet<Term> set = query.execute();
 
-		if (set.hasNext())
-			return set.next();
-		else if (create) {
-			Term term = new Term(word);
-			db.store(term);
-			return term;
-		} else
-			return null;
+			if (set.hasNext())
+				return set.next();
+			else if (create) {
+				Term term = new Term(word);
+				db.store(term);
+				return term;
+			} else
+				return null;
 		}
 	}
-	
+
 	protected TermPosition getTermPosition(Term term, Page page, boolean create) {
 		synchronized (term) {
 			synchronized (page) {
