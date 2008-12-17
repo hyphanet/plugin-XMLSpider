@@ -20,6 +20,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -1462,19 +1463,34 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			return null;
 	}
 
+	protected Map<String, Term> termCache = new LinkedHashMap<String, Term>() {
+		protected boolean removeEldestEntry(Map.Entry<String, Term> eldest) {
+			return size() > 128;
+		}
+	};
+
 	protected Term getTermByWord(String word, boolean create) {
 		synchronized (this) {
+			Term cachedTerm = termCache.get(word);
+			if (cachedTerm != null)
+				return cachedTerm;
+
 			Query query = db.query();
 			query.constrain(Term.class);
 			query.descend("word").constrain(word);
 			ObjectSet<Term> set = query.execute();
 
-			if (set.hasNext())
-				return set.next();
-			else if (create) {
-				Term term = new Term(word);
-				db.store(term);
-				return term;
+			if (set.hasNext()) {
+				cachedTerm = set.next();
+				termCache.put(word, cachedTerm);
+
+				return cachedTerm;
+			} else if (create) {
+				cachedTerm = new Term(word);
+				termCache.put(word, cachedTerm);
+				db.store(cachedTerm);
+
+				return cachedTerm;
 			} else
 				return null;
 		}
