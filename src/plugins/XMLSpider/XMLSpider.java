@@ -259,7 +259,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 					db.store(page);
 				}
 			}
-			db.commit();
 		}
 	}
 
@@ -319,6 +318,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				onFailure(e, g, ((MyClientCallback) g.getClientCallback()).page);
 			}
 		}
+		db.commit();
 	}
 
 	private class MyClientCallback implements ClientCallback {
@@ -375,7 +375,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * @param state
 	 * @param page
 	 */
-	public void onSuccess(FetchResult result, ClientGetter state, Page page) {
+	// TODO limit the number of processor running
+	protected void onSuccess(FetchResult result, ClientGetter state, Page page) {
 		synchronized (this) {
 			while ((writingIndex || writeIndexScheduled) && !stopped) {
 				try {
@@ -439,7 +440,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 	}
 
-	public void onFailure(FetchException fe, ClientGetter state, Page page) {
+	protected void onFailure(FetchException fe, ClientGetter state, Page page) {
 		Logger.minor(this, "Failed: " + page + " : " + state, fe);
 
 		synchronized (this) {
