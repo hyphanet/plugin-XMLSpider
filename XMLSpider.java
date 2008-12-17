@@ -1063,7 +1063,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		ObjectSet<Page> set = query.execute();
 
 		if (set.isEmpty()) {
-			HTMLNode list = parent.addChild("%", "NO URI");
+			HTMLNode list = parent.addChild("#", "NO URI");
 		} else {
 			HTMLNode list = parent.addChild("ol", "style", "overflow: auto; white-space: nowrap;");
 
@@ -1095,7 +1095,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 					scheduleMakeIndex();
 
 					HTMLNode infobox = pageMaker.getInfobox("infobox infobox-success", "Scheduled Creating Index");
-					infobox.addChild("%", "Index will start create soon.");
+					infobox.addChild("#", "Index will start create soon.");
 					contentNode.addChild(infobox);
 				}
 			}
@@ -1108,11 +1108,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				queueURI(uri, "manually", true);
 
 				HTMLNode infobox = pageMaker.getInfobox("infobox infobox-success", "URI Added");
-				infobox.addChild("%", "Added " + uri);
+				infobox.addChild("#", "Added " + uri);
 				contentNode.addChild(infobox);
 			} catch (Exception e) {
 				HTMLNode infobox = pageMaker.getInfobox("infobox infobox-error", "Error adding URI");
-				infobox.addChild("%", e.getMessage());
+				infobox.addChild("#", e.getMessage());
 				contentNode.addChild(infobox);
 				Logger.normal(this, "Manual added URI cause exception", e);
 			}
@@ -1131,16 +1131,16 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		HTMLNode nextTableCell = overviewTableRow.addChild("td", "class", "first");
 		HTMLNode statusBox = pageMaker.getInfobox("Spider Status");
 		HTMLNode statusContent = pageMaker.getContentNode(statusBox);
-		statusContent.addChild("%", "Running Request: " + runningFetch.size() + "/" + maxParallelRequests);
+		statusContent.addChild("#", "Running Request: " + runningFetch.size() + "/" + maxParallelRequests);
 		statusContent.addChild("br");
-		statusContent.addChild("%", "Queued: " + getPageCount(Status.QUEUED));
+		statusContent.addChild("#", "Queued: " + getPageCount(Status.QUEUED));
 		statusContent.addChild("br");
-		statusContent.addChild("%", "Succeeded: " + getPageCount(Status.SUCCEEDED));
+		statusContent.addChild("#", "Succeeded: " + getPageCount(Status.SUCCEEDED));
 		statusContent.addChild("br");
-		statusContent.addChild("%", "Failed: " + getPageCount(Status.FAILED));
+		statusContent.addChild("#", "Failed: " + getPageCount(Status.FAILED));
 		statusContent.addChild("br");
 		statusContent.addChild("br");
-		statusContent.addChild("%", "Index Writer: ");
+		statusContent.addChild("#", "Index Writer: ");
 		synchronized (this) {
 			if (writingIndex)
 				statusContent.addChild("span", "style", "color: red; font-weight: bold;", "RUNNING");
@@ -1148,7 +1148,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				statusContent.addChild("span", "style", "color: green; font-weight: bold;", "IDLE");
 		}
 		statusContent.addChild("br");
-		statusContent.addChild("%", "Last Written: "
+		statusContent.addChild("#", "Last Written: "
 				+ (tProducedIndex == 0 ? "NEVER" : new Date(tProducedIndex).toString()));
 		nextTableCell.addChild(statusBox);
 
@@ -1188,7 +1188,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		HTMLNode runningContent = pageMaker.getContentNode(runningBox);
 		synchronized (runningFetch) {
 			if (runningFetch.isEmpty()) {
-				HTMLNode list = runningContent.addChild("%", "NO URI");
+				HTMLNode list = runningContent.addChild("#", "NO URI");
 			} else {
 				HTMLNode list = runningContent.addChild("ol", "style", "overflow: auto; white-space: nowrap;");
 
