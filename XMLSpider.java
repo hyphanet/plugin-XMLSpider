@@ -1304,7 +1304,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		protected Map<Term, TermPosition> termPosCache = new LinkedHashMap<Term, TermPosition>() {
 			protected boolean removeEldestEntry(Map.Entry<Term, TermPosition> eldest) {
-				return size() > 128;
+				return size() > 1024;
 			}
 		};
 
@@ -1505,7 +1505,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 	protected Map<String, Term> termCache = new LinkedHashMap<String, Term>() {
 		protected boolean removeEldestEntry(Map.Entry<String, Term> eldest) {
-			return size() > 128;
+			return size() > 1024;
 		}
 	};
 
