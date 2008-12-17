@@ -1359,7 +1359,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			public int getPriority() {
 				return NativeThread.LOW_PRIORITY;
 			}
-		}, 60000); // wait 1 minute for cool down
+		}, 3 * 60 * 1000); // wait 3 minute for cool down
+		                   // FIXME why it take that long?
 		writeIndexScheduled = true;
 	}
 
