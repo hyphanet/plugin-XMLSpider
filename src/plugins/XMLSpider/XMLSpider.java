@@ -1046,23 +1046,16 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}, "Spider Plugin Starter");
 	}
 
-	private long getPageCount(Status status) {
+	private synchronized long getPageCount(Status status) {
 		Query query = db.query();
 		query.constrain(Page.class);
 		query.descend("status").constrain(status);
-		ObjectSet<Page> set = query.execute();
+		query.descend("lastChange").orderDescending();
 
-		long i = 0;
-
-		while (set.hasNext()) {
-			set.next();
-			i++;
-		}
-
-		return i;
+		return set.size();
 	}
 
-	private void listPage(Status status, HTMLNode parent) {
+	private synchronized void listPage(Status status, HTMLNode parent) {
 		Query query = db.query();
 		query.constrain(Page.class);
 		query.descend("status").constrain(status);
