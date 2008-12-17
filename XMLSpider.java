@@ -1046,17 +1046,16 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}, "Spider Plugin Starter");
 	}
 
-	private synchronized long getPageCount(Status status) {
+	private long getPageCount(Status status) {
 		Query query = db.query();
 		query.constrain(Page.class);
 		query.descend("status").constrain(status);
-		query.descend("lastChange").orderDescending();
 
 		ObjectSet<Page> set = query.execute();
 		return set.size();
 	}
 
-	private synchronized void listPage(Status status, HTMLNode parent) {
+	private void listPage(Status status, HTMLNode parent) {
 		Query query = db.query();
 		query.constrain(Page.class);
 		query.descend("status").constrain(status);
@@ -1417,7 +1416,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		//- Other
 		cfg.activationDepth(1);
 		cfg.updateDepth(1);
-		cfg.queries().evaluationMode(QueryEvaluationMode.SNAPSHOT);
 		cfg.diagnostic().addListener(new DiagnosticToConsole());
 
 		ObjectContainer oc = Db4o.openFile(cfg, "XMLSpider-" + version + ".db4o");
