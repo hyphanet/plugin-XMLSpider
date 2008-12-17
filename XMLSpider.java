@@ -1335,6 +1335,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		uri = key.getURI().setSuggestedEdition(l);
 		 */
 		queueURI(uri, "USK found edition", true);
+		startSomeRequests();
 	}
 
 	public short getPollingPriorityNormal() {
