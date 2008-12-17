@@ -1288,7 +1288,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			if (word.length() < 3)
 				return;
 			Term term = getTermByWord(word, true);
-			TermPosition termPos = getTermPosition(term, page, true);
+			TermPosition termPos = getTermPosition(term, true);
 
 			synchronized (termPos) {
 				int[] newPositions = new int[termPos.positions.length + 1];
@@ -1300,6 +1300,46 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			}
 
 			mustWriteIndex = true;
+		}
+
+		protected Map<Term, TermPosition> termPosCache = new LinkedHashMap<Term, TermPosition>() {
+			protected boolean removeEldestEntry(Map.Entry<Term, TermPosition> eldest) {
+				return size() > 128;
+			}
+		};
+
+		protected TermPosition getTermPosition(Term term, boolean create) {
+			synchronized (term) {
+				TermPosition cachedTermPos = termPosCache.get(term);
+				if (cachedTermPos != null)
+					return cachedTermPos;
+
+				synchronized (page) {
+					Query query = db.query();
+					query.constrain(TermPosition.class);
+
+					query.descend("word").constrain(term.word);
+					query.descend("pageId").constrain(page.id);
+					ObjectSet<TermPosition> set = query.execute();
+
+					if (set.hasNext()) {
+						cachedTermPos = set.next();
+						termPosCache.put(term, cachedTermPos);
+						return cachedTermPos;
+					} else if (create) {
+						cachedTermPos = new TermPosition();
+						cachedTermPos.word = term.word;
+						cachedTermPos.pageId = page.id;
+						cachedTermPos.positions = new int[0];
+
+						termPosCache.put(term, cachedTermPos);
+						db.store(cachedTermPos);
+						return cachedTermPos;
+					} else {
+						return null;
+					}
+				}
+			}
 		}
 	}
 
@@ -1493,33 +1533,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				return cachedTerm;
 			} else
 				return null;
-		}
-	}
-
-	protected TermPosition getTermPosition(Term term, Page page, boolean create) {
-		synchronized (term) {
-			synchronized (page) {
-				Query query = db.query();
-				query.constrain(TermPosition.class);
-
-				query.descend("word").constrain(term.word);
-				query.descend("pageId").constrain(page.id);
-				ObjectSet<TermPosition> set = query.execute();
-
-				if (set.hasNext()) {
-					return set.next();
-				} else if (create) {
-					TermPosition termPos = new TermPosition();
-					termPos.word = term.word;
-					termPos.pageId = page.id;
-					termPos.positions = new int[0];
-
-					db.store(termPos);
-					return termPos;
-				} else {
-					return null;
-				}
-			}
 		}
 	}
 }
