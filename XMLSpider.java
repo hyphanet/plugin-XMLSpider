@@ -393,7 +393,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		page.status = Status.SUCCEEDED; // Content filter may throw, but we mark it as success anyway
 
 		try {
-			synchronized (page) {
 				// Page may be refetched if added manually
 				// Delete existing TermPosition
 				Query query = db.query();
@@ -429,7 +428,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				} finally {
 					data.free();
 				}
-			}
 		} finally {
 			synchronized (this) {
 				runningFetch.remove(page);
