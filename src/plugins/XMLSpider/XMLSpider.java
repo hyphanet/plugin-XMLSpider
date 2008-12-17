@@ -44,6 +44,7 @@ import com.db4o.Db4o;
 import com.db4o.ObjectContainer;
 import com.db4o.ObjectSet;
 import com.db4o.config.Configuration;
+import com.db4o.config.QueryEvaluationMode;
 import com.db4o.diagnostic.DiagnosticToConsole;
 import com.db4o.query.Query;
 
@@ -1461,6 +1462,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		//- Other
 		cfg.activationDepth(1);
 		cfg.updateDepth(1);
+		cfg.queries().evaluationMode(QueryEvaluationMode.LAZY);
 		cfg.diagnostic().addListener(new DiagnosticToConsole());
 
 		ObjectContainer oc = Db4o.openFile(cfg, "XMLSpider-" + version + ".db4o");
