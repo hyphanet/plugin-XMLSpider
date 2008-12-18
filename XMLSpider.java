@@ -50,8 +50,8 @@ import com.db4o.ObjectSet;
 import com.db4o.config.Configuration;
 import com.db4o.config.QueryEvaluationMode;
 import com.db4o.diagnostic.DiagnosticToConsole;
-import com.db4o.reflect.jdk.JdkReflector;
 import com.db4o.query.Query;
+import com.db4o.reflect.jdk.JdkReflector;
 
 import freenet.client.ClientMetadata;
 import freenet.client.FetchContext;
@@ -351,7 +351,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 
 		public void onFailure(FetchException e, ClientGetter state) {
-			XMLSpider.this.onFailure(e, state, page);
+			callbackExecutor.execute(new OnFailureCallback(e, state, page));
 		}
 
 		public void onFailure(InsertException e, BaseClientPutter state) {
@@ -390,6 +390,21 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		return getter;
 	}
 
+	protected class OnFailureCallback implements Runnable {
+		private FetchException e;
+		private ClientGetter state;
+		private Page page;
+
+		OnFailureCallback(FetchException e, ClientGetter state, Page page) {
+			this.e = e;
+			this.state = state;
+			this.page = page;
+		}
+
+		public void run() {
+			onFailure(e, state, page);
+		}
+	}
 
 	protected class OnSucessCallback implements Runnable {
 		private FetchResult result;
@@ -422,12 +437,23 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			if (o1.getClass() == o2.getClass())
 				return 0;
 
-			// MakeIndexCallback always have higher priority
+			int v1, v2;
+			
 			if (o1 instanceof MakeIndexCallback) 
-				return -1;
+				v1 = 0;
+			else if (o1 instanceof OnFailureCallback)
+				v1 = 1;
+			else
+				v1 = 2;
+
 			if (o2 instanceof MakeIndexCallback)
-				return -1;
-			return 0;
+				v2 = 0;
+			else if (o2 instanceof OnFailureCallback)
+				v2 = 1;
+			else
+				v2 = 2;
+
+			return v1 - v2;
 		}
 	}
 
@@ -438,7 +464,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	        new PriorityBlockingQueue<Runnable>(5, new CallbackPrioritizer()), //
 	        new ThreadFactory() {
 		        public Thread newThread(Runnable r) {
-			        Thread t = new NativeThread(r, "XMLSpider", NativeThread.LOW_PRIORITY, true);
+			        Thread t = new NativeThread(r, "XMLSpider", NativeThread.NORM_PRIORITY - 1, true);
 			        t.setDaemon(true);
 			        return t;
 		        }
