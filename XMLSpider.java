@@ -421,6 +421,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				try {
 					ContentFilter.filter(data, new NullBucketFactory(), mimeType, uri.toURI("http://127.0.0.1:8888/"),
 					        pageCallBack);
+					pageCallBack.store();
 					Logger.minor(this, "Filtered " + uri + " : " + page.id);
 				} catch (UnsafeContentTypeException e) {
 					return; // Ignore
@@ -1277,7 +1278,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				newPositions[termPos.positions.length] = position;
 
 				termPos.positions = newPositions;
-				db.store(termPos);						
 			}
 
 			mustWriteIndex = true;
@@ -1285,9 +1285,18 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		protected Map<Term, TermPosition> termPosCache = new LinkedHashMap<Term, TermPosition>() {
 			protected boolean removeEldestEntry(Map.Entry<Term, TermPosition> eldest) {
-				return size() > 1024;
+				if (size() < 1024) return false;
+				
+				db.store(eldest.getValue());
+				return true;
 			}
 		};
+
+		public void store() {
+			for (TermPosition tp : termPosCache.values())
+				db.store(tp);
+			termPosCache.clear();
+		}
 
 		protected TermPosition getTermPosition(Term term, boolean create) {
 			synchronized (term) {
