@@ -47,6 +47,7 @@ import com.db4o.ObjectContainer;
 import com.db4o.ObjectSet;
 import com.db4o.config.Configuration;
 import com.db4o.config.QueryEvaluationMode;
+import com.db4o.constraints.UniqueFieldValueConstraint;
 import com.db4o.diagnostic.DiagnosticToConsole;
 import com.db4o.query.Query;
 import com.db4o.reflect.jdk.JdkReflector;
@@ -1413,12 +1414,15 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		cfg.objectClass(Page.class).objectField("status").indexed(true);
 		cfg.objectClass(Page.class).objectField("lastChange").indexed(true);		
 
+		cfg.add(new UniqueFieldValueConstraint(Page.class, "id"));
+		cfg.add(new UniqueFieldValueConstraint(Page.class, "uri"));
 		cfg.objectClass(Page.class).callConstructor(true);
 
 		//- Term
 		cfg.objectClass(Term.class).objectField("md5").indexed(true);
 		cfg.objectClass(Term.class).objectField("word").indexed(true);
 
+		cfg.add(new UniqueFieldValueConstraint(Term.class, "word"));
 		cfg.objectClass(Term.class).callConstructor(true);
 
 		//- TermPosition
