@@ -438,8 +438,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				runningFetch.remove(page);
 				page.lastChange = System.currentTimeMillis();
 				db.store(page);
-				db.commit();
 			}
+			db.commit();
 			startSomeRequests();
 		}
 	}
