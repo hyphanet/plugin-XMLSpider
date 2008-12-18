@@ -340,7 +340,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				onFailure(e, g, ((MyClientCallback) g.getClientCallback()).page);
 			}
 		}
-		db.commit();
 	}
 
 	private class MyClientCallback implements ClientCallback {
@@ -1076,6 +1075,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public void terminate(){
 		synchronized (this) {
 			stopped = true;
+			
 			for (Map.Entry<Page, ClientGetter> me : runningFetch.entrySet()) {
 				me.getValue().cancel();
 			}
@@ -1451,7 +1451,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			if (writingIndex || stopped)
 				return;
 
-			db.commit();
 			writingIndex = true;
 		}
 
