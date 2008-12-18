@@ -619,11 +619,12 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		int prefix = (int) ((Math.log(termSet.size()) - Math.log(MAX_ENTRIES)) / Math.log(16)) - 1;
 		if (prefix <= 0) prefix = 1;
 		match = 1;
-		Vector<String> list = new Vector<String>();
+		Vector<Term> list = new Vector<Term>();
 
-		String str = termSet.get(0).md5;
+		Term term0 = termSet.get(0);
+		String str = term0.md5;
 		String currentPrefix = str.substring(0, prefix);
-		list.add(str);
+		list.add(term0);
 
 		int i = 0;
 		for (Term term : termSet)
@@ -632,15 +633,15 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			//create a list of the words to be added in the same subindex
 			if (key.startsWith(currentPrefix)) 
 			{i++;
-			list.add(key);
+			list.add(term);
 			}
 			else {
 				//generate the appropriate subindex with the current list
 				generateSubIndex(prefix,list);
 				str = key;
 				currentPrefix = str.substring(0, prefix);
-				list = new Vector<String>();
-				list.add(key);
+				list = new Vector<Term>();
+				list.add(term);
 			}
 		}
 
@@ -648,7 +649,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}
 
 
-	private void generateSubIndex(int p, List<String> list) throws Exception {
+	private void generateSubIndex(int p, List<Term> list) throws Exception {
 		boolean logMINOR = Logger.shouldLog(Logger.MINOR, this);
 		/*
 		 * if the list is less than max allowed entries in a file then directly generate the xml 
@@ -676,10 +677,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			match = p + 1;
 		int prefix = p + 1;
 		int i = 0;
-		String str = list.get(i);
+		String str = list.get(i).md5;
 		int index = 0;
 		while (i < list.size()) {
-			String key = list.get(i);
+			Term term = list.get(i);
+			String key = term.md5;
 			if ((key.substring(0, prefix)).equals(str.substring(0, prefix))) 
 			{
 				i++;
@@ -702,9 +704,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * @param prefix number of matching bits of md5
 	 * @throws Exception
 	 */
-	protected void generateXML(List<String> list, int prefix) throws TooBigIndexException, Exception
+	protected void generateXML(List<Term> list, int prefix) throws TooBigIndexException, Exception
 	{
-		String p = list.get(0).substring(0, prefix);
+		String p = list.get(0).md5.substring(0, prefix);
 		indices.add(p);
 		File outputFile = new File(DEFAULT_INDEX_DIR+"index_"+p+".xml");
 		BufferedOutputStream fos = new BufferedOutputStream(new FileOutputStream(outputFile));
@@ -750,7 +752,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			Vector<Long> fileid = new Vector<Long>();
 			for (int i = 0; i < list.size(); i++) {
 				Element wordElement = xmlDoc.createElement("word");
-				Term term = getTermByMd5(list.get(i));
+				Term term = list.get(i);
 				wordElement.setAttribute("v", term.word);
 
 				Query query = db.query();
