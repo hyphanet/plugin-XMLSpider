@@ -436,24 +436,19 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		public int compare(Runnable o1, Runnable o2) {
 			if (o1.getClass() == o2.getClass())
 				return 0;
-
-			int v1, v2;
 			
-			if (o1 instanceof MakeIndexCallback) 
-				v1 = 0;
-			else if (o1 instanceof OnFailureCallback)
-				v1 = 1;
-			else
-				v1 = 2;
+			return getPriority(o1) - getPriority(o2);
+		}
 
-			if (o2 instanceof MakeIndexCallback)
-				v2 = 0;
-			else if (o2 instanceof OnFailureCallback)
-				v2 = 1;
-			else
-				v2 = 2;
+		private int getPriority(Runnable r) {
+			if (r instanceof MakeIndexCallback)
+				return 0;
+			else if (r instanceof OnFailureCallback)
+				return 1;
+			else if (r instanceof OnSuccessCallback)
+				return 2;
 
-			return v1 - v2;
+			return -1;
 		}
 	}
 
