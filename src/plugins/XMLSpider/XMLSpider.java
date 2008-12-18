@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Vector;
-import java.util.concurrent.Executor;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -415,7 +414,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 	// this is java.util.concurrent.Executor, not freenet.support.Executor
 	// always run with one thread --> more thread cause contention and slower!
-	protected Executor callbackExecutor = new ThreadPoolExecutor( //
+	protected ThreadPoolExecutor callbackExecutor = new ThreadPoolExecutor( //
 	        1, 1, 600, TimeUnit.SECONDS, new PriorityBlockingQueue<Runnable>(5, new CallbackPrioritizer()));
 	
 	/**
@@ -1033,6 +1032,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				me.getValue().cancel();
 			}
 			runningFetch.clear();
+			callbackExecutor.shutdownNow();
 		}
 	}
 
