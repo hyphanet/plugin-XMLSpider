@@ -50,6 +50,7 @@ import com.db4o.ObjectSet;
 import com.db4o.config.Configuration;
 import com.db4o.config.QueryEvaluationMode;
 import com.db4o.diagnostic.DiagnosticToConsole;
+import com.db4o.reflect.jdk.JdkReflector;
 import com.db4o.query.Query;
 
 import freenet.client.ClientMetadata;
@@ -1493,6 +1494,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 */
 	private ObjectContainer initDB4O() {
 		Configuration cfg = Db4o.newConfiguration();
+		cfg.reflectWith(new JdkReflector(getClass().getClassLoader()));
 
 		//- Page
 		cfg.objectClass(Page.class).objectField("id").indexed(true);
