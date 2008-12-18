@@ -371,7 +371,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 
 		public void onSuccess(final FetchResult result, final ClientGetter state) {
-			callbackExecutor.execute(new OnSucessCallback(result, state, page));
+			callbackExecutor.execute(new OnSuccessCallback(result, state, page));
 		}
 
 		public void onSuccess(BaseClientPutter state) {
@@ -406,12 +406,12 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 	}
 
-	protected class OnSucessCallback implements Runnable {
+	protected class OnSuccessCallback implements Runnable {
 		private FetchResult result;
 		private ClientGetter state;
 		private Page page;
 
-		OnSucessCallback(FetchResult result, ClientGetter state, Page page) {
+		OnSuccessCallback(FetchResult result, ClientGetter state, Page page) {
 			this.result = result;
 			this.state = state;
 			this.page = page;
