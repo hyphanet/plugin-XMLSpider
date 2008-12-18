@@ -29,7 +29,6 @@ import java.util.Vector;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -94,6 +93,23 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		/** For simplicity, running is also mark as QUEUED */
 		QUEUED, SUCCEEDED, FAILED
 	};
+	
+	static class MaxPageId {
+		volatile long v;
+
+		MaxPageId() {
+		}
+
+		MaxPageId(long v) {
+			this.v = v;
+		}
+	}
+
+	public synchronized long getNextPageId() {
+		long x = ++(maxPageId.v);
+		db.store(maxPageId);
+		return x;
+	}
 
 	static class Page {
 		/** Page Id */
@@ -167,7 +183,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	protected Map<Page, ClientGetter> runningFetch = Collections.synchronizedMap(new HashMap<Page, ClientGetter>());
 
 	long tProducedIndex;
-	protected AtomicLong maxPageId;
+	protected MaxPageId maxPageId;
 
 	private Vector<String> indices;
 	private int match;
@@ -250,7 +266,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			if (page == null) {
 				page = new Page();
 				page.uri = uri.toString();
-				page.id = maxPageId.incrementAndGet();
+				page.id = getNextPageId();
 				page.comment = comment;
 
 				db.store(page);
@@ -1068,13 +1084,21 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		// Find max Page ID
 		{
 			Query query = db.query();
-			query.constrain(Page.class);
-			query.descend("id").orderDescending();
-			ObjectSet<Page> set = query.execute();
+			query.constrain(MaxPageId.class);
+			ObjectSet<MaxPageId> set = query.execute();
+			
 			if (set.hasNext())
-				maxPageId = new AtomicLong(set.next().id);
-			else
-				maxPageId = new AtomicLong(0);
+				maxPageId = set.next();
+			else {
+				query = db.query();
+				query.constrain(Page.class);
+				query.descend("id").orderDescending();
+				ObjectSet<Page> set2 = query.execute();
+				if (set2.hasNext())
+					maxPageId = new MaxPageId(set2.next().id);
+				else
+					maxPageId = new MaxPageId(0);
+			}
 		}
 
 		pr.getNode().executor.execute(new Runnable() {
@@ -1450,13 +1474,13 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		return PRIORITY_CLASS;
 	}
 
+	protected ObjectContainer db;
+
 	/**
 	 * Initializes DB4O.
 	 * 
 	 * @return db4o's connector
 	 */
-	protected ObjectContainer db;
-
 	private ObjectContainer initDB4O() {
 		Configuration cfg = Db4o.newConfiguration();
 
