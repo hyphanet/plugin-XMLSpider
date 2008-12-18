@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
@@ -78,6 +79,7 @@ import freenet.support.HTMLNode;
 import freenet.support.Logger;
 import freenet.support.api.Bucket;
 import freenet.support.api.HTTPRequest;
+import freenet.support.io.NativeThread;
 import freenet.support.io.NullBucketFactory;
 
 /**
@@ -431,7 +433,15 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	// this is java.util.concurrent.Executor, not freenet.support.Executor
 	// always run with one thread --> more thread cause contention and slower!
 	protected ThreadPoolExecutor callbackExecutor = new ThreadPoolExecutor( //
-	        1, 1, 600, TimeUnit.SECONDS, new PriorityBlockingQueue<Runnable>(5, new CallbackPrioritizer()));
+	        1, 1, 600, TimeUnit.SECONDS, //
+	        new PriorityBlockingQueue<Runnable>(5, new CallbackPrioritizer()), //
+	        new ThreadFactory() {
+		        public Thread newThread(Runnable r) {
+			        Thread t = new NativeThread(r, "XMLSpider", NativeThread.LOW_PRIORITY, true);
+			        t.setDaemon(true);
+			        return t;
+		        }
+	        });
 	
 	/**
 	 * Processes the successfully fetched uri for further outlinks.
