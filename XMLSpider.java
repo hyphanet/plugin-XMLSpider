@@ -1115,6 +1115,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		statusContent.addChild("#", "Failed: " + getPageCount(Status.FAILED));
 		statusContent.addChild("br");
 		statusContent.addChild("br");
+		statusContent.addChild("#", "Queued Event: " + callbackExecutor.getQueue().size());
+		statusContent.addChild("br");
 		statusContent.addChild("#", "Index Writer: ");
 		synchronized (this) {
 			if (writingIndex)
