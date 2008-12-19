@@ -274,7 +274,7 @@ class IndexWriter {
 		generateSubIndex(prefix, list.subList(index, i));
 	}
 
-	private class TooBigIndexException extends Exception {
+	private static class TooBigIndexException extends Exception {
 		private static final long serialVersionUID = -6172560811504794914L;
 	}
 
