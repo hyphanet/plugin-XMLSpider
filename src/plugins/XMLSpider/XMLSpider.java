@@ -182,10 +182,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		synchronized (this) {
 			Page page = getPageByURI(uri);
 			if (page == null) {
-				page = new Page();
-				page.uri = uri.toString();
-				page.id = getNextPageId();
-				page.comment = comment;
+				page = new Page(getNextPageId(), uri.toString(), comment);
 
 				db.store(page);
 			} else if (force) {
