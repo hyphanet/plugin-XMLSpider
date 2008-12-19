@@ -196,6 +196,7 @@ class IndexWriter {
 		Query query = xmlSpider.db.query();
 		query.constrain(Term.class);
 		query.descend("md5").orderAscending();
+		@SuppressWarnings("unchecked")
 		ObjectSet<Term> termSet = query.execute();
 
 		indices = new Vector<String>();
@@ -341,6 +342,7 @@ class IndexWriter {
 				query.constrain(TermPosition.class);
 
 				query.descend("word").constrain(term.word);
+				@SuppressWarnings("unchecked")
 				ObjectSet<TermPosition> set = query.execute();
 
 				for (TermPosition termPos : set) {
