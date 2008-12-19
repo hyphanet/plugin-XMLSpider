@@ -789,7 +789,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			 * determine the position of the word in the retrieved page
 			 * FIXME - replace with a real tokenizor
 			 */
-			String[] words = s.split("[^\\p{L}\\{N}]");
+			String[] words = s.split("[^\\p{L}\\{N}]+");
 
 			if(lastPosition == null)
 				lastPosition = 1; 
