@@ -495,7 +495,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		try { db.close(); } catch (Exception e) {}
 	}
 
-	public void runPlugin(PluginRespirator pr){
+	public synchronized void runPlugin(PluginRespirator pr) {
 		this.core = pr.getNode().clientCore;
 
 		this.pageMaker = pr.getPageMaker();
