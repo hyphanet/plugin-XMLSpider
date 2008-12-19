@@ -47,7 +47,6 @@ import com.db4o.ObjectContainer;
 import com.db4o.ObjectSet;
 import com.db4o.config.Configuration;
 import com.db4o.config.QueryEvaluationMode;
-import com.db4o.constraints.UniqueFieldValueConstraint;
 import com.db4o.diagnostic.DiagnosticToConsole;
 import com.db4o.query.Query;
 import com.db4o.reflect.jdk.JdkReflector;
@@ -963,6 +962,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			runningFetch.clear();
 			callbackExecutor.shutdownNow();
 		}
+		try { callbackExecutor.awaitTermination(15, TimeUnit.SECONDS); } catch (InterruptedException e) {}
+		try { db.close(); } catch (Exception e) {}
 	}
 
 	public void runPlugin(PluginRespirator pr){
@@ -1443,6 +1444,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		//- Other
 		cfg.activationDepth(1);
 		cfg.updateDepth(1);
+		// cfg.automaticShutDown(false);
 		cfg.queries().evaluationMode(QueryEvaluationMode.LAZY);
 		cfg.diagnostic().addListener(new DiagnosticToConsole());
 
