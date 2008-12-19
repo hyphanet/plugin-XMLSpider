@@ -1293,8 +1293,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 				termPos.positions = newPositions;
 			}
-
-			mustWriteIndex = true;
 		}
 
 		protected Map<Term, TermPosition> termPosCache = new LinkedHashMap<Term, TermPosition>() {
@@ -1347,7 +1345,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 	}
 
-	private boolean mustWriteIndex = false;
 	private boolean writingIndex;
 	private boolean writeIndexScheduled;
 
