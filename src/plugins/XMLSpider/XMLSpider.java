@@ -48,10 +48,12 @@ import freenet.clients.http.filter.FoundURICallback;
 import freenet.clients.http.filter.UnsafeContentTypeException;
 import freenet.keys.FreenetURI;
 import freenet.keys.USK;
+import freenet.l10n.L10n.LANGUAGE;
 import freenet.node.NodeClientCore;
 import freenet.node.RequestStarter;
 import freenet.pluginmanager.FredPlugin;
 import freenet.pluginmanager.FredPluginHTTP;
+import freenet.pluginmanager.FredPluginL10n;
 import freenet.pluginmanager.FredPluginThreadless;
 import freenet.pluginmanager.FredPluginVersioned;
 import freenet.pluginmanager.PluginHTTPException;
@@ -71,7 +73,7 @@ import freenet.support.io.NullBucketFactory;
  *  @author swati goyal
  *  
  */
-public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless, FredPluginVersioned, USKCallback {
+public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless, FredPluginVersioned, FredPluginL10n, USKCallback {
 	public synchronized long getNextPageId() {
 		long x = maxPageId.incrementAndGet();
 		db.store(maxPageId);
@@ -991,6 +993,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 	};
 
+	// language for I10N
+	private LANGUAGE language;
+
 	protected Term getTermByWord(String word, boolean create) {
 		synchronized (this) {
 			Term cachedTerm = termCache.get(word);
@@ -1017,5 +1022,14 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			} else
 				return null;
 		}
+	}
+
+	public String getString(String key) {
+		// TODO return a translated string
+		return key;
+	}
+
+	public void setLanguage(LANGUAGE newLanguage) {
+		language = newLanguage;
 	}
 }
