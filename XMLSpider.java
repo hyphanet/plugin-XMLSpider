@@ -189,6 +189,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				query.constrain(Page.class);
 				query.descend("status").constrain(Status.QUEUED);
 				query.descend("lastChange").orderAscending();
+				@SuppressWarnings("unchecked")
 				ObjectSet<Page> queuedSet = query.execute();
 
 				if (running >= maxParallelRequests)
@@ -397,6 +398,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				Query query = db.query();
 				query.constrain(TermPosition.class);
 				query.descend("pageId").constrain(page.id);
+				@SuppressWarnings("unchecked")
 				ObjectSet<TermPosition> set = query.execute();
 				for (TermPosition tp : set)
 					db.delete(tp);
@@ -525,6 +527,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		{
 			Query query = db.query();
 			query.constrain(MaxPageId.class);
+			@SuppressWarnings("unchecked")
 			ObjectSet<MaxPageId> set = query.execute();
 			
 			if (set.hasNext())
@@ -533,6 +536,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				query = db.query();
 				query.constrain(Page.class);
 				query.descend("id").orderDescending();
+				@SuppressWarnings("unchecked")
 				ObjectSet<Page> set2 = query.execute();
 				if (set2.hasNext())
 					maxPageId = new MaxPageId(set2.next().id);
@@ -568,7 +572,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		query.constrain(Page.class);
 		query.descend("status").constrain(status);
 		query.descend("lastChange").orderDescending();
-
+		
+		@SuppressWarnings("unchecked")
 		ObjectSet<Page> set = query.execute();
 		List<Page> pages = new ArrayList<Page>();
 		while (set.hasNext() && pages.size() < maxShownURIs) {
@@ -822,7 +827,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				termPos.positions = newPositions;
 			}
 		}
-
+		
+		@SuppressWarnings("serial")
 		protected Map<Term, TermPosition> termPosCache = new LinkedHashMap<Term, TermPosition>() {
 			protected boolean removeEldestEntry(Map.Entry<Term, TermPosition> eldest) {
 				if (size() < 1024) return false;
@@ -850,6 +856,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 					query.descend("word").constrain(term.word);
 					query.descend("pageId").constrain(page.id);
+					@SuppressWarnings("unchecked")
 					ObjectSet<TermPosition> set = query.execute();
 
 					if (set.hasNext()) {
@@ -942,6 +949,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		Query query = db.query();
 		query.constrain(Page.class);
 		query.descend("uri").constrain(uri.toString());
+		@SuppressWarnings("unchecked")
 		ObjectSet<Page> set = query.execute();
 
 		if (set.hasNext())
@@ -954,6 +962,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		Query query = db.query();
 		query.constrain(Page.class);
 		query.descend("id").constrain(id);
+		@SuppressWarnings("unchecked")
 		ObjectSet<Page> set = query.execute();
 
 		if (set.hasNext())
@@ -966,6 +975,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		Query query = db.query();
 		query.constrain(Term.class);
 		query.descend("md5").constrain(md5);
+		@SuppressWarnings("unchecked")
 		ObjectSet<Term> set = query.execute();
 
 		if (set.hasNext())
@@ -974,6 +984,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			return null;
 	}
 
+	@SuppressWarnings("serial")	
 	protected Map<String, Term> termCache = new LinkedHashMap<String, Term>() {
 		protected boolean removeEldestEntry(Map.Entry<String, Term> eldest) {
 			return size() > 1024;
@@ -989,6 +1000,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			Query query = db.query();
 			query.constrain(Term.class);
 			query.descend("word").constrain(word);
+			@SuppressWarnings("unchecked")
 			ObjectSet<Term> set = query.execute();
 
 			if (set.hasNext()) {
