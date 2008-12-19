@@ -1413,15 +1413,12 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		cfg.objectClass(Page.class).objectField("status").indexed(true);
 		cfg.objectClass(Page.class).objectField("lastChange").indexed(true);		
 
-		cfg.add(new UniqueFieldValueConstraint(Page.class, "id"));
-		cfg.add(new UniqueFieldValueConstraint(Page.class, "uri"));
 		cfg.objectClass(Page.class).callConstructor(true);
 
 		//- Term
 		cfg.objectClass(Term.class).objectField("md5").indexed(true);
 		cfg.objectClass(Term.class).objectField("word").indexed(true);
 
-		cfg.add(new UniqueFieldValueConstraint(Term.class, "word"));
 		cfg.objectClass(Term.class).callConstructor(true);
 
 		//- TermPosition
