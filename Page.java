@@ -11,13 +11,21 @@ class Page {
 	/** Title */
 	String pageTitle;
 	/** Status */
-	Status status = Status.QUEUED;
+	Status status;
 	/** Last Change Time */
-	long lastChange = System.currentTimeMillis();
+	long lastChange;
 	/** Comment, for debugging */
 	String comment;
 
 	public Page() {}	// for db4o callConstructors(true)
+
+	public Page(long id, String uri, String comment) {
+		this.id = id;
+		this.uri = uri;
+		this.comment = comment;
+		status = Status.QUEUED;
+		lastChange = System.currentTimeMillis();
+	}
 
 	@Override
 	public int hashCode() {
