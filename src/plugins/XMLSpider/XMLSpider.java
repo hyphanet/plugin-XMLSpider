@@ -1024,29 +1024,38 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}, "Spider Plugin Starter");
 	}
 
-	private long getPageCount(Status status) {
-		Query query = db.query();
-		query.constrain(Page.class);
-		query.descend("status").constrain(status);
+	static class PageStatus {
+		long count;
+		List<Page> pages;
 
-		ObjectSet<Page> set = query.execute();
-		return set.size();
+		PageStatus(long count, List<Page> pages) {
+			this.count = count;
+			this.pages = pages;
+		}
 	}
 
-	private void listPage(Status status, HTMLNode parent) {
+	private PageStatus getPageStatus(Status status) {
 		Query query = db.query();
 		query.constrain(Page.class);
 		query.descend("status").constrain(status);
 		query.descend("lastChange").orderDescending();
-		ObjectSet<Page> set = query.execute();
 
-		if (set.isEmpty()) {
+		ObjectSet<Page> set = query.execute();
+		List<Page> pages = new ArrayList<Page>();
+		while (set.hasNext() && pages.size() < maxShownURIs) {
+			pages.add(set.next());
+		}
+
+		return new PageStatus(set.size(), pages);
+	}
+
+	private void listPages(PageStatus pageStatus, HTMLNode parent) {
+		if (pageStatus.pages.isEmpty()) {
 			HTMLNode list = parent.addChild("#", "NO URI");
 		} else {
 			HTMLNode list = parent.addChild("ol", "style", "overflow: auto; white-space: nowrap;");
 
-			for (int i = 0; i < maxShownURIs && set.hasNext(); i++) {
-				Page page = set.next();
+			for (Page page : pageStatus.pages) {
 				HTMLNode litem = list.addChild("li", "title", page.comment);
 				litem.addChild("a", "href", "/freenet:" + page.uri, page.uri);
 			}
@@ -1103,17 +1112,21 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		HTMLNode overviewTable = contentNode.addChild("table", "class", "column");
 		HTMLNode overviewTableRow = overviewTable.addChild("tr");
 
+		PageStatus queuedStatus = getPageStatus(Status.QUEUED);
+		PageStatus succeededStatus = getPageStatus(Status.SUCCEEDED);
+		PageStatus failedStatus = getPageStatus(Status.FAILED);
+
 		// Column 1
 		HTMLNode nextTableCell = overviewTableRow.addChild("td", "class", "first");
 		HTMLNode statusBox = pageMaker.getInfobox("Spider Status");
 		HTMLNode statusContent = pageMaker.getContentNode(statusBox);
 		statusContent.addChild("#", "Running Request: " + runningFetch.size() + "/" + maxParallelRequests);
 		statusContent.addChild("br");
-		statusContent.addChild("#", "Queued: " + getPageCount(Status.QUEUED));
+		statusContent.addChild("#", "Queued: " + queuedStatus.count);
 		statusContent.addChild("br");
-		statusContent.addChild("#", "Succeeded: " + getPageCount(Status.SUCCEEDED));
+		statusContent.addChild("#", "Succeeded: " + succeededStatus.count);
 		statusContent.addChild("br");
-		statusContent.addChild("#", "Failed: " + getPageCount(Status.FAILED));
+		statusContent.addChild("#", "Failed: " + failedStatus.count);
 		statusContent.addChild("br");
 		statusContent.addChild("br");
 		statusContent.addChild("#", "Queued Event: " + callbackExecutor.getQueue().size());
@@ -1185,19 +1198,19 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		HTMLNode queuedBox = pageMaker.getInfobox("Queued URI");
 		queuedBox.addAttribute("style", "right: 0; overflow: auto;");
 		HTMLNode queuedContent = pageMaker.getContentNode(queuedBox);
-		listPage(Status.QUEUED, queuedContent);
+		listPages(queuedStatus, queuedContent);
 		contentNode.addChild(queuedBox);
 
 		HTMLNode succeededBox = pageMaker.getInfobox("Succeeded URI");
 		succeededBox.addAttribute("style", "right: 0;");
 		HTMLNode succeededContent = pageMaker.getContentNode(succeededBox);
-		listPage(Status.SUCCEEDED, succeededContent);
+		listPages(succeededStatus, succeededContent);
 		contentNode.addChild(succeededBox);
 
 		HTMLNode failedBox = pageMaker.getInfobox("Failed URI");
 		failedBox.addAttribute("style", "right: 0;");
 		HTMLNode failedContent = pageMaker.getContentNode(failedBox);
-		listPage(Status.FAILED, failedContent);
+		listPages(failedStatus, failedContent);
 		contentNode.addChild(failedBox);
 
 		return pageNode.generate();
