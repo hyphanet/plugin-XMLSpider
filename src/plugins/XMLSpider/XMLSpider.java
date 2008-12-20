@@ -174,6 +174,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 	}
 
+	protected List<Page> queuedRequestCache = new ArrayList<Page>();
+
 	private void startSomeRequests() {
 		FreenetURI[] initialURIs = core.getBookmarkURIs();
 		for (int i = 0; i < initialURIs.length; i++)
@@ -184,26 +186,32 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			if (stopped)
 				return;
 			synchronized (runningFetch) {
-
 				int running = runningFetch.size();
 
-				Query query = db.query();
-				query.constrain(Page.class);
-				query.descend("status").constrain(Status.QUEUED);
-				query.descend("lastChange").orderAscending();
-				@SuppressWarnings("unchecked")
-				ObjectSet<Page> queuedSet = query.execute();
+				if (running >= maxParallelRequests) return;
 
-				if (running >= maxParallelRequests)
-					return;
+				if (queuedRequestCache.isEmpty()) {
+					Query query = db.query();
+					query.constrain(Page.class);
+					query.descend("status").constrain(Status.QUEUED);
+					query.descend("lastChange").orderAscending();
+					@SuppressWarnings("unchecked")
+					ObjectSet<Page> queuedSet = query.execute();
+
+					for (int i = 0 ; 
+						i < maxParallelRequests * 2 && queuedSet.hasNext();
+						i++) {	// cache 2 * maxParallelRequests
+						queuedRequestCache.add(queuedSet.next());
+					}
+				}
+				queuedRequestCache.removeAll(runningFetch.keySet());
 
 				toStart = new ArrayList<ClientGetter>(maxParallelRequests - running);
 
-				while (running + toStart.size() < maxParallelRequests && queuedSet.hasNext()) {
-					Page page = queuedSet.next();
+				Iterator<Page> it = queuedRequestCache.iterator();
 
-					if (runningFetch.containsKey(page))
-						continue;
+				while (running + toStart.size() < maxParallelRequests && it.hasNext()) {
+					Page page = it.next();
 
 					try {
 						ClientGetter getter = makeGetter(page);
