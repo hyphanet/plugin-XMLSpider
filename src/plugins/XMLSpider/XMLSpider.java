@@ -212,6 +212,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 				while (running + toStart.size() < maxParallelRequests && it.hasNext()) {
 					Page page = it.next();
+					it.remove();
 
 					try {
 						ClientGetter getter = makeGetter(page);
