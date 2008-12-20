@@ -250,7 +250,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 
 		public void onFailure(FetchException e, ClientGetter state) {
-			callbackExecutor.execute(new OnFailureCallback(e, state, page));
+			if (!stopped)
+				callbackExecutor.execute(new OnFailureCallback(e, state, page));
 		}
 
 		public void onFailure(InsertException e, BaseClientPutter state) {
@@ -270,7 +271,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 
 		public void onSuccess(final FetchResult result, final ClientGetter state) {
-			callbackExecutor.execute(new OnSuccessCallback(result, state, page));
+			if (!stopped)
+				callbackExecutor.execute(new OnSuccessCallback(result, state, page));
 		}
 
 		public void onSuccess(BaseClientPutter state) {
