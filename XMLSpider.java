@@ -228,7 +228,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				Logger.minor(this, g + " started");
 			} catch (FetchException e) {
 				Logger.minor(this, "Fetch Exception: " + g, e);
-				onFailure(e, g, ((MyClientCallback) g.getClientCallback()).page);
+				g.getClientCallback().onFailure(e, g);
 			}
 		}
 	}
