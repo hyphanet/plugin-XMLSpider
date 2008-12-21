@@ -289,10 +289,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}
 
 	private ClientGetter makeGetter(Page page) throws MalformedURLException {
-		MyClientCallback cb = new MyClientCallback(page);
-		ClientGetter getter = new ClientGetter(cb,
+		ClientGetter getter = new ClientGetter(new MyClientCallback(page),
 				core.requestStarters.chkFetchScheduler,
-		        core.requestStarters.sskFetchScheduler, new FreenetURI(page.uri), ctx, PRIORITY_CLASS, cb, null, null);
+		        core.requestStarters.sskFetchScheduler, new FreenetURI(page.uri), ctx, PRIORITY_CLASS, this, null, null);
 		return getter;
 	}
 
