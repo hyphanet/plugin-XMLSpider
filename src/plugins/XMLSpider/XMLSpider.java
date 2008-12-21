@@ -244,14 +244,17 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 	private class MyClientCallback implements ClientCallback {
 		final Page page;
+		Status status; // for debug
 
 		public MyClientCallback(Page page) {
 			this.page = page;
+			this.status = Status.QUEUED;
 		}
 
 		public void onFailure(FetchException e, ClientGetter state) {
 			if (!stopped)
 				callbackExecutor.execute(new OnFailureCallback(e, state, page));
+			status = Status.FAILED;
 		}
 
 		public void onFailure(InsertException e, BaseClientPutter state) {
@@ -273,6 +276,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		public void onSuccess(final FetchResult result, final ClientGetter state) {
 			if (!stopped)
 				callbackExecutor.execute(new OnSuccessCallback(result, state, page));
+			status = Status.SUCCEEDED;
 		}
 
 		public void onSuccess(BaseClientPutter state) {
@@ -280,7 +284,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 
 		public String toString() {
-			return super.toString() + ":" + page;
+			return super.toString() + ":" + page + "(" + status + ")";
 		}		
 	}
 
@@ -499,7 +503,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			stopped = true;
 			
 			for (Map.Entry<Page, ClientGetter> me : runningFetch.entrySet()) {
-				me.getValue().cancel();
+				ClientGetter getter = me.getValue();
+				Logger.minor(this, "Canceling request" + getter);
+				getter.cancel();
 			}
 			runningFetch.clear();
 			callbackExecutor.shutdownNow();
