@@ -512,6 +512,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 		try { callbackExecutor.awaitTermination(15, TimeUnit.SECONDS); } catch (InterruptedException e) {}
 		try { db.close(); } catch (Exception e) {}
+		synchronized (this) {
+			cachedTerm.clear();
+		}
 	}
 
 	public synchronized void runPlugin(PluginRespirator pr) {
