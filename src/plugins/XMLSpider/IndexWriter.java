@@ -207,8 +207,7 @@ class IndexWriter {
 		Vector<Term> list = new Vector<Term>();
 
 		Term term0 = termSet.get(0);
-		String str = term0.md5;
-		String currentPrefix = str.substring(0, prefix);
+		String currentPrefix = term0.md5.substring(0, prefix);
 
 		int i = 0;
 		for (Term term : termSet) {
@@ -220,8 +219,9 @@ class IndexWriter {
 			} else {
 				//generate the appropriate subindex with the current list
 				generateSubIndex(prefix, list);
-				str = key;
-				currentPrefix = str.substring(0, prefix);
+				
+				// next list
+				currentPrefix = key.substring(0, prefix);
 				list = new Vector<Term>();
 				list.add(term);
 			}
