@@ -209,7 +209,6 @@ class IndexWriter {
 		Term term0 = termSet.get(0);
 		String str = term0.md5;
 		String currentPrefix = str.substring(0, prefix);
-		list.add(term0);
 
 		int i = 0;
 		for (Term term : termSet) {
