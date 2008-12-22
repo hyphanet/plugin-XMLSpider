@@ -242,11 +242,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 	}
 
-	private class MyClientCallback implements ClientCallback {
+	private class ClientGetterCallback implements ClientCallback {
 		final Page page;
 		Status status; // for debug
 
-		public MyClientCallback(Page page) {
+		public ClientGetterCallback(Page page) {
 			this.page = page;
 			this.status = Status.QUEUED;
 		}
@@ -289,7 +289,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}
 
 	private ClientGetter makeGetter(Page page) throws MalformedURLException {
-		ClientGetter getter = new ClientGetter(new MyClientCallback(page),
+		ClientGetter getter = new ClientGetter(new ClientGetterCallback(page),
 				core.requestStarters.chkFetchScheduler,
 		        core.requestStarters.sskFetchScheduler, new FreenetURI(page.uri), ctx, PRIORITY_CLASS, this, null, null);
 		return getter;
