@@ -36,7 +36,7 @@ public class Config implements Cloneable {
 
 		indexTitle = "XMLSpider index";
 		indexOwner = "Freenet";
-		indexOwnerEmail = null;
+		indexOwnerEmail = "(nil)";
 
 		maxShownURIs = 15;
 
