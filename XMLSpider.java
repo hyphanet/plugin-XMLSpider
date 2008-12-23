@@ -602,6 +602,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		HTMLNode pageNode = pageMaker.getPageNode(pluginName, null);
 		HTMLNode contentNode = pageMaker.getContentNode(pageNode);
 
+		// Create Index
 		if (request.isPartSet("createIndex")) {
 			synchronized (this) {
 				scheduleMakeIndex();
@@ -612,6 +613,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			}
 		}
 
+		// Queue URI
 		String addURI = request.getPartAsString("addURI", 512);
 		if (addURI != null && addURI.length() != 0) {
 			try {
@@ -627,9 +629,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				contentNode.addChild(infobox);
 				Logger.normal(this, "Manual added URI cause exception", e);
 			}
-
 			startSomeRequests();
 		}
+		
+		
 
 		return generateHTML(request, pageNode, contentNode);
 	}
