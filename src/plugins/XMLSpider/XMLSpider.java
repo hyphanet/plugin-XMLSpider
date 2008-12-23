@@ -3,7 +3,6 @@
  * http://www.gnu.org/ for further details of the GPL. */
 package plugins.XMLSpider;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -74,6 +73,12 @@ import freenet.support.io.NullBucketFactory;
  *  
  */
 public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless, FredPluginVersioned, FredPluginL10n, USKCallback {
+	private Config config = new Config();
+
+	public Config getConfig() {
+		return config;
+	}
+
 	public synchronized long getNextPageId() {
 		long x = maxPageId.incrementAndGet();
 		db.store(maxPageId);
@@ -84,18 +89,12 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	protected Map<Page, ClientGetter> runningFetch = Collections.synchronizedMap(new HashMap<Page, ClientGetter>());
 
 	protected MaxPageId maxPageId;
-	
-	/**
-	 * directory where the generated indices are stored. 
-	 * Needs to be created before it can be used
-	 */
-	public static final String DEFAULT_INDEX_DIR = "myindex7/";
+
 	/**
 	 * Lists the allowed mime types of the fetched page. 
 	 */
-	public Set<String> allowedMIMETypes;
-	static final int MAX_ENTRIES = 2000;
-	static final long MAX_SUBINDEX_UNCOMPRESSED_SIZE = 4 * 1024 * 1024;
+	public Set<String> allowedMIMETypes;	
+	
 	private static int version = 33;
 	private static final String pluginName = "XML spider " + version;
 
@@ -103,47 +102,19 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		return version + " r" + Version.getSvnRevision();
 	}
 
-	/**
-	 * Gives the allowed fraction of total time spent on generating indices with
-	 * maximum value = 1; minimum value = 0. 
-	 */
-	public static final double MAX_TIME_SPENT_INDEXING = 0.5;
-
-	static final String indexTitle = "XMLSpider index";
-	static final String indexOwner = "Freenet";
-	static final String indexOwnerEmail = null;
-
-	// Can have many; this limit only exists to save memory.
-	private static final int maxParallelRequests = 100;
-	private int maxShownURIs = 15;
-
 	private NodeClientCore core;
 	private FetchContext ctx;
-	// Equal to Frost, ARK fetches etc. One step down from Fproxy.
-	// Any lower makes it very difficult to debug. Maybe reduce for production - after solving the ARK bugs.
-	private final short PRIORITY_CLASS = RequestStarter.IMMEDIATE_SPLITFILE_PRIORITY_CLASS;
 	private boolean stopped = true;
 
 	private PageMaker pageMaker;
-
-	private final static String[] BADLIST_EXTENSTION = new String[] { 
-		".ico", ".bmp", ".png", ".jpg", ".gif",		// image
-		".zip", ".jar", ".gz" , ".bz2", ".rar",		// archive
-		".7z" , ".rar", ".arj", ".rpm",	".deb",
-		".xpi", ".ace", ".cab", ".lza", ".lzh",
-		".ace",
-		".exe", ".iso",								// binary
-		".mpg", ".ogg", ".mp3", ".avi",				// media
-		".css", ".sig"								// other
-	};
-
+	
 	/**
 	 * Adds the found uri to the list of to-be-retrieved uris. <p>Every usk uri added as ssk.
 	 * @param uri the new uri that needs to be fetched for further indexing
 	 */
 	public void queueURI(FreenetURI uri, String comment, boolean force) {
 		String sURI = uri.toString();
-		for (String ext : BADLIST_EXTENSTION)
+		for (String ext : config.getBadlistedExtensions())
 			if (sURI.endsWith(ext))
 				return;	// be smart
 
@@ -188,7 +159,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			synchronized (runningFetch) {
 				int running = runningFetch.size();
 
-				if (running >= maxParallelRequests) return;
+				if (running >= config.getMaxParallelRequests())
+					return;
 
 				if (queuedRequestCache.isEmpty()) {
 					Query query = db.query();
@@ -199,18 +171,18 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 					ObjectSet<Page> queuedSet = query.execute();
 
 					for (int i = 0 ; 
-						i < maxParallelRequests * 2 && queuedSet.hasNext();
+						i < config.getMaxParallelRequests() * 2 && queuedSet.hasNext();
 						i++) {	// cache 2 * maxParallelRequests
 						queuedRequestCache.add(queuedSet.next());
 					}
 				}
 				queuedRequestCache.removeAll(runningFetch.keySet());
 
-				toStart = new ArrayList<ClientGetter>(maxParallelRequests - running);
+				toStart = new ArrayList<ClientGetter>(config.getMaxParallelRequests() - running);
 
 				Iterator<Page> it = queuedRequestCache.iterator();
 
-				while (running + toStart.size() < maxParallelRequests && it.hasNext()) {
+				while (running + toStart.size() < config.getMaxParallelRequests() && it.hasNext()) {
 					Page page = it.next();
 					it.remove();
 
@@ -291,7 +263,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	private ClientGetter makeGetter(Page page) throws MalformedURLException {
 		ClientGetter getter = new ClientGetter(new ClientGetterCallback(page),
 				core.requestStarters.chkFetchScheduler,
-		        core.requestStarters.sskFetchScheduler, new FreenetURI(page.uri), ctx, PRIORITY_CLASS, this, null, null);
+		        core.requestStarters.sskFetchScheduler, new FreenetURI(page.uri), ctx, config.getRequestPriority(),
+		        this,
+		        null, null);
 		return getter;
 	}
 
@@ -538,10 +512,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		stopped = false;
 
-		if (!new File(DEFAULT_INDEX_DIR).mkdirs()) {
-			Logger.error(this, "Could not create default index directory ");
-		}
-
 		// Initial DB4O
 		db = initDB4O();
 
@@ -598,7 +568,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		@SuppressWarnings("unchecked")
 		ObjectSet<Page> set = query.execute();
 		List<Page> pages = new ArrayList<Page>();
-		while (set.hasNext() && pages.size() < maxShownURIs) {
+		while (set.hasNext() && pages.size() < config.getMaxShownURIs()) {
 			pages.add(set.next());
 		}
 
@@ -676,7 +646,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		HTMLNode nextTableCell = overviewTableRow.addChild("td", "class", "first");
 		HTMLNode statusBox = pageMaker.getInfobox("Spider Status");
 		HTMLNode statusContent = pageMaker.getContentNode(statusBox);
-		statusContent.addChild("#", "Running Request: " + runningFetch.size() + "/" + maxParallelRequests);
+		statusContent.addChild("#", "Running Request: " + runningFetch.size() + "/" + config.getMaxParallelRequests());
 		statusContent.addChild("br");
 		statusContent.addChild("#", "Queued: " + queuedStatus.count);
 		statusContent.addChild("br");
@@ -742,7 +712,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				HTMLNode list = runningContent.addChild("ol", "style", "overflow: auto; white-space: nowrap;");
 
 				Iterator<Page> pi = runningFetch.keySet().iterator();
-				for (int i = 0; i < maxShownURIs && pi.hasNext(); i++) {
+				for (int i = 0; i < config.getMaxShownURIs() && pi.hasNext(); i++) {
 					Page page = pi.next();
 					HTMLNode litem = list.addChild("li", "title", page.comment);
 					litem.addChild("a", "href", "/freenet:" + page.uri, page.uri);
@@ -917,11 +887,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}
 
 	public short getPollingPriorityNormal() {
-		return (short) Math.min(RequestStarter.MINIMUM_PRIORITY_CLASS, PRIORITY_CLASS + 1);
+		return (short) Math.min(RequestStarter.MINIMUM_PRIORITY_CLASS, config.getRequestPriority() + 1);
 	}
 
 	public short getPollingPriorityProgress() {
-		return PRIORITY_CLASS;
+		return config.getRequestPriority();
 	}
 
 	protected ObjectContainer db;
