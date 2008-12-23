@@ -73,12 +73,18 @@ import freenet.support.io.NullBucketFactory;
  *  
  */
 public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless, FredPluginVersioned, FredPluginL10n, USKCallback {
-	private Config config = new Config(true);
+	private Config config;
 
 	public Config getConfig() {
-		return config;
+		// always return a clone, never allow changing directly
+		return config.clone();
 	}
 
+	// Set config asynchronously
+	public void setConfig(Config config) {
+		callbackExecutor.execute(new SetConfigCallback(config));
+	}
+	
 	public synchronized long getNextPageId() {
 		long x = maxPageId.incrementAndGet();
 		db.store(maxPageId);
@@ -333,6 +339,23 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			}
 		}
 	}
+		
+	// Set config asynchronously 
+	protected class SetConfigCallback implements Runnable {
+		private Config config;
+
+		SetConfigCallback(Config config) {
+			this.config = config;
+		}
+
+		public void run() {
+			synchronized (this) {
+				XMLSpider.this.config.setValue(config);
+				db.store(XMLSpider.this.config);
+				db.commit();
+			}
+		}
+	}
 
 	protected static class CallbackPrioritizer implements Comparator<Runnable> {
 		public int compare(Runnable o1, Runnable o2) {
@@ -349,6 +372,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				return 1;
 			else if (r instanceof OnSuccessCallback)
 				return 2;
+			else if (r instanceof SetConfigCallback)
+				return 3;
 
 			return -1;
 		}
@@ -539,6 +564,22 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 					maxPageId = new MaxPageId(0);
 			}
 		}
+		
+		// Load Config
+		{
+			Query query = db.query();
+			query.constrain(Config.class);
+			@SuppressWarnings("unchecked")
+			ObjectSet<Config> set = query.execute();
+
+			if (set.hasNext())
+				config = set.next();
+			else {
+				config = new Config(true);
+				db.store(config);
+				db.commit();
+			}
+		}	
 		
 		indexWriter = new IndexWriter(this);
 		webInterface = new WebInterface(this);
@@ -750,8 +791,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		cfg.objectClass(MaxPageId.class).callConstructor(true);
 		cfg.objectClass(Config.class).callConstructor(true);
 
-		cfg.activationDepth(1);
-		cfg.updateDepth(1);
+		cfg.activationDepth(3);
+		cfg.updateDepth(3);
 		// cfg.automaticShutDown(false);
 		cfg.queries().evaluationMode(QueryEvaluationMode.LAZY);
 		cfg.diagnostic().addListener(new DiagnosticToConsole());
