@@ -73,7 +73,7 @@ import freenet.support.io.NullBucketFactory;
  *  
  */
 public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless, FredPluginVersioned, FredPluginL10n, USKCallback {
-	private Config config = new Config();
+	private Config config = new Config(true);
 
 	public Config getConfig() {
 		return config;
@@ -926,6 +926,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		cfg.objectClass(TermPosition.class).callConstructor(true);
 
 		//- Other
+		cfg.objectClass(MaxPageId.class).callConstructor(true);
+		cfg.objectClass(Config.class).callConstructor(true);
+
 		cfg.activationDepth(1);
 		cfg.updateDepth(1);
 		// cfg.automaticShutDown(false);

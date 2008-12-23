@@ -4,35 +4,85 @@
 package plugins.XMLSpider;
 
 import freenet.node.RequestStarter;
+import freenet.support.Logger;
 
-class Config {
+class Config implements Cloneable {
 	/**
-	 * directory where the generated indices are stored. Needs to be created before it can be used
+	 * Directory where the generated indices are stored
 	 */
-	private String indexDir = "myindex7/";
-	private int indexMaxEntries = 2000;
-	private long indexSubindexMaxSize = 4 * 1024 * 1024;
+	private String indexDir;
+	private int indexMaxEntries;
+	private long indexSubindexMaxSize;
 
-	private String indexTitle = "XMLSpider index";
-	private String indexOwner = "Freenet";
-	private String indexOwnerEmail = null;
+	private String indexTitle;
+	private String indexOwner;
+	private String indexOwnerEmail;
 
-	private int maxShownURIs = 15;
+	private int maxShownURIs;
+	private int maxParallelRequests;
+	private String[] badlistedExtensions;
+	private short requestPriority;
 
-	// Can have many; this limit only exists to save memory.
-	private int maxParallelRequests = 100;
+	public Config() {
+	} // for db4o
 
-	private String[] badlistedExtensions = new String[] { //
-	".ico", ".bmp", ".png", ".jpg", ".gif", // image
-	        ".zip", ".jar", ".gz", ".bz2", ".rar", // archive
-	        ".7z", ".rar", ".arj", ".rpm", ".deb", ".xpi", ".ace", ".cab", ".lza", ".lzh", ".ace", ".exe", ".iso", // binary
-	        ".mpg", ".ogg", ".mp3", ".avi", // media
-	        ".css", ".sig" // other
-	};
+	public Config(boolean setDefault) {
+		if (!setDefault)
+			return;
 
-	// Equal to Frost, ARK fetches etc. One step down from Fproxy.
-	// Any lower makes it very difficult to debug. Maybe reduce for production - after solving the ARK bugs.
-	private short requestPriority = RequestStarter.IMMEDIATE_SPLITFILE_PRIORITY_CLASS;
+		indexDir = "myindex7/";
+		indexMaxEntries = 2000;
+		indexSubindexMaxSize = 4 * 1024 * 1024;
+
+		indexTitle = "XMLSpider index";
+		indexOwner = "Freenet";
+		indexOwnerEmail = null;
+
+		maxShownURIs = 15;
+
+		maxParallelRequests = 100;
+
+		badlistedExtensions = new String[] { //
+		".ico", ".bmp", ".png", ".jpg", ".gif", // image
+		        ".zip", ".jar", ".gz", ".bz2", ".rar", // archive
+		        ".7z", ".rar", ".arj", ".rpm", ".deb", //
+		        ".xpi", ".ace", ".cab", ".lza", ".lzh", //
+		        ".ace", ".exe", ".iso", // binary
+		        ".mpg", ".ogg", ".mp3", ".avi", // media
+		        ".css", ".sig" // other
+		};
+
+		requestPriority = RequestStarter.IMMEDIATE_SPLITFILE_PRIORITY_CLASS;
+	}
+
+	public synchronized void setValue(Config config) {
+		synchronized (config) {
+			indexDir = config.indexDir;
+			indexMaxEntries = config.indexMaxEntries;
+			indexSubindexMaxSize = config.indexSubindexMaxSize;
+
+			indexTitle = config.indexTitle;
+			indexOwner = config.indexOwner;
+			indexOwnerEmail = config.indexOwnerEmail;
+
+			maxShownURIs = config.maxShownURIs;
+
+			maxParallelRequests = config.maxParallelRequests;
+
+			badlistedExtensions = config.badlistedExtensions;
+
+			requestPriority = config.requestPriority;
+		}
+	}
+
+	public synchronized Config clone() {
+		try {
+			return (Config) super.clone();
+		} catch (CloneNotSupportedException e) {
+			Logger.error(this, "impossible:", e);
+			throw new RuntimeException(e);
+		}
+	}
 
 	public synchronized void setIndexDir(String indexDir) {
 		this.indexDir = indexDir;
