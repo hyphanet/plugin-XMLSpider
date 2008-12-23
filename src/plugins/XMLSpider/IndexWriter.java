@@ -49,8 +49,9 @@ public class IndexWriter {
 		try {
 			time_taken = System.currentTimeMillis();
 
-			if (!(new File(xmlSpider.getConfig().getIndexDir()).mkdirs())) {
-				Logger.error(this, "Cannot create index directory: " + xmlSpider.getConfig().getIndexDir());
+			File indexDir = new File(xmlSpider.getConfig().getIndexDir());
+			if (!indexDir.exists() && !indexDir.isDirectory() && !indexDir.mkdirs()) {
+				Logger.error(this, "Cannot create index directory: " + indexDir);
 				return;
 			}
 			
