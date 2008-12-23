@@ -51,19 +51,20 @@ class ConfigPage implements WebPage {
 		HTMLNode configBox = pageMaker.getInfobox("Configuration");
 		HTMLNode configContent = pageMaker.getContentNode(configBox);
 		HTMLNode configForm = pr.addFormChild(configContent, "plugins.XMLSpider.XMLSpider?ConfigPage", "configForm");
-		HTMLNode configUi = configForm.addChild("ul", "class", "config");
+	
+		configForm.addChild("div", "class", "configprefix", "Index Writer Options");
 		
-		configUi.addChild("div", "class", "configprefix", "Index Writer Options");
-		addConfig(configUi, //
+		HTMLNode indexConfig = configForm.addChild("ul", "class", "config");
+		addConfig(indexConfig, //
 		        "Index Directory", "Directory where the index should be written to.", // 
 		        "indexDir", config.getIndexDir());
-		addConfig(configUi, //
+		addConfig(indexConfig, //
 		        "Index Title", "Index Title", // 
 		        "indexTitle", config.getIndexTitle());
-		addConfig(configUi, //
+		addConfig(indexConfig, //
 		        "Index Owner", "Index Owner", // 
 		        "indexOwner", config.getIndexOwner());
-		addConfig(configUi, //
+		addConfig(indexConfig, //
 		        "Index Owner Email", "Index Owner Email", // 
 		        "indexOwnerEmail", config.getIndexOwnerEmail());
 		
