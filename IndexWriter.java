@@ -49,6 +49,11 @@ class IndexWriter {
 		try {
 			time_taken = System.currentTimeMillis();
 
+			if (!(new File(xmlSpider.getConfig().getIndexDir()).mkdirs())) {
+				Logger.error(this, "Cannot create index directory: " + xmlSpider.getConfig().getIndexDir());
+				return;
+			}
+			
 			makeSubIndices();
 			makeMainIndex();
 
@@ -76,7 +81,7 @@ class IndexWriter {
 		Logger.minor(this, "Producing top index...");
 
 		//the main index file 
-		File outputFile = new File(XMLSpider.DEFAULT_INDEX_DIR + "index.xml");
+		File outputFile = new File(xmlSpider.getConfig().getIndexDir() + "index.xml");
 		// Use a stream so we can explicitly close - minimise number of filehandles used.
 		BufferedOutputStream fos = new BufferedOutputStream(new FileOutputStream(outputFile));
 		StreamResult resultStream;
@@ -110,22 +115,22 @@ class IndexWriter {
 
 			/* -> title */
 			Element subHeaderElement = xmlDoc.createElement("title");
-			Text subHeaderText = xmlDoc.createTextNode(XMLSpider.indexTitle);
+			Text subHeaderText = xmlDoc.createTextNode(xmlSpider.getConfig().getIndexTitle());
 
 			subHeaderElement.appendChild(subHeaderText);
 			headerElement.appendChild(subHeaderElement);
 
 			/* -> owner */
 			subHeaderElement = xmlDoc.createElement("owner");
-			subHeaderText = xmlDoc.createTextNode(XMLSpider.indexOwner);
+			subHeaderText = xmlDoc.createTextNode(xmlSpider.getConfig().getIndexOwner());
 
 			subHeaderElement.appendChild(subHeaderText);
 			headerElement.appendChild(subHeaderElement);
 
 			/* -> owner email */
-			if (XMLSpider.indexOwnerEmail != null) {
+			if (xmlSpider.getConfig().getIndexOwnerEmail() != null) {
 				subHeaderElement = xmlDoc.createElement("email");
-				subHeaderText = xmlDoc.createTextNode(XMLSpider.indexOwnerEmail);
+				subHeaderText = xmlDoc.createTextNode(xmlSpider.getConfig().getIndexOwnerEmail());
 
 				subHeaderElement.appendChild(subHeaderText);
 				headerElement.appendChild(subHeaderElement);
@@ -200,7 +205,7 @@ class IndexWriter {
 		ObjectSet<Term> termSet = query.execute();
 
 		indices = new Vector<String>();
-		int prefix = (int) ((Math.log(termSet.size()) - Math.log(XMLSpider.MAX_ENTRIES)) / Math.log(16)) - 1;
+		int prefix = (int) ((Math.log(termSet.size()) - Math.log(xmlSpider.getConfig().getIndexMaxEntries())) / Math.log(16)) - 1;
 		if (prefix <= 0)
 			prefix = 1;
 		match = 1;
@@ -243,7 +248,7 @@ class IndexWriter {
 		try {
 			if (list.size() == 0)
 				return;
-			if (list.size() < XMLSpider.MAX_ENTRIES) {
+			if (list.size() < xmlSpider.getConfig().getIndexMaxEntries()) {
 				generateXML(list, p);
 				return;
 			}
@@ -290,7 +295,7 @@ class IndexWriter {
 	protected void generateXML(List<Term> list, int prefix) throws TooBigIndexException, Exception {
 		String p = list.get(0).md5.substring(0, prefix);
 		indices.add(p);
-		File outputFile = new File(XMLSpider.DEFAULT_INDEX_DIR + "index_" + p + ".xml");
+		File outputFile = new File(xmlSpider.getConfig().getIndexDir() + "index_" + p + ".xml");
 		BufferedOutputStream fos = new BufferedOutputStream(new FileOutputStream(outputFile));
 		StreamResult resultStream;
 		resultStream = new StreamResult(fos);
@@ -320,7 +325,7 @@ class IndexWriter {
 			Element headerElement = xmlDoc.createElement("header");
 			/* -> title */
 			Element subHeaderElement = xmlDoc.createElement("title");
-			Text subHeaderText = xmlDoc.createTextNode(XMLSpider.indexTitle);
+			Text subHeaderText = xmlDoc.createTextNode(xmlSpider.getConfig().getIndexTitle());
 			subHeaderElement.appendChild(subHeaderText);
 			headerElement.appendChild(subHeaderElement);
 
@@ -412,7 +417,7 @@ class IndexWriter {
 		} finally {
 			fos.close();
 		}
-		if (outputFile.length() > XMLSpider.MAX_SUBINDEX_UNCOMPRESSED_SIZE && list.size() > 1) {
+		if (outputFile.length() > xmlSpider.getConfig().getIndexSubindexMaxSize() && list.size() > 1) {
 			outputFile.delete();
 			throw new TooBigIndexException();
 		}
@@ -464,22 +469,22 @@ class IndexWriter {
 
 			/* -> title */
 			Element subHeaderElement = xmlDoc.createElement("title");
-			Text subHeaderText = xmlDoc.createTextNode(XMLSpider.indexTitle);
+			Text subHeaderText = xmlDoc.createTextNode(xmlSpider.getConfig().getIndexTitle());
 
 			subHeaderElement.appendChild(subHeaderText);
 			headerElement.appendChild(subHeaderElement);
 
 			/* -> owner */
 			subHeaderElement = xmlDoc.createElement("owner");
-			subHeaderText = xmlDoc.createTextNode(XMLSpider.indexOwner);
+			subHeaderText = xmlDoc.createTextNode(xmlSpider.getConfig().getIndexOwner());
 
 			subHeaderElement.appendChild(subHeaderText);
 			headerElement.appendChild(subHeaderElement);
 
 			/* -> owner email */
-			if (XMLSpider.indexOwnerEmail != null) {
+			if (xmlSpider.getConfig().getIndexOwnerEmail() != null) {
 				subHeaderElement = xmlDoc.createElement("email");
-				subHeaderText = xmlDoc.createTextNode(XMLSpider.indexOwnerEmail);
+				subHeaderText = xmlDoc.createTextNode(xmlSpider.getConfig().getIndexOwnerEmail());
 
 				subHeaderElement.appendChild(subHeaderText);
 				headerElement.appendChild(subHeaderElement);
