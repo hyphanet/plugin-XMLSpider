@@ -160,7 +160,8 @@ class MainPage implements WebPage {
 			HTMLNode list = runningContent.addChild("ol", "style", "overflow: auto; white-space: nowrap;");
 
 			Iterator<Page> pi = runningFetch.iterator();
-			for (int i = 0; i < xmlSpider.getConfig().getMaxShownURIs() && pi.hasNext(); i++) {
+			int maxURI = xmlSpider.getConfig().getMaxShownURIs();
+			for (int i = 0; i < maxURI && pi.hasNext(); i++) {
 				Page page = pi.next();
 				HTMLNode litem = list.addChild("li", "title", page.comment);
 				litem.addChild("a", "href", "/freenet:" + page.uri, page.uri);
