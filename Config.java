@@ -6,7 +6,7 @@ package plugins.XMLSpider;
 import freenet.node.RequestStarter;
 import freenet.support.Logger;
 
-class Config implements Cloneable {
+public class Config implements Cloneable {
 	/**
 	 * Directory where the generated indices are stored
 	 */

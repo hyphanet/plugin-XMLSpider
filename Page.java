@@ -3,19 +3,19 @@
  */
 package plugins.XMLSpider;
 
-class Page {
+public class Page {
 	/** Page Id */
-	long id;
+	public long id;
 	/** URI of the page */
-	String uri;
+	public String uri;
 	/** Title */
-	String pageTitle;
+	public String pageTitle;
 	/** Status */
-	Status status;
+	public Status status;
 	/** Last Change Time */
-	long lastChange;
+	public long lastChange;
 	/** Comment, for debugging */
-	String comment;
+	public String comment;
 
 	public Page() {}	// for db4o callConstructors(true)
 

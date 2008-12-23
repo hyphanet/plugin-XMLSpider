@@ -33,9 +33,9 @@ import freenet.support.Logger;
 /**
  * Write index to disk file
  */
-class IndexWriter {
+public class IndexWriter {
 	//- Writing Index
-	long tProducedIndex;
+	public long tProducedIndex;
 	private Vector<String> indices;
 	private int match;
 	private long time_taken;
