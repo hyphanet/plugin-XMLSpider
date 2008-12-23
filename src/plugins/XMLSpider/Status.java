@@ -3,7 +3,7 @@
  */
 package plugins.XMLSpider;
 
-enum Status {
+public enum Status {
 	/** For simplicity, running is also mark as QUEUED */
 	QUEUED, SUCCEEDED, FAILED
 }

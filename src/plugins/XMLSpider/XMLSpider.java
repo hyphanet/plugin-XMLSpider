@@ -10,7 +10,6 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -22,6 +21,8 @@ import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+
+import plugins.XMLSpider.web.WebInterface;
 
 import com.db4o.Db4o;
 import com.db4o.ObjectContainer;
@@ -57,7 +58,6 @@ import freenet.pluginmanager.FredPluginThreadless;
 import freenet.pluginmanager.FredPluginVersioned;
 import freenet.pluginmanager.PluginHTTPException;
 import freenet.pluginmanager.PluginRespirator;
-import freenet.support.HTMLNode;
 import freenet.support.Logger;
 import freenet.support.api.Bucket;
 import freenet.support.api.HTTPRequest;
@@ -93,20 +93,21 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	/**
 	 * Lists the allowed mime types of the fetched page. 
 	 */
-	public Set<String> allowedMIMETypes;	
+	protected Set<String> allowedMIMETypes;	
 	
-	private static int version = 33;
-	private static final String pluginName = "XML spider " + version;
+	static int version = 33;
+	public static final String pluginName = "XML spider " + version;
 
 	public String getVersion() {
 		return version + " r" + Version.getSvnRevision();
 	}
-
-	private NodeClientCore core;
+	
 	private FetchContext ctx;
 	private boolean stopped = true;
 
-	private PageMaker pageMaker;
+	private NodeClientCore core;
+	private PageMaker pageMaker;	
+	private PluginRespirator pr;
 	
 	/**
 	 * Adds the found uri to the list of to-be-retrieved uris. <p>Every usk uri added as ssk.
@@ -147,7 +148,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 	protected List<Page> queuedRequestCache = new ArrayList<Page>();
 
-	private void startSomeRequests() {
+	public void startSomeRequests() {
 		FreenetURI[] initialURIs = core.getBookmarkURIs();
 		for (int i = 0; i < initialURIs.length; i++)
 			queueURI(initialURIs[i], "bookmark", false);
@@ -301,7 +302,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 	}
 
-	private synchronized void scheduleMakeIndex() {
+	public synchronized void scheduleMakeIndex() {
 		if (writeIndexScheduled || writingIndex)
 			return;
 
@@ -355,7 +356,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 	// this is java.util.concurrent.Executor, not freenet.support.Executor
 	// always run with one thread --> more thread cause contention and slower!
-	protected ThreadPoolExecutor callbackExecutor = new ThreadPoolExecutor( //
+	public ThreadPoolExecutor callbackExecutor = new ThreadPoolExecutor( //
 	        1, 1, 600, TimeUnit.SECONDS, //
 	        new PriorityBlockingQueue<Runnable>(5, new CallbackPrioritizer()), //
 	        new ThreadFactory() {
@@ -472,6 +473,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 	protected IndexWriter indexWriter;
 	
+	public IndexWriter getIndexWriter() {
+		return indexWriter;
+	}
+	
 	public void terminate(){
 		synchronized (this) {
 			stopped = true;
@@ -493,10 +498,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 	public synchronized void runPlugin(PluginRespirator pr) {
 		this.core = pr.getNode().clientCore;
-
-		this.pageMaker = pr.getPageMaker();
-		pageMaker.addNavigationLink("/plugins/plugins.XMLSpider.XMLSpider", "Home", "Home page", false, null);
-		pageMaker.addNavigationLink("/plugins/", "Plugins page", "Back to Plugins page", false, null);
+		this.pr = pr;
+		pageMaker = pr.getPageMaker();
 
 		/* Initialize Fetch Context */
 		this.ctx = pr.getHLSimpleClient().getFetchContext();
@@ -538,6 +541,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 		
 		indexWriter = new IndexWriter(this);
+		webInterface = new WebInterface(this);
 
 		pr.getNode().executor.execute(new Runnable() {
 			public void run() {
@@ -549,200 +553,14 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}, "Spider Plugin Starter");
 	}
 
-	static class PageStatus {
-		long count;
-		List<Page> pages;
-
-		PageStatus(long count, List<Page> pages) {
-			this.count = count;
-			this.pages = pages;
-		}
-	}
-
-	private PageStatus getPageStatus(Status status) {
-		Query query = db.query();
-		query.constrain(Page.class);
-		query.descend("status").constrain(status);
-		query.descend("lastChange").orderDescending();
-		
-		@SuppressWarnings("unchecked")
-		ObjectSet<Page> set = query.execute();
-		List<Page> pages = new ArrayList<Page>();
-		while (set.hasNext() && pages.size() < config.getMaxShownURIs()) {
-			pages.add(set.next());
-		}
-
-		return new PageStatus(set.size(), pages);
-	}
-
-	private void listPages(PageStatus pageStatus, HTMLNode parent) {
-		if (pageStatus.pages.isEmpty()) {
-			HTMLNode list = parent.addChild("#", "NO URI");
-		} else {
-			HTMLNode list = parent.addChild("ol", "style", "overflow: auto; white-space: nowrap;");
-
-			for (Page page : pageStatus.pages) {
-				HTMLNode litem = list.addChild("li", "title", page.comment);
-				litem.addChild("a", "href", "/freenet:" + page.uri, page.uri);
-			}
-		}
-	}
-
-	/**
-	 * Interface to the Spider data
-	 */
+	private WebInterface webInterface;
+	
 	public String handleHTTPGet(HTTPRequest request) throws PluginHTTPException {
-		HTMLNode pageNode = pageMaker.getPageNode(pluginName, null);
-		HTMLNode contentNode = pageMaker.getContentNode(pageNode);
-
-		return generateHTML(request, pageNode, contentNode);
+		return webInterface.handleHTTPGet(request);
 	}
 
 	public String handleHTTPPost(HTTPRequest request) throws PluginHTTPException {
-		HTMLNode pageNode = pageMaker.getPageNode(pluginName, null);
-		HTMLNode contentNode = pageMaker.getContentNode(pageNode);
-
-		// Create Index
-		if (request.isPartSet("createIndex")) {
-			synchronized (this) {
-				scheduleMakeIndex();
-
-				HTMLNode infobox = pageMaker.getInfobox("infobox infobox-success", "Scheduled Creating Index");
-				infobox.addChild("#", "Index will start create soon.");
-				contentNode.addChild(infobox);
-			}
-		}
-
-		// Queue URI
-		String addURI = request.getPartAsString("addURI", 512);
-		if (addURI != null && addURI.length() != 0) {
-			try {
-				FreenetURI uri = new FreenetURI(addURI);
-				queueURI(uri, "manually", true);
-
-				HTMLNode infobox = pageMaker.getInfobox("infobox infobox-success", "URI Added");
-				infobox.addChild("#", "Added " + uri);
-				contentNode.addChild(infobox);
-			} catch (Exception e) {
-				HTMLNode infobox = pageMaker.getInfobox("infobox infobox-error", "Error adding URI");
-				infobox.addChild("#", e.getMessage());
-				contentNode.addChild(infobox);
-				Logger.normal(this, "Manual added URI cause exception", e);
-			}
-			startSomeRequests();
-		}
-		
-		
-
-		return generateHTML(request, pageNode, contentNode);
-	}
-
-	private String generateHTML(HTTPRequest request, HTMLNode pageNode, HTMLNode contentNode) {
-		HTMLNode overviewTable = contentNode.addChild("table", "class", "column");
-		HTMLNode overviewTableRow = overviewTable.addChild("tr");
-
-		PageStatus queuedStatus = getPageStatus(Status.QUEUED);
-		PageStatus succeededStatus = getPageStatus(Status.SUCCEEDED);
-		PageStatus failedStatus = getPageStatus(Status.FAILED);
-
-		// Column 1
-		HTMLNode nextTableCell = overviewTableRow.addChild("td", "class", "first");
-		HTMLNode statusBox = pageMaker.getInfobox("Spider Status");
-		HTMLNode statusContent = pageMaker.getContentNode(statusBox);
-		statusContent.addChild("#", "Running Request: " + runningFetch.size() + "/" + config.getMaxParallelRequests());
-		statusContent.addChild("br");
-		statusContent.addChild("#", "Queued: " + queuedStatus.count);
-		statusContent.addChild("br");
-		statusContent.addChild("#", "Succeeded: " + succeededStatus.count);
-		statusContent.addChild("br");
-		statusContent.addChild("#", "Failed: " + failedStatus.count);
-		statusContent.addChild("br");
-		statusContent.addChild("br");
-		statusContent.addChild("#", "Queued Event: " + callbackExecutor.getQueue().size());
-		statusContent.addChild("br");
-		statusContent.addChild("#", "Index Writer: ");
-		synchronized (this) {
-			if (writingIndex)
-				statusContent.addChild("span", "style", "color: red; font-weight: bold;", "RUNNING");
-			else if (writeIndexScheduled)
-				statusContent.addChild("span", "style", "color: blue; font-weight: bold;", "SCHEDULED");
-			else
-				statusContent.addChild("span", "style", "color: green; font-weight: bold;", "IDLE");
-		}
-		statusContent.addChild("br");
-		statusContent.addChild("#", "Last Written: "
-				+ (indexWriter.tProducedIndex == 0 ? "NEVER" : new Date(indexWriter.tProducedIndex).toString()));
-		nextTableCell.addChild(statusBox);
-
-		// Column 2
-		nextTableCell = overviewTableRow.addChild("td", "class", "second");
-		HTMLNode mainBox = pageMaker.getInfobox("Main");
-		HTMLNode mainContent = pageMaker.getContentNode(mainBox);
-		HTMLNode addForm = mainContent.addChild("form", //
-				new String[] { "action", "method" }, //
-		        new String[] { "plugins.XMLSpider.XMLSpider", "post" });
-		addForm.addChild("label", "for", "addURI", "Add URI:");
-		addForm.addChild("input", new String[] { "name", "style" }, new String[] { "addURI", "width: 20em;" });
-		addForm.addChild("input", //
-				new String[] { "name", "type", "value" },//
-		        new String[] { "formPassword", "hidden", core.formPassword });
-		addForm.addChild("input", "type", "submit");
-		nextTableCell.addChild(mainBox);
-
-		HTMLNode indexBox = pageMaker.getInfobox("Create Index");
-		HTMLNode indexContent = pageMaker.getContentNode(indexBox);
-		HTMLNode indexForm = indexContent.addChild("form", //
-				new String[] { "action", "method" }, //
-		        new String[] { "plugins.XMLSpider.XMLSpider", "post" });
-		indexForm.addChild("input", //
-				new String[] { "name", "type", "value" },//
-		        new String[] { "formPassword", "hidden", core.formPassword });
-		indexForm.addChild("input", //
-				new String[] { "name", "type", "value" },//
-		        new String[] { "createIndex", "hidden", "createIndex" });
-		indexForm.addChild("input", //
-				new String[] { "type", "value" }, //
-		        new String[] { "submit", "Create Index Now" });
-		nextTableCell.addChild(indexBox);
-
-		HTMLNode runningBox = pageMaker.getInfobox("Running URI");
-		runningBox.addAttribute("style", "right: 0;");
-		HTMLNode runningContent = pageMaker.getContentNode(runningBox);
-		synchronized (runningFetch) {
-			if (runningFetch.isEmpty()) {
-				HTMLNode list = runningContent.addChild("#", "NO URI");
-			} else {
-				HTMLNode list = runningContent.addChild("ol", "style", "overflow: auto; white-space: nowrap;");
-
-				Iterator<Page> pi = runningFetch.keySet().iterator();
-				for (int i = 0; i < config.getMaxShownURIs() && pi.hasNext(); i++) {
-					Page page = pi.next();
-					HTMLNode litem = list.addChild("li", "title", page.comment);
-					litem.addChild("a", "href", "/freenet:" + page.uri, page.uri);
-				}
-			}
-		}
-		contentNode.addChild(runningBox);
-
-		HTMLNode queuedBox = pageMaker.getInfobox("Queued URI");
-		queuedBox.addAttribute("style", "right: 0; overflow: auto;");
-		HTMLNode queuedContent = pageMaker.getContentNode(queuedBox);
-		listPages(queuedStatus, queuedContent);
-		contentNode.addChild(queuedBox);
-
-		HTMLNode succeededBox = pageMaker.getInfobox("Succeeded URI");
-		succeededBox.addAttribute("style", "right: 0;");
-		HTMLNode succeededContent = pageMaker.getContentNode(succeededBox);
-		listPages(succeededStatus, succeededContent);
-		contentNode.addChild(succeededBox);
-
-		HTMLNode failedBox = pageMaker.getInfobox("Failed URI");
-		failedBox.addAttribute("style", "right: 0;");
-		HTMLNode failedContent = pageMaker.getContentNode(failedBox);
-		listPages(failedStatus, failedContent);
-		contentNode.addChild(failedBox);
-
-		return pageNode.generate();
+		return webInterface.handleHTTPPost(request);
 	}
 
 	/**
@@ -752,7 +570,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 *
 	 */
 	public class PageCallBack implements FoundURICallback{
-		final Page page;
+		protected final Page page;
 
 		PageCallBack(Page page) {
 			this.page = page;
@@ -767,7 +585,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			queueURI(uri, "Added from " + page.uri, false);
 		}
 
-		Integer lastPosition = null;
+		protected Integer lastPosition = null;
 
 		public void onText(String s, String type, URI baseURI){
 			Logger.debug(this, "onText on " + page.id + " (" + baseURI + ")");
@@ -942,6 +760,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		return oc;
 	}
+	
+	public ObjectContainer getDB() {
+		return db;
+	}
 
 	protected Page getPageByURI(FreenetURI uri) {
 		Query query = db.query();
@@ -1027,5 +849,27 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 	public void setLanguage(LANGUAGE newLanguage) {
 		language = newLanguage;
+	}
+
+	public PageMaker getPageMaker() {
+		return pageMaker;
+	}
+	
+	public List<Page> getRunningFetch() {
+		synchronized (runningFetch) {
+			return new ArrayList<Page>(runningFetch.keySet());
+		}
+	}
+
+	public boolean isWriteIndexScheduled() {
+		return writeIndexScheduled;
+	}
+
+	public boolean isWritingIndex() {
+		return writingIndex;
+	}
+
+	public PluginRespirator getPluginRespirator() {
+		return pr;
 	}
 }
