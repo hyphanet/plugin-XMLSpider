@@ -9,6 +9,7 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
+import plugins.XMLSpider.Config;
 import plugins.XMLSpider.Page;
 import plugins.XMLSpider.Status;
 import plugins.XMLSpider.XMLSpider;
@@ -97,13 +98,14 @@ class MainPage implements WebPage {
 		PageStatus failedStatus = getPageStatus(Status.FAILED);
 
 		List<Page> runningFetch = xmlSpider.getRunningFetch();
+		Config config = xmlSpider.getConfig();
 
 		// Column 1
 		HTMLNode nextTableCell = overviewTableRow.addChild("td", "class", "first");
 		HTMLNode statusBox = pageMaker.getInfobox("Spider Status");
 		HTMLNode statusContent = pageMaker.getContentNode(statusBox);
 		statusContent.addChild("#", "Running Request: " + runningFetch.size() + "/"
-		        + xmlSpider.getConfig().getMaxParallelRequests());
+		        + config.getMaxParallelRequests());
 		statusContent.addChild("br");
 		statusContent.addChild("#", "Queued: " + queuedStatus.count);
 		statusContent.addChild("br");
@@ -160,7 +162,7 @@ class MainPage implements WebPage {
 			HTMLNode list = runningContent.addChild("ol", "style", "overflow: auto; white-space: nowrap;");
 
 			Iterator<Page> pi = runningFetch.iterator();
-			int maxURI = xmlSpider.getConfig().getMaxShownURIs();
+			int maxURI = config.getMaxShownURIs();
 			for (int i = 0; i < maxURI && pi.hasNext(); i++) {
 				Page page = pi.next();
 				HTMLNode litem = list.addChild("li", "title", page.comment);
