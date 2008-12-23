@@ -24,8 +24,8 @@ public class WebInterface {
 		pageMaker = xmlSpider.getPageMaker();
 		pageMaker.addNavigationLink("/plugins/plugins.XMLSpider.XMLSpider", //
 		        "Home", "Home page", false, null);
-		//pageMaker.addNavigationLink("/plugins/plugins.XMLSpider.XMLSpider?ConfigPage", //
-		//        "Config", "Configuration", false, null);
+		pageMaker.addNavigationLink("/plugins/plugins.XMLSpider.XMLSpider?ConfigPage", //
+		        "Config", "Configuration", false, null);
 		pageMaker.addNavigationLink("/plugins/", "Plugins page", "Back to Plugins page", false, null);
 	}
 
@@ -55,6 +55,8 @@ public class WebInterface {
 	}
 
 	public WebPage getPageObject(HTTPRequest request) {
+		if (request.isParameterSet("ConfigPage"))
+			return new ConfigPage(xmlSpider);
 		return new MainPage(xmlSpider);
 	}
 }
