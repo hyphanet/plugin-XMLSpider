@@ -449,8 +449,12 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				page.lastChange = System.currentTimeMillis();
 				db.store(page);
 			}
-			db.commit();
-			startSomeRequests();
+			if (!stopped) {
+				db.commit();
+				startSomeRequests();
+			} else {
+				db.rollback();
+			}
 		}
 	}
 
@@ -510,8 +514,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			runningFetch.clear();
 			callbackExecutor.shutdownNow();
 		}
-		try { callbackExecutor.awaitTermination(15, TimeUnit.SECONDS); } catch (InterruptedException e) {}
+		try { callbackExecutor.awaitTermination(30, TimeUnit.SECONDS); } catch (InterruptedException e) {}
+		try { db.rollback(); } catch (Exception e) {}
 		try { db.close(); } catch (Exception e) {}
+
 		synchronized (this) {
 			termCache.clear();
 		}
@@ -623,6 +629,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 
 		public void foundURI(FreenetURI uri, boolean inline){
+			if (stopped) return;
 			Logger.debug(this, "foundURI " + uri + " on " + page);
 			queueURI(uri, "Added from " + page.uri, false);
 		}
@@ -630,6 +637,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		protected Integer lastPosition = null;
 
 		public void onText(String s, String type, URI baseURI){
+			if (stopped) return;
+
 			Logger.debug(this, "onText on " + page.id + " (" + baseURI + ")");
 
 			if ("title".equalsIgnoreCase(type) && (s != null) && (s.length() != 0) && (s.indexOf('\n') < 0)) {
