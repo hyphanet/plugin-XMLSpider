@@ -155,10 +155,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	protected List<Page> queuedRequestCache = new ArrayList<Page>();
 
 	public void startSomeRequests() {
-		FreenetURI[] initialURIs = core.getBookmarkURIs();
-		for (int i = 0; i < initialURIs.length; i++)
-			queueURI(initialURIs[i], "bookmark", false);
-
 		ArrayList<ClientGetter> toStart = null;
 		synchronized (this) {
 			if (stopped)
@@ -586,6 +582,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		pr.getNode().executor.execute(new Runnable() {
 			public void run() {
+				// Add Bookmarks
+				FreenetURI[] initialURIs = core.getBookmarkURIs();
+				for (int i = 0; i < initialURIs.length; i++)
+					queueURI(initialURIs[i], "bookmark", false);
+
 				try{
 					Thread.sleep(30 * 1000); // Let the node start up
 				} catch (InterruptedException e){}
