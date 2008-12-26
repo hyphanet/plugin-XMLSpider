@@ -165,6 +165,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				if (running >= config.getMaxParallelRequests())
 					return;
 
+				// prefetch 2 * config.getMaxParallelRequests() entries
 				if (queuedRequestCache.isEmpty()) {
 					Query query = db.query();
 					query.constrain(Page.class);
@@ -173,16 +174,15 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 					@SuppressWarnings("unchecked")
 					ObjectSet<Page> queuedSet = query.execute();
 
-					for (int i = 0 ; 
-						i < config.getMaxParallelRequests() * 2 && queuedSet.hasNext();
-						i++) {	// cache 2 * maxParallelRequests
-						queuedRequestCache.add(queuedSet.next());
+					while (queuedRequestCache.size() < config.getMaxParallelRequests() * 2 && queuedSet.hasNext()) {
+						Page page = queuedSet.next();
+						if (!runningFetch.containsKey(page))
+							queuedRequestCache.add(page);
 					}
 				}
-				queuedRequestCache.removeAll(runningFetch.keySet());
 
+				// perpare to start
 				toStart = new ArrayList<ClientGetter>(config.getMaxParallelRequests() - running);
-
 				Iterator<Page> it = queuedRequestCache.iterator();
 
 				while (running + toStart.size() < config.getMaxParallelRequests() && it.hasNext()) {
