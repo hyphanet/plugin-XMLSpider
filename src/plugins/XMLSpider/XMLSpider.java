@@ -503,7 +503,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}
 	
 	public void terminate(){
+		Logger.normal(this, "XMLSpider terminating");
+
 		synchronized (this) {
+			Runtime.getRuntime().removeShutdownHook(exitHook);
 			stopped = true;
 			
 			for (Map.Entry<Page, ClientGetter> me : runningFetch.entrySet()) {
@@ -521,12 +524,25 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		synchronized (this) {
 			termCache.clear();
 		}
+
+		Logger.normal(this, "XMLSpider terminated");
 	}
+
+	public class ExitHook implements Runnable {
+		public void run() {
+			Logger.normal(this, "XMLSpider exit hook called");
+			terminate();
+		}
+	}
+
+	private Thread exitHook = new Thread(new ExitHook());
 
 	public synchronized void runPlugin(PluginRespirator pr) {
 		this.core = pr.getNode().clientCore;
 		this.pr = pr;
 		pageMaker = pr.getPageMaker();
+		
+		Runtime.getRuntime().addShutdownHook(exitHook);
 
 		/* Initialize Fetch Context */
 		this.ctx = pr.getHLSimpleClient().getFetchContext();
@@ -803,7 +819,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		cfg.activationDepth(3);
 		cfg.updateDepth(3);
-		// cfg.automaticShutDown(false);
+		cfg.automaticShutDown(false);
 		cfg.queries().evaluationMode(QueryEvaluationMode.LAZY);
 		cfg.diagnostic().addListener(new DiagnosticToConsole());
 
