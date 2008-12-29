@@ -449,6 +449,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				}
 				Logger.minor(this, "Filtered " + uri + " : " + page.id);
 			} catch (UnsafeContentTypeException e) {
+				Logger.minor(this, "UnsafeContentTypeException " + uri + " : " + page.id, e);
 				synchronized (this) {
 					page.status = Status.SUCCEEDED;
 					page.lastChange = System.currentTimeMillis();
