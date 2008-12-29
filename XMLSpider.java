@@ -529,7 +529,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		Logger.normal(this, "XMLSpider terminating");
 
 		synchronized (this) {
-			Runtime.getRuntime().removeShutdownHook(exitHook);
+			try {
+				Runtime.getRuntime().removeShutdownHook(exitHook);
+			} catch (IllegalStateException e) {
+				// shutting down, ignore
+			}
 			stopped = true;
 			
 			for (Map.Entry<Page, ClientGetter> me : runningFetch.entrySet()) {
