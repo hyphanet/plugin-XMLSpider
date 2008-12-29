@@ -669,7 +669,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 
 		public void foundURI(FreenetURI uri, boolean inline){
-			if (stopped) return;
+			if (stopped)
+				throw new RuntimeException("plugin stopping");
 			Logger.debug(this, "foundURI " + uri + " on " + page);
 			queueURI(uri, "Added from " + page.uri, false);
 		}
@@ -677,7 +678,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		protected Integer lastPosition = null;
 
 		public void onText(String s, String type, URI baseURI){
-			if (stopped) return;
+			if (stopped)
+				throw new RuntimeException("plugin stopping");
 
 			Logger.debug(this, "onText on " + page.id + " (" + baseURI + ")");
 
