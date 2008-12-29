@@ -9,14 +9,11 @@ import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
-import plugins.XMLSpider.Config;
-import plugins.XMLSpider.Page;
-import plugins.XMLSpider.Status;
 import plugins.XMLSpider.XMLSpider;
-
-import com.db4o.ObjectSet;
-import com.db4o.query.Query;
-
+import plugins.XMLSpider.db.Config;
+import plugins.XMLSpider.db.Page;
+import plugins.XMLSpider.db.PerstRoot;
+import plugins.XMLSpider.db.Status;
 import freenet.clients.http.PageMaker;
 import freenet.keys.FreenetURI;
 import freenet.pluginmanager.PluginRespirator;
@@ -165,8 +162,8 @@ class MainPage implements WebPage {
 			int maxURI = config.getMaxShownURIs();
 			for (int i = 0; i < maxURI && pi.hasNext(); i++) {
 				Page page = pi.next();
-				HTMLNode litem = list.addChild("li", "title", page.comment);
-				litem.addChild("a", "href", "/freenet:" + page.uri, page.uri);
+				HTMLNode litem = list.addChild("li", "title", page.getComment());
+				litem.addChild("a", "href", "/freenet:" + page.getURI(), page.getURI());
 			}
 		}
 		contentNode.addChild(runningBox);
@@ -192,19 +189,18 @@ class MainPage implements WebPage {
 
 	//-- Utilities
 	private PageStatus getPageStatus(Status status) {
-		Query query = xmlSpider.getDB().query();
-		query.constrain(Page.class);
-		query.descend("status").constrain(status);
-		query.descend("lastChange").orderDescending();
+		PerstRoot root = xmlSpider.getDbRoot();
+		synchronized (root) {
+			int count = root.getPageCount(status);
+			Iterator<Page> it = root.getPages(status);
 
-		@SuppressWarnings("unchecked")
-		ObjectSet<Page> set = query.execute();
-		List<Page> pages = new ArrayList<Page>();
-		while (set.hasNext() && pages.size() < xmlSpider.getConfig().getMaxShownURIs()) {
-			pages.add(set.next());
+			int showURI = xmlSpider.getConfig().getMaxShownURIs();
+			List<Page> page = new ArrayList();
+			while (page.size() < showURI && it.hasNext())
+				page.add(it.next());
+
+			return new PageStatus(count, page);
 		}
-
-		return new PageStatus(set.size(), pages);
 	}
 
 	private void listPages(PageStatus pageStatus, HTMLNode parent) {
@@ -214,8 +210,8 @@ class MainPage implements WebPage {
 			HTMLNode list = parent.addChild("ol", "style", "overflow: auto; white-space: nowrap;");
 
 			for (Page page : pageStatus.pages) {
-				HTMLNode litem = list.addChild("li", "title", page.comment);
-				litem.addChild("a", "href", "/freenet:" + page.uri, page.uri);
+				HTMLNode litem = list.addChild("li", "title", page.getComment());
+				litem.addChild("a", "href", "/freenet:" + page.getURI(), page.getURI());
 			}
 		}
 	}

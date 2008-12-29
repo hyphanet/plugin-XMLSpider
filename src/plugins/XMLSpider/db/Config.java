@@ -1,12 +1,13 @@
 /**
  * @author j16sdiz (1024D/75494252)
  */
-package plugins.XMLSpider;
+package plugins.XMLSpider.db;
 
+import plugins.XMLSpider.org.garret.perst.Persistent;
+import plugins.XMLSpider.org.garret.perst.Storage;
 import freenet.node.RequestStarter;
-import freenet.support.Logger;
 
-public class Config implements Cloneable {
+public class Config extends Persistent implements Cloneable {
 	/**
 	 * Directory where the generated indices are stored
 	 */
@@ -24,12 +25,9 @@ public class Config implements Cloneable {
 	private short requestPriority;
 
 	public Config() {
-	} // for db4o
+	}
 
-	public Config(boolean setDefault) {
-		if (!setDefault)
-			return;
-
+	public Config(Storage storage) {
 		indexDir = "myindex7/";
 		indexMaxEntries = 2000;
 		indexSubindexMaxSize = 4 * 1024 * 1024;
@@ -53,6 +51,8 @@ public class Config implements Cloneable {
 		};
 
 		requestPriority = RequestStarter.IMMEDIATE_SPLITFILE_PRIORITY_CLASS;
+		
+		storage.makePersistent(this);
 	}
 
 	public synchronized void setValue(Config config) {
@@ -73,18 +73,19 @@ public class Config implements Cloneable {
 
 			requestPriority = config.requestPriority;
 		}
+		
+		if (isPersistent())
+			modify();
 	}
 
 	public synchronized Config clone() {
-		try {
-			return (Config) super.clone();
-		} catch (CloneNotSupportedException e) {
-			Logger.error(this, "impossible:", e);
-			throw new RuntimeException(e);
-		}
+		Config newConfig = new Config();
+		newConfig.setValue(this);
+		return newConfig;
 	}
 
 	public synchronized void setIndexDir(String indexDir) {
+		assert !isPersistent();
 		this.indexDir = indexDir;
 	}
 
@@ -93,6 +94,7 @@ public class Config implements Cloneable {
 	}
 
 	public synchronized void setIndexMaxEntries(int indexMaxEntries) {
+		assert !isPersistent();
 		this.indexMaxEntries = indexMaxEntries;
 	}
 
@@ -101,6 +103,7 @@ public class Config implements Cloneable {
 	}
 
 	public synchronized void setIndexSubindexMaxSize(long indexSubindexMaxSize) {
+		assert !isPersistent();
 		this.indexSubindexMaxSize = indexSubindexMaxSize;
 	}
 
@@ -109,6 +112,7 @@ public class Config implements Cloneable {
 	}
 
 	public synchronized void setIndexTitle(String indexTitle) {
+		assert !isPersistent();
 		this.indexTitle = indexTitle;
 	}
 
@@ -117,6 +121,7 @@ public class Config implements Cloneable {
 	}
 
 	public synchronized void setIndexOwner(String indexOwner) {
+		assert !isPersistent();
 		this.indexOwner = indexOwner;
 	}
 
@@ -125,10 +130,12 @@ public class Config implements Cloneable {
 	}
 
 	public synchronized void setIndexOwnerEmail(String indexOwnerEmail) {
+		assert !isPersistent();
 		this.indexOwnerEmail = indexOwnerEmail;
 	}
 
 	public synchronized void setMaxShownURIs(int maxShownURIs) {
+		assert !isPersistent();
 		this.maxShownURIs = maxShownURIs;
 	}
 
@@ -141,6 +148,7 @@ public class Config implements Cloneable {
 	}
 
 	public synchronized void setMaxParallelRequests(int maxParallelRequests) {
+		assert !isPersistent();
 		this.maxParallelRequests = maxParallelRequests;
 	}
 
@@ -149,6 +157,8 @@ public class Config implements Cloneable {
 	}
 
 	public synchronized void setBadlistedExtensions(String[] badlistedExtensions) {
+		assert !isPersistent();
+		;
 		this.badlistedExtensions = badlistedExtensions;
 	}
 
@@ -157,6 +167,7 @@ public class Config implements Cloneable {
 	}
 
 	public synchronized void setRequestPriority(short requestPriority) {
+		assert !isPersistent();
 		this.requestPriority = requestPriority;
 	}
 

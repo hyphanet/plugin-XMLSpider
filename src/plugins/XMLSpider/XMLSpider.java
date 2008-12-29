@@ -13,7 +13,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -22,17 +21,15 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import plugins.XMLSpider.db.Config;
+import plugins.XMLSpider.db.Page;
+import plugins.XMLSpider.db.PerstRoot;
+import plugins.XMLSpider.db.Status;
+import plugins.XMLSpider.db.Term;
+import plugins.XMLSpider.db.TermPosition;
+import plugins.XMLSpider.org.garret.perst.Storage;
+import plugins.XMLSpider.org.garret.perst.StorageFactory;
 import plugins.XMLSpider.web.WebInterface;
-
-import com.db4o.Db4o;
-import com.db4o.ObjectContainer;
-import com.db4o.ObjectSet;
-import com.db4o.config.Configuration;
-import com.db4o.config.QueryEvaluationMode;
-import com.db4o.diagnostic.DiagnosticToConsole;
-import com.db4o.query.Query;
-import com.db4o.reflect.jdk.JdkReflector;
-
 import freenet.client.ClientMetadata;
 import freenet.client.FetchContext;
 import freenet.client.FetchException;
@@ -73,28 +70,18 @@ import freenet.support.io.NullBucketFactory;
  *  
  */
 public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless, FredPluginVersioned, FredPluginL10n, USKCallback {
-	private Config config;
-
 	public Config getConfig() {
 		// always return a clone, never allow changing directly
-		return config.clone();
+		return root.getConfig().clone();
 	}
 
 	// Set config asynchronously
 	public void setConfig(Config config) {
 		callbackExecutor.execute(new SetConfigCallback(config));
 	}
-	
-	public synchronized long getNextPageId() {
-		long x = maxPageId.incrementAndGet();
-		db.store(maxPageId);
-		return x;
-	}
 
 	/** Document ID of fetching documents */
 	protected Map<Page, ClientGetter> runningFetch = Collections.synchronizedMap(new HashMap<Page, ClientGetter>());
-
-	protected MaxPageId maxPageId;
 
 	/**
 	 * Lists the allowed mime types of the fetched page. 
@@ -120,41 +107,33 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * @param uri the new uri that needs to be fetched for further indexing
 	 */
 	public void queueURI(FreenetURI uri, String comment, boolean force) {
-		String sURI = uri.toString();
-		for (String ext : config.getBadlistedExtensions())
-			if (sURI.endsWith(ext))
-				return;	// be smart
+		db.beginThreadTransaction(Storage.EXCLUSIVE_TRANSACTION);
+		try {
+			String sURI = uri.toString();
+			for (String ext : root.getConfig().getBadlistedExtensions())
+				if (sURI.endsWith(ext))
+					return; // be smart
 
-		if (uri.isUSK()) {
-			if(uri.getSuggestedEdition() < 0)
-				uri = uri.setSuggestedEdition((-1)* uri.getSuggestedEdition());
-			try{
-				uri = ((USK.create(uri)).getSSK()).getURI();
-				(ctx.uskManager).subscribe(USK.create(uri),this, false, this);	
-			}
-			catch(Exception e){}
-		}
-
-		synchronized (this) {
-			Page page = getPageByURI(uri);
-			if (page == null) {
-				page = new Page(getNextPageId(), uri.toString(), comment);
-
-				db.store(page);
-			} else if (force) {
-				synchronized (page) {
-					page.status = Status.QUEUED;
-					page.lastChange = System.currentTimeMillis();
-
-					db.store(page);
+			if (uri.isUSK()) {
+				if (uri.getSuggestedEdition() < 0)
+					uri = uri.setSuggestedEdition((-1) * uri.getSuggestedEdition());
+				try {
+					uri = ((USK.create(uri)).getSSK()).getURI();
+					(ctx.uskManager).subscribe(USK.create(uri), this, false, this);
+				} catch (Exception e) {
 				}
 			}
+
+			Page page = root.getPageByURI(uri, true, comment);
+			if (force && page.getStatus() != Status.QUEUED) {
+				page.setStatus(Status.QUEUED);
+				page.setComment(comment);
+			}
+		} finally {
+			db.endThreadTransaction();
 		}
 	}
 
-	protected List<Page> queuedRequestCache = new ArrayList<Page>();
-	protected long lastPrefetchedTimeStamp = -1; 
-	
 	public void startSomeRequests() {
 		ArrayList<ClientGetter> toStart = null;
 		synchronized (this) {
@@ -163,62 +142,29 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			synchronized (runningFetch) {
 				int running = runningFetch.size();
 
-				if (running >= config.getMaxParallelRequests())
+				if (running >= root.getConfig().getMaxParallelRequests())
 					return;
 
-				// prefetch 2 * config.getMaxParallelRequests() entries
-				if (queuedRequestCache.isEmpty()) {
-					Query query = db.query();
-					query.constrain(Page.class);
-					query.descend("status").constrain(Status.QUEUED);
-					if (lastPrefetchedTimeStamp != -1) {
-						query.descend("lastChange").constrain(lastPrefetchedTimeStamp - 1000).greater();
-						query.descend("lastChange").constrain(lastPrefetchedTimeStamp + 1800 * 1000).smaller();
-					}						
-					query.descend("lastChange").orderAscending();
-					@SuppressWarnings("unchecked")
-					ObjectSet<Page> queuedSet = query.execute();
-					
-					System.out.println("lastPrefetchedTimeStamp=" + lastPrefetchedTimeStamp + ", BLAR = "
-					        + queuedSet.size());
-					if (lastPrefetchedTimeStamp != -1 && queuedSet.isEmpty()) {
-						lastPrefetchedTimeStamp = -1;
-						startSomeRequests();
-						return;
-					}
-
-					while (queuedRequestCache.size() < config.getMaxParallelRequests() * 2 && queuedSet.hasNext()) {
-						Page page = queuedSet.next();
-						assert page.status == Status.QUEUED;
-						if (!runningFetch.containsKey(page)) {
-							queuedRequestCache.add(page);
-							
-							if (page.lastChange > lastPrefetchedTimeStamp)
-								lastPrefetchedTimeStamp = page.lastChange;
-						}
-					}
-				}
-
 				// perpare to start
-				toStart = new ArrayList<ClientGetter>(config.getMaxParallelRequests() - running);
-				Iterator<Page> it = queuedRequestCache.iterator();
+				toStart = new ArrayList<ClientGetter>(root.getConfig().getMaxParallelRequests() - running);
+				synchronized (root) {
+					Iterator<Page> it = root.getPages(Status.QUEUED);
 
-				while (running + toStart.size() < config.getMaxParallelRequests() && it.hasNext()) {
-					Page page = it.next();
-					it.remove();
+					while (running + toStart.size() < root.getConfig().getMaxParallelRequests() && it.hasNext()) {
+						Page page = it.next();
+						if (runningFetch.containsKey(page))
+							continue;
 
-					try {
-						ClientGetter getter = makeGetter(page);
+						try {
+							ClientGetter getter = makeGetter(page);
 
-						Logger.minor(this, "Starting " + getter + " " + page);
-						toStart.add(getter);
-						runningFetch.put(page, getter);
-					} catch (MalformedURLException e) {
-						Logger.error(this, "IMPOSSIBLE-Malformed URI: " + page, e);
-
-						page.status = Status.FAILED;
-						page.lastChange = System.currentTimeMillis();
-						db.store(page);
+							Logger.minor(this, "Starting " + getter + " " + page);
+							toStart.add(getter);
+							runningFetch.put(page, getter);
+						} catch (MalformedURLException e) {
+							Logger.error(this, "IMPOSSIBLE-Malformed URI: " + page, e);
+							page.setStatus(Status.FAILED);
+						}
 					}
 				}
 			}
@@ -284,9 +230,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	private ClientGetter makeGetter(Page page) throws MalformedURLException {
 		ClientGetter getter = new ClientGetter(new ClientGetterCallback(page),
 				core.requestStarters.chkFetchScheduler,
-		        core.requestStarters.sskFetchScheduler, new FreenetURI(page.uri), ctx, config.getRequestPriority(),
-		        this,
-		        null, null);
+		        core.requestStarters.sskFetchScheduler, new FreenetURI(page.getURI()), ctx,
+		        getPollingPriorityProgress(), this, null, null);
 		return getter;
 	}
 
@@ -363,10 +308,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 
 		public void run() {
-			synchronized (this) {
-				XMLSpider.this.config.setValue(config);
-				db.store(XMLSpider.this.config);
-				db.commit();
+			synchronized (root) {
+				root.getConfig().setValue(config);
 			}
 		}
 	}
@@ -421,7 +364,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 
 		FreenetURI uri = state.getURI();
-
+		db.beginThreadTransaction(Storage.READ_WRITE_TRANSACTION);
 		try {
 			ClientMetadata cm = result.getMetadata();
 			Bucket data = result.asBucket();
@@ -434,40 +377,31 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			 * provided).
 			 */
 			PageCallBack pageCallBack = new PageCallBack(page);
-			Logger.minor(this, "Successful: " + uri + " : " + page.id);
+			Logger.minor(this, "Successful: " + uri + " : " + page.getId());
 
 			try {
 				ContentFilter.filter(data, new NullBucketFactory(), mimeType, uri.toURI("http://127.0.0.1:8888/"),
 				        pageCallBack);
-				pageCallBack.store();
+				page.setStatus(Status.SUCCEEDED);
+				db.endThreadTransaction();
 
-				synchronized (this) {
-					page.status = Status.SUCCEEDED;
-					page.lastChange = System.currentTimeMillis();
-					db.store(page);
-					db.commit();
-				}
-				Logger.minor(this, "Filtered " + uri + " : " + page.id);
+				Logger.minor(this, "Filtered " + uri + " : " + page.getId());
 			} catch (UnsafeContentTypeException e) {
-				Logger.minor(this, "UnsafeContentTypeException " + uri + " : " + page.id, e);
-				synchronized (this) {
-					page.status = Status.SUCCEEDED;
-					page.lastChange = System.currentTimeMillis();
-					db.store(page);
-					db.commit();
-				}
+				Logger.minor(this, "UnsafeContentTypeException " + uri + " : " + page.getId(), e);
+				page.setStatus(Status.SUCCEEDED);
+				db.endThreadTransaction();
 				return; // Ignore
 			} catch (IOException e) {
-				db.rollback();
+				db.rollbackThreadTransaction();
 				Logger.error(this, "Bucket error?: " + e, e);
 			} catch (URISyntaxException e) {
-				db.rollback();
+				db.rollbackThreadTransaction();
 				Logger.error(this, "Internal error: " + e, e);
 			} finally {
 				data.free();
 			}
 		} catch (RuntimeException e) {
-			db.rollback();
+			db.rollbackThreadTransaction();
 			throw e;
 		} finally {
 			synchronized (this) {
@@ -485,28 +419,21 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			if (stopped)
 				return;
 
+			db.beginThreadTransaction(Storage.EXCLUSIVE_TRANSACTION);
 			synchronized (page) {
 				if (fe.newURI != null) {
 					// redirect, mark as succeeded
 					queueURI(fe.newURI, "redirect from " + state.getURI(), false);
-
-					page.status = Status.SUCCEEDED;
-					page.lastChange = System.currentTimeMillis();
-					db.store(page);
+					page.setStatus(Status.SUCCEEDED);
 				} else if (fe.isFatal()) {
 					// too many tries or fatal, mark as failed
-					page.status = Status.FAILED;
-					page.lastChange = System.currentTimeMillis();
-					db.store(page);
+					page.setStatus(Status.FAILED);
 				} else {
 					// requeue at back
-					page.status = Status.QUEUED;
-					page.lastChange = System.currentTimeMillis();
-
-					db.store(page);
+					page.setStatus(Status.QUEUED);
 				}
 			}
-			db.commit();
+			db.endThreadTransaction();
 			runningFetch.remove(page);
 		}
 
@@ -542,12 +469,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			callbackExecutor.shutdownNow();
 		}
 		try { callbackExecutor.awaitTermination(30, TimeUnit.SECONDS); } catch (InterruptedException e) {}
-		try { db.rollback(); } catch (Exception e) {}
 		try { db.close(); } catch (Exception e) {}
-
-		synchronized (this) {
-			termCache.clear();
-		}
 
 		Logger.normal(this, "XMLSpider terminated");
 	}
@@ -582,46 +504,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		stopped = false;
 
-		// Initial DB4O
-		db = initDB4O();
-
-		// Find max Page ID
-		{
-			Query query = db.query();
-			query.constrain(MaxPageId.class);
-			@SuppressWarnings("unchecked")
-			ObjectSet<MaxPageId> set = query.execute();
-			
-			if (set.hasNext())
-				maxPageId = set.next();
-			else {
-				query = db.query();
-				query.constrain(Page.class);
-				query.descend("id").orderDescending();
-				@SuppressWarnings("unchecked")
-				ObjectSet<Page> set2 = query.execute();
-				if (set2.hasNext())
-					maxPageId = new MaxPageId(set2.next().id);
-				else
-					maxPageId = new MaxPageId(0);
-			}
-		}
-		
-		// Load Config
-		{
-			Query query = db.query();
-			query.constrain(Config.class);
-			@SuppressWarnings("unchecked")
-			ObjectSet<Config> set = query.execute();
-
-			if (set.hasNext())
-				config = set.next();
-			else {
-				config = new Config(true);
-				db.store(config);
-				db.commit();
-			}
-		}	
+		// Initial Database
+		db = initDB();
 		
 		indexWriter = new IndexWriter(this);
 		webInterface = new WebInterface(this);
@@ -672,7 +556,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			if (stopped)
 				throw new RuntimeException("plugin stopping");
 			Logger.debug(this, "foundURI " + uri + " on " + page);
-			queueURI(uri, "Added from " + page.uri, false);
+			queueURI(uri, "Added from " + page.getURI(), false);
 		}
 
 		protected Integer lastPosition = null;
@@ -681,13 +565,13 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			if (stopped)
 				throw new RuntimeException("plugin stopping");
 
-			Logger.debug(this, "onText on " + page.id + " (" + baseURI + ")");
+			Logger.debug(this, "onText on " + page.getId() + " (" + baseURI + ")");
 
 			if ("title".equalsIgnoreCase(type) && (s != null) && (s.length() != 0) && (s.indexOf('\n') < 0)) {
 				/*
 				 * title of the page 
 				 */
-				page.pageTitle = s;
+				page.setPageTitle(s);
 				type = "title";
 			}
 			else type = null;
@@ -722,48 +606,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			if (word.length() < 3)
 				return;
 			Term term = getTermByWord(word, true);
-			TermPosition termPos = getTermPosition(term);
-
-			synchronized (termPos) {
-				int[] newPositions = new int[termPos.positions.length + 1];
-				System.arraycopy(termPos.positions, 0, newPositions, 0, termPos.positions.length);
-				newPositions[termPos.positions.length] = position;
-
-				termPos.positions = newPositions;
-			}
-		}
-		
-		protected Map<Term, TermPosition> termPosCache = new HashMap<Term, TermPosition>();
-
-		public void store() {
-			// Delete existing TermPosition
-			Query query = db.query();
-			query.constrain(TermPosition.class);
-			query.descend("pageId").constrain(page.id);
-			@SuppressWarnings("unchecked")
-			ObjectSet<TermPosition> set = query.execute();
-			for (TermPosition tp : set) {
-				assert tp.pageId == page.id;
-				db.delete(tp);
-			}
-			
-			for (TermPosition tp : termPosCache.values())
-				db.store(tp);
-			termPosCache.clear();
-		}
-
-		protected TermPosition getTermPosition(Term term) {
-			TermPosition cachedTermPos = termPosCache.get(term);
-			if (cachedTermPos != null)
-				return cachedTermPos;
-
-			cachedTermPos = new TermPosition();
-			cachedTermPos.word = term.word;
-			cachedTermPos.pageId = page.id;
-			cachedTermPos.positions = new int[0];
-
-			termPosCache.put(term, cachedTermPos);
-			return cachedTermPos;
+			TermPosition termPos = page.getTermPosition(term);
+			termPos.addPositions(position);
 		}
 	}
 
@@ -782,145 +626,53 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}
 
 	public short getPollingPriorityNormal() {
-		return (short) Math.min(RequestStarter.MINIMUM_PRIORITY_CLASS, config.getRequestPriority() + 1);
+		return (short) Math.min(RequestStarter.MINIMUM_PRIORITY_CLASS, root.getConfig().getRequestPriority() + 1);
 	}
 
 	public short getPollingPriorityProgress() {
-		return config.getRequestPriority();
+		return root.getConfig().getRequestPriority();
 	}
 
-	protected ObjectContainer db;
+	protected Storage db;
+	protected PerstRoot root;
 
 	/**
-	 * Initializes DB4O.
-	 * 
-	 * @return db4o's connector
+	 * Initializes Database
 	 */
-	private ObjectContainer initDB4O() {
-		Configuration cfg = Db4o.newConfiguration();
-		cfg.reflectWith(new JdkReflector(getClass().getClassLoader()));
+	private Storage initDB() {
+		Storage db = StorageFactory.getInstance().createStorage();
+		db.setProperty("perst.object.cache.kind", "soft");
+		db.setProperty("perst.gc.threshold", 16384);
+		db.setProperty("perst.alternative.btree", true);
+		db.setProperty("perst.string.encoding", "UTF-8");
+		db.setProperty("perst.concurrent.iterator", true);
 
-		//- Page
-		cfg.objectClass(Page.class).objectField("id").indexed(true);
-		cfg.objectClass(Page.class).objectField("uri").indexed(true);
-		cfg.objectClass(Page.class).objectField("status").indexed(true);
-		cfg.objectClass(Page.class).objectField("lastChange").indexed(true);		
+		db.open("XMLSpider-" + version + ".dbs");
 
-		cfg.objectClass(Page.class).callConstructor(true);
+		root = (PerstRoot) db.getRoot();
+		if (root == null)
+			root = PerstRoot.createRoot(db);
 
-		//- Term
-		cfg.objectClass(Term.class).objectField("md5").indexed(true);
-		cfg.objectClass(Term.class).objectField("word").indexed(true);
-
-		cfg.objectClass(Term.class).callConstructor(true);
-
-		//- TermPosition
-		cfg.objectClass(TermPosition.class).objectField("pageId").indexed(true);
-		cfg.objectClass(TermPosition.class).objectField("word").indexed(true);
-
-		cfg.objectClass(TermPosition.class).callConstructor(true);
-
-		//- Other
-		cfg.objectClass(MaxPageId.class).callConstructor(true);
-		cfg.objectClass(Config.class).callConstructor(true);
-
-		cfg.activationDepth(3);
-		cfg.updateDepth(3);
-		cfg.automaticShutDown(false);
-		cfg.queries().evaluationMode(QueryEvaluationMode.LAZY);
-		cfg.diagnostic().addListener(new DiagnosticToConsole());
-
-		ObjectContainer oc = Db4o.openFile(cfg, "XMLSpider-" + version + ".db4o");
-
-		return oc;
+		return db;
 	}
 	
-	public ObjectContainer getDB() {
-		return db;
+	public PerstRoot getDbRoot() {
+		return root;
 	}
 
 	protected Page getPageByURI(FreenetURI uri) {
-		Query query = db.query();
-		query.constrain(Page.class);
-		query.descend("uri").constrain(uri.toString());
-		@SuppressWarnings("unchecked")
-		ObjectSet<Page> set = query.execute();
-
-		if (set.hasNext()) {
-			Page page = set.next();
-			assert page.uri.equals(uri.toString());
-			return page;
-		} else
-			return null;
+		return root.getPageByURI(uri, false, null);
 	}
 
 	protected Page getPageById(long id) {
-		Query query = db.query();
-		query.constrain(Page.class);
-		query.descend("id").constrain(id);
-		@SuppressWarnings("unchecked")
-		ObjectSet<Page> set = query.execute();
-
-		if (set.hasNext()) {
-			Page page = set.next();
-			assert page.id == id;
-			return page;
-		} else
-			return null;
+		return root.getPageById(id);
 	}
-
-	protected Term getTermByMd5(String md5) {
-		Query query = db.query();
-		query.constrain(Term.class);
-		query.descend("md5").constrain(md5);
-		@SuppressWarnings("unchecked")
-		ObjectSet<Term> set = query.execute();
-
-		if (set.hasNext()) {
-			Term term = set.next();
-			assert md5.equals(term.md5);
-			return term;
-		} else
-			return null;
-	}
-
-	@SuppressWarnings("serial")	
-	protected Map<String, Term> termCache = new LinkedHashMap<String, Term>() {
-		protected boolean removeEldestEntry(Map.Entry<String, Term> eldest) {
-			return size() > 1024;
-		}
-	};
 
 	// language for I10N
 	private LANGUAGE language;
 
 	protected Term getTermByWord(String word, boolean create) {
-		synchronized (this) {
-			Term cachedTerm = termCache.get(word);
-			if (cachedTerm != null)
-				return cachedTerm;
-
-			Query query = db.query();
-			query.constrain(Term.class);
-			query.descend("word").constrain(word);
-			@SuppressWarnings("unchecked")
-			ObjectSet<Term> set = query.execute();
-
-			if (set.hasNext()) {
-				cachedTerm = set.next();
-				assert word.equals(cachedTerm.word);
-				termCache.put(word, cachedTerm);
-
-				return cachedTerm;
-			} else if (create) {
-				cachedTerm = new Term(word);
-				termCache.put(word, cachedTerm);
-				db.store(cachedTerm);
-
-				return cachedTerm;
-			} else
-				return null;
-		}
+		return root.getTermByWord(word, create);
 	}
 
 	public String getString(String key) {
