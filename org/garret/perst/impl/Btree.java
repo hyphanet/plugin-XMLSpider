@@ -469,7 +469,7 @@ class Btree<T extends IPersistent> extends PersistentCollection<T> implements In
           case ClassDescriptor.tpByte:
             return new Byte(data[offs]);
           case ClassDescriptor.tpShort:
-            return new Short(Bytes.unpack2(data, offs));
+            return Short.valueOf(Bytes.unpack2(data, offs));
           case ClassDescriptor.tpChar:
             return new Character((char)Bytes.unpack2(data, offs));
           case ClassDescriptor.tpInt:

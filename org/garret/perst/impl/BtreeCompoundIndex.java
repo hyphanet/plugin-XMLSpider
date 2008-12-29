@@ -180,7 +180,7 @@ class BtreeCompoundIndex<T extends IPersistent> extends Btree<T> implements Inde
                 v = new Byte(data[offs++]);
                 break;
               case ClassDescriptor.tpShort:
-                v = new Short(Bytes.unpack2(data, offs));
+                v = Short.valueOf(Bytes.unpack2(data, offs));
                 offs += 2;
                 break;
               case ClassDescriptor.tpChar:
