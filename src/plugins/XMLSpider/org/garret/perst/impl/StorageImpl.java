@@ -3325,7 +3325,7 @@ public class StorageImpl implements Storage {
                             offs += 2;
                             break;                            
                         case ClassDescriptor.tpShort:
-                            val = new Short(Bytes.unpack2(body, offs));
+                            val = Short.valueOf(Bytes.unpack2(body, offs));
                             offs += 2;
                             break;                            
                         case ClassDescriptor.tpInt:
@@ -3599,7 +3599,7 @@ public class StorageImpl implements Storage {
                                     offs += 2;
                                     break;                            
                                 case ClassDescriptor.tpShort:
-                                    val = new Short(Bytes.unpack2(body, offs));
+                                    val = Short.valueOf(Bytes.unpack2(body, offs));
                                     offs += 2;
                                     break;                            
                                 case ClassDescriptor.tpInt:

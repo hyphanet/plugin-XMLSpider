@@ -418,7 +418,7 @@ class AltBtree<T extends IPersistent> extends PersistentCollection<T> implements
         }
 
         Object getKeyValue(int i) { 
-            return new Short(data[i]);
+            return Short.valueOf(data[i]);
         }
 
         BtreePage clonePage() { 
