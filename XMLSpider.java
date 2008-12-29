@@ -153,7 +153,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}
 
 	protected List<Page> queuedRequestCache = new ArrayList<Page>();
-
+	protected long lastPrefetchedTimeStamp = -1; 
+	
 	public void startSomeRequests() {
 		ArrayList<ClientGetter> toStart = null;
 		synchronized (this) {
@@ -170,14 +171,30 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 					Query query = db.query();
 					query.constrain(Page.class);
 					query.descend("status").constrain(Status.QUEUED);
+					if (lastPrefetchedTimeStamp != -1) {
+						query.descend("lastChange").constrain(lastPrefetchedTimeStamp - 1000).greater();
+						query.descend("lastChange").constrain(lastPrefetchedTimeStamp + 1800 * 1000).smaller();
+					}						
 					query.descend("lastChange").orderAscending();
 					@SuppressWarnings("unchecked")
 					ObjectSet<Page> queuedSet = query.execute();
+					
+					System.out.println("lastPrefetchedTimeStamp=" + lastPrefetchedTimeStamp + ", BLAR = "
+					        + queuedSet.size());
+					if (lastPrefetchedTimeStamp != -1 && queuedSet.isEmpty()) {
+						lastPrefetchedTimeStamp = -1;
+						startSomeRequests();
+						return;
+					}
 
 					while (queuedRequestCache.size() < config.getMaxParallelRequests() * 2 && queuedSet.hasNext()) {
 						Page page = queuedSet.next();
-						if (!runningFetch.containsKey(page))
+						if (!runningFetch.containsKey(page)) {
 							queuedRequestCache.add(page);
+							
+							if (page.lastChange > lastPrefetchedTimeStamp)
+								lastPrefetchedTimeStamp = page.lastChange;
+						}
 					}
 				}
 
