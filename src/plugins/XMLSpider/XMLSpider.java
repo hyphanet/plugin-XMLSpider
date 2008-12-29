@@ -423,48 +423,48 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		FreenetURI uri = state.getURI();
 
 		try {
-				ClientMetadata cm = result.getMetadata();
-				Bucket data = result.asBucket();
-				String mimeType = cm.getMIMEType();
+			ClientMetadata cm = result.getMetadata();
+			Bucket data = result.asBucket();
+			String mimeType = cm.getMIMEType();
 
-				/*
-				 * instead of passing the current object, the pagecallback object for every page is
-				 * passed to the content filter this has many benefits to efficiency, and allows us
-				 * to identify trivially which page is being indexed. (we CANNOT rely on the base
-				 * href provided).
-				 */
-				PageCallBack pageCallBack = new PageCallBack(page);
-				Logger.minor(this, "Successful: " + uri + " : " + page.id);
+			/*
+			 * instead of passing the current object, the pagecallback object for every page is
+			 * passed to the content filter this has many benefits to efficiency, and allows us to
+			 * identify trivially which page is being indexed. (we CANNOT rely on the base href
+			 * provided).
+			 */
+			PageCallBack pageCallBack = new PageCallBack(page);
+			Logger.minor(this, "Successful: " + uri + " : " + page.id);
 
-				try {
-					ContentFilter.filter(data, new NullBucketFactory(), mimeType, uri.toURI("http://127.0.0.1:8888/"),
-							pageCallBack);
-					pageCallBack.store();
+			try {
+				ContentFilter.filter(data, new NullBucketFactory(), mimeType, uri.toURI("http://127.0.0.1:8888/"),
+				        pageCallBack);
+				pageCallBack.store();
 
-					synchronized (this) {
-						page.status = Status.SUCCEEDED;
+				synchronized (this) {
+					page.status = Status.SUCCEEDED;
 					page.lastChange = System.currentTimeMillis();
 					db.store(page);
 					db.commit();
 				}
-					Logger.minor(this, "Filtered " + uri + " : " + page.id);
-				} catch (UnsafeContentTypeException e) {
-					synchronized (this) {
-						page.status = Status.SUCCEEDED;
-						page.lastChange = System.currentTimeMillis();
+				Logger.minor(this, "Filtered " + uri + " : " + page.id);
+			} catch (UnsafeContentTypeException e) {
+				synchronized (this) {
+					page.status = Status.SUCCEEDED;
+					page.lastChange = System.currentTimeMillis();
 					db.store(page);
 					db.commit();
 				}
-					return; // Ignore
-				} catch (IOException e) {
-					db.rollback();
-					Logger.error(this, "Bucket error?: " + e, e);
-				} catch (URISyntaxException e) {
-					db.rollback();
-					Logger.error(this, "Internal error: " + e, e);
-				} finally {
-					data.free();
-				}
+				return; // Ignore
+			} catch (IOException e) {
+				db.rollback();
+				Logger.error(this, "Bucket error?: " + e, e);
+			} catch (URISyntaxException e) {
+				db.rollback();
+				Logger.error(this, "Internal error: " + e, e);
+			} finally {
+				data.free();
+			}
 		} catch (RuntimeException e) {
 			db.rollback();
 			throw e;
