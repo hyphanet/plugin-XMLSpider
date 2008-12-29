@@ -438,34 +438,42 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 				try {
 					ContentFilter.filter(data, new NullBucketFactory(), mimeType, uri.toURI("http://127.0.0.1:8888/"),
-					        pageCallBack);
+							pageCallBack);
 					pageCallBack.store();
+
+					synchronized (this) {
+						page.status = Status.SUCCEEDED;
+					page.lastChange = System.currentTimeMillis();
+					db.store(page);
+					db.commit();
+				}
 					Logger.minor(this, "Filtered " + uri + " : " + page.id);
 				} catch (UnsafeContentTypeException e) {
+					synchronized (this) {
+						page.status = Status.SUCCEEDED;
+						page.lastChange = System.currentTimeMillis();
+					db.store(page);
+					db.commit();
+				}
 					return; // Ignore
 				} catch (IOException e) {
+					db.rollback();
 					Logger.error(this, "Bucket error?: " + e, e);
 				} catch (URISyntaxException e) {
+					db.rollback();
 					Logger.error(this, "Internal error: " + e, e);
 				} finally {
 					data.free();
 				}
-				
-			synchronized (this) {
-				page.status = Status.SUCCEEDED;
-				page.lastChange = System.currentTimeMillis();
-				db.store(page);
-				db.commit();
-			}
+		} catch (RuntimeException e) {
+			db.rollback();
+			throw e;
 		} finally {
 			synchronized (this) {
 				runningFetch.remove(page);
 			}
-			if (!stopped) {
+			if (!stopped)
 				startSomeRequests();
-			} else {
-				db.rollback();
-			}
 		}
 	}
 
