@@ -50,8 +50,8 @@ public class PerstRoot extends Persistent {
 
 		if (create && term == null) {
 			term = new Term(word, getStorage());
-			md5Term.add(term);
-			wordTerm.add(term);
+			md5Term.put(term);
+			wordTerm.put(term);
 		}
 
 		return term;
