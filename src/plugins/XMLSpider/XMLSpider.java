@@ -705,10 +705,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				if ((word == null) || (word.length() == 0))
 					continue;
 				word = word.toLowerCase();
-				word = word.intern();
 				try{
 					if(type == null)
-						addWord(word, lastPosition.intValue() + i);
+						addWord(word, lastPosition + i);
 					else
 						addWord(word, -1 * (i + 1));
 				}
