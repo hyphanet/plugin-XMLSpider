@@ -76,7 +76,7 @@ public class PerstRoot extends Persistent {
 			page = new Page(uri.toString(), comment, getStorage());
 
 			idPage.append(page);
-			uriPage.add(page);
+			uriPage.put(page);
 			queuedPages.add(page);
 		}
 
