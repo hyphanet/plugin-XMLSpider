@@ -10,6 +10,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
+import java.util.Set;
 import java.util.Vector;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -25,9 +26,10 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Text;
 
-import com.db4o.ObjectSet;
-import com.db4o.query.Query;
-
+import plugins.XMLSpider.db.Config;
+import plugins.XMLSpider.db.Page;
+import plugins.XMLSpider.db.Term;
+import plugins.XMLSpider.db.TermPosition;
 import freenet.support.Logger;
 
 /**
@@ -201,25 +203,22 @@ public class IndexWriter {
 	private void makeSubIndices(Config config) throws Exception {
 		Logger.normal(this, "Generating index...");
 
-		Query query = xmlSpider.db.query();
-		query.constrain(Term.class);
-		query.descend("md5").orderAscending();
-		@SuppressWarnings("unchecked")
-		ObjectSet<Term> termSet = query.execute();
+		List<Term> termList = xmlSpider.getDbRoot().getTermList();
+		int termCount = xmlSpider.getDbRoot().getTermCount();
 
 		indices = new Vector<String>();
-		int prefix = (int) ((Math.log(termSet.size()) - Math.log(config.getIndexMaxEntries())) / Math.log(16)) - 1;
+		int prefix = (int) ((Math.log(termCount) - Math.log(config.getIndexMaxEntries())) / Math.log(16)) - 1;
 		if (prefix <= 0)
 			prefix = 1;
 		match = 1;
 		Vector<Term> list = new Vector<Term>();
 
-		Term term0 = termSet.get(0);
-		String currentPrefix = term0.md5.substring(0, prefix);
+		Term term0 = termList.get(0);
+		String currentPrefix = term0.getMD5().substring(0, prefix);
 
 		int i = 0;
-		for (Term term : termSet) {
-			String key = term.md5;
+		for (Term term : termList) {
+			String key = term.getMD5();
 			//create a list of the words to be added in the same subindex
 			if (key.startsWith(currentPrefix)) {
 				i++;
@@ -265,11 +264,11 @@ public class IndexWriter {
 			match = p + 1;
 		int prefix = p + 1;
 		int i = 0;
-		String str = list.get(i).md5;
+		String str = list.get(i).getMD5();
 		int index = 0;
 		while (i < list.size()) {
 			Term term = list.get(i);
-			String key = term.md5;
+			String key = term.getMD5();
 			if ((key.substring(0, prefix)).equals(str.substring(0, prefix))) {
 				i++;
 			} else {
@@ -296,7 +295,7 @@ public class IndexWriter {
 	 * @throws Exception
 	 */
 	protected void generateXML(Config config, List<Term> list, int prefix) throws TooBigIndexException, Exception {
-		String p = list.get(0).md5.substring(0, prefix);
+		String p = list.get(0).getMD5().substring(0, prefix);
 		indices.add(p);
 		File outputFile = new File(config.getIndexDir() + "index_" + p + ".xml");
 		BufferedOutputStream fos = new BufferedOutputStream(new FileOutputStream(outputFile));
@@ -343,21 +342,15 @@ public class IndexWriter {
 			for (int i = 0; i < list.size(); i++) {
 				Element wordElement = xmlDoc.createElement("word");
 				Term term = list.get(i);
-				wordElement.setAttribute("v", term.word);
+				wordElement.setAttribute("v", term.getWord());
 
-				Query query = xmlSpider.db.query();
-				query.constrain(TermPosition.class);
+				Set<Page> pages = term.getPages();
 
-				query.descend("word").constrain(term.word);
-				@SuppressWarnings("unchecked")
-				ObjectSet<TermPosition> set = query.execute();
-
-				for (TermPosition termPos : set) {
+				for (Page page : pages) {
+					TermPosition termPos = page.getTermPosition(term);
+					
 					synchronized (termPos) {
-						Page page = xmlSpider.getPageById(termPos.pageId);
-
 						synchronized (page) {
-
 							/*
 							 * adding file information uriElement - lists the id of the file
 							 * containing a particular word fileElement - lists the id,key,title of
@@ -365,10 +358,11 @@ public class IndexWriter {
 							 */
 							Element uriElement = xmlDoc.createElement("file");
 							Element fileElement = xmlDoc.createElement("file");
-							uriElement.setAttribute("id", Long.toString(page.id));
-							fileElement.setAttribute("id", Long.toString(page.id));
-							fileElement.setAttribute("key", page.uri);
-							fileElement.setAttribute("title", page.pageTitle != null ? page.pageTitle : page.uri);
+							uriElement.setAttribute("id", Long.toString(page.getId()));
+							fileElement.setAttribute("id", Long.toString(page.getId()));
+							fileElement.setAttribute("key", page.getURI());
+							fileElement.setAttribute("title", page.getPageTitle() != null ? page.getPageTitle() : page
+							        .getURI());
 
 							/* Position by position */
 							int[] positions = termPos.positions;
@@ -382,8 +376,8 @@ public class IndexWriter {
 							}
 							uriElement.appendChild(xmlDoc.createTextNode(positionList.toString()));
 							wordElement.appendChild(uriElement);
-							if (!fileid.contains(page.id)) {
-								fileid.add(page.id);
+							if (!fileid.contains(page.getId())) {
+								fileid.add(page.getId());
 								filesElement.appendChild(fileElement);
 							}
 						}

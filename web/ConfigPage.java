@@ -4,8 +4,8 @@
  */
 package plugins.XMLSpider.web;
 
-import plugins.XMLSpider.Config;
 import plugins.XMLSpider.XMLSpider;
+import plugins.XMLSpider.db.Config;
 import freenet.clients.http.PageMaker;
 import freenet.pluginmanager.PluginRespirator;
 import freenet.support.HTMLNode;

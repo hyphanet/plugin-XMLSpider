@@ -1,24 +1,70 @@
 /**
  * @author j16sdiz (1024D/75494252)
  */
-package plugins.XMLSpider;
+package plugins.XMLSpider.db;
 
 import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Set;
 
-class Term {
+import plugins.XMLSpider.org.garret.perst.IPersistentSet;
+import plugins.XMLSpider.org.garret.perst.Persistent;
+import plugins.XMLSpider.org.garret.perst.Storage;
+
+public class Term extends Persistent {
 	/** MD5 of the term */
 	String md5;
 	/** Term */
 	String word;
+	
+	/** Pages containing this Term */
+	IPersistentSet<Page> pageSet;
 
-	public Term(String word) {
+	public Term(String word, Storage storage) {
 		this.word = word;
 		md5 = MD5(word);
+		pageSet = storage.<Page> createScalableSet();
+		
+		storage.makePersistent(this);
 	}
 
 	public Term() {
+	}
+	
+	public boolean addPage(Page page) {
+		return pageSet.add(page);
+	}
+
+	public boolean removePage(Page page) {
+		return pageSet.remove(page);
+	}
+
+	public Set<Page> getPages() {
+		return pageSet;
+	}
+
+	public String getWord() {
+		return word;
+	}
+	
+	public String getMD5() {
+		return md5;
+	}
+	
+	@Override
+	public boolean equals(Object o) {
+		if (o == null)
+			return false;
+		if (getClass() != o.getClass())
+			return false;
+		Term t = (Term) o;
+		return md5.equals(t.md5) && word.equals(t.word);
+	}
+
+	@Override
+	public int hashCode() {
+		return md5.hashCode() ^ word.hashCode();
 	}
 	
 	/*
