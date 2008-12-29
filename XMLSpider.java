@@ -189,6 +189,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 					while (queuedRequestCache.size() < config.getMaxParallelRequests() * 2 && queuedSet.hasNext()) {
 						Page page = queuedSet.next();
+						assert page.status == Status.QUEUED;
 						if (!runningFetch.containsKey(page)) {
 							queuedRequestCache.add(page);
 							
@@ -430,8 +431,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				query.descend("pageId").constrain(page.id);
 				@SuppressWarnings("unchecked")
 				ObjectSet<TermPosition> set = query.execute();
-				for (TermPosition tp : set)
+				for (TermPosition tp : set) {
+					assert tp.pageId == page.id;
 					db.delete(tp);
+				}
 
 				ClientMetadata cm = result.getMetadata();
 				Bucket data = result.asBucket();
@@ -758,6 +761,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 					if (set.hasNext()) {
 						cachedTermPos = set.next();
+						assert term.word.equals(cachedTermPos.word);
+						assert cachedTermPos.pageId == page.id;
 						termPosCache.put(term, cachedTermPos);
 						return cachedTermPos;
 					} else if (create) {
@@ -856,9 +861,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		@SuppressWarnings("unchecked")
 		ObjectSet<Page> set = query.execute();
 
-		if (set.hasNext())
-			return set.next();
-		else
+		if (set.hasNext()) {
+			Page page = set.next();
+			assert page.uri.equals(uri.toString());
+			return page;
+		} else
 			return null;
 	}
 
@@ -869,9 +876,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		@SuppressWarnings("unchecked")
 		ObjectSet<Page> set = query.execute();
 
-		if (set.hasNext())
-			return set.next();
-		else
+		if (set.hasNext()) {
+			Page page = set.next();
+			assert page.id == id;
+			return page;
+		} else
 			return null;
 	}
 
@@ -882,9 +891,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		@SuppressWarnings("unchecked")
 		ObjectSet<Term> set = query.execute();
 
-		if (set.hasNext())
-			return set.next();
-		else
+		if (set.hasNext()) {
+			Term term = set.next();
+			assert md5.equals(term.md5);
+			return term;
+		} else
 			return null;
 	}
 
@@ -912,6 +923,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 			if (set.hasNext()) {
 				cachedTerm = set.next();
+				assert word.equals(cachedTerm.word);
 				termCache.put(word, cachedTerm);
 
 				return cachedTerm;
