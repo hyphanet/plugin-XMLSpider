@@ -421,7 +421,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 
 		FreenetURI uri = state.getURI();
-		page.status = Status.SUCCEEDED; // Content filter may throw, but we mark it as success anyway
 
 		try {
 				// Page may be refetched if added manually
@@ -463,14 +462,18 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				} finally {
 					data.free();
 				}
+				
+			synchronized (this) {
+				page.status = Status.SUCCEEDED;
+				page.lastChange = System.currentTimeMillis();
+				db.store(page);
+				db.commit();
+			}
 		} finally {
 			synchronized (this) {
 				runningFetch.remove(page);
-				page.lastChange = System.currentTimeMillis();
-				db.store(page);
 			}
 			if (!stopped) {
-				db.commit();
 				startSomeRequests();
 			} else {
 				db.rollback();
