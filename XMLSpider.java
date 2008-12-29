@@ -423,18 +423,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		FreenetURI uri = state.getURI();
 
 		try {
-				// Page may be refetched if added manually
-				// Delete existing TermPosition
-				Query query = db.query();
-				query.constrain(TermPosition.class);
-				query.descend("pageId").constrain(page.id);
-				@SuppressWarnings("unchecked")
-				ObjectSet<TermPosition> set = query.execute();
-				for (TermPosition tp : set) {
-					assert tp.pageId == page.id;
-					db.delete(tp);
-				}
-
 				ClientMetadata cm = result.getMetadata();
 				Bucket data = result.asBucket();
 				String mimeType = cm.getMIMEType();
@@ -723,7 +711,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			if (word.length() < 3)
 				return;
 			Term term = getTermByWord(word, true);
-			TermPosition termPos = getTermPosition(term, true);
+			TermPosition termPos = getTermPosition(term);
 
 			synchronized (termPos) {
 				int[] newPositions = new int[termPos.positions.length + 1];
@@ -734,57 +722,37 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			}
 		}
 		
-		@SuppressWarnings("serial")
-		protected Map<Term, TermPosition> termPosCache = new LinkedHashMap<Term, TermPosition>() {
-			protected boolean removeEldestEntry(Map.Entry<Term, TermPosition> eldest) {
-				if (size() < 1024) return false;
-				
-				db.store(eldest.getValue());
-				return true;
-			}
-		};
+		protected Map<Term, TermPosition> termPosCache = new HashMap<Term, TermPosition>();
 
 		public void store() {
+			// Delete existing TermPosition
+			Query query = db.query();
+			query.constrain(TermPosition.class);
+			query.descend("pageId").constrain(page.id);
+			@SuppressWarnings("unchecked")
+			ObjectSet<TermPosition> set = query.execute();
+			for (TermPosition tp : set) {
+				assert tp.pageId == page.id;
+				db.delete(tp);
+			}
+			
 			for (TermPosition tp : termPosCache.values())
 				db.store(tp);
 			termPosCache.clear();
 		}
 
-		protected TermPosition getTermPosition(Term term, boolean create) {
-			synchronized (term) {
-				TermPosition cachedTermPos = termPosCache.get(term);
-				if (cachedTermPos != null)
-					return cachedTermPos;
+		protected TermPosition getTermPosition(Term term) {
+			TermPosition cachedTermPos = termPosCache.get(term);
+			if (cachedTermPos != null)
+				return cachedTermPos;
 
-				synchronized (page) {
-					Query query = db.query();
-					query.constrain(TermPosition.class);
+			cachedTermPos = new TermPosition();
+			cachedTermPos.word = term.word;
+			cachedTermPos.pageId = page.id;
+			cachedTermPos.positions = new int[0];
 
-					query.descend("word").constrain(term.word);
-					query.descend("pageId").constrain(page.id);
-					@SuppressWarnings("unchecked")
-					ObjectSet<TermPosition> set = query.execute();
-
-					if (set.hasNext()) {
-						cachedTermPos = set.next();
-						assert term.word.equals(cachedTermPos.word);
-						assert cachedTermPos.pageId == page.id;
-						termPosCache.put(term, cachedTermPos);
-						return cachedTermPos;
-					} else if (create) {
-						cachedTermPos = new TermPosition();
-						cachedTermPos.word = term.word;
-						cachedTermPos.pageId = page.id;
-						cachedTermPos.positions = new int[0];
-
-						termPosCache.put(term, cachedTermPos);
-						db.store(cachedTermPos);
-						return cachedTermPos;
-					} else {
-						return null;
-					}
-				}
-			}
+			termPosCache.put(term, cachedTermPos);
+			return cachedTermPos;
 		}
 	}
 
