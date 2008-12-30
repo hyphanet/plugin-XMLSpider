@@ -107,7 +107,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * @param uri the new uri that needs to be fetched for further indexing
 	 */
 	public void queueURI(FreenetURI uri, String comment, boolean force) {
-		db.beginThreadTransaction(Storage.EXCLUSIVE_TRANSACTION);
 		try {
 			String sURI = uri.toString();
 			for (String ext : root.getConfig().getBadlistedExtensions())
@@ -129,8 +128,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				page.setStatus(Status.QUEUED);
 				page.setComment(comment);
 			}
-		} finally {
-			db.endThreadTransaction();
+			
+			db.commit();
+		} catch (RuntimeException e) {
+			db.rollback();
+			throw e;
 		}
 	}
 
@@ -364,12 +366,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 
 		FreenetURI uri = state.getURI();
-		db.beginThreadTransaction(Storage.READ_WRITE_TRANSACTION);
+		ClientMetadata cm = result.getMetadata();
+		Bucket data = result.asBucket();
+		String mimeType = cm.getMIMEType();
+		
 		try {
-			ClientMetadata cm = result.getMetadata();
-			Bucket data = result.asBucket();
-			String mimeType = cm.getMIMEType();
-
 			/*
 			 * instead of passing the current object, the pagecallback object for every page is
 			 * passed to the content filter this has many benefits to efficiency, and allows us to
@@ -379,31 +380,31 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			PageCallBack pageCallBack = new PageCallBack(page);
 			Logger.minor(this, "Successful: " + uri + " : " + page.getId());
 
-			try {
-				ContentFilter.filter(data, new NullBucketFactory(), mimeType, uri.toURI("http://127.0.0.1:8888/"),
-				        pageCallBack);
-				page.setStatus(Status.SUCCEEDED);
-				db.endThreadTransaction();
+			ContentFilter.filter(data, new NullBucketFactory(), mimeType, uri.toURI("http://127.0.0.1:8888/"),
+			        pageCallBack);
+			page.setStatus(Status.SUCCEEDED);
+			db.commit();
 
-				Logger.minor(this, "Filtered " + uri + " : " + page.getId());
-			} catch (UnsafeContentTypeException e) {
-				Logger.minor(this, "UnsafeContentTypeException " + uri + " : " + page.getId(), e);
-				page.setStatus(Status.SUCCEEDED);
-				db.endThreadTransaction();
-				return; // Ignore
-			} catch (IOException e) {
-				db.rollbackThreadTransaction();
-				Logger.error(this, "Bucket error?: " + e, e);
-			} catch (URISyntaxException e) {
-				db.rollbackThreadTransaction();
-				Logger.error(this, "Internal error: " + e, e);
-			} finally {
-				data.free();
-			}
+			Logger.minor(this, "Filtered " + uri + " : " + page.getId());
+		} catch (UnsafeContentTypeException e) {
+			page.setStatus(Status.SUCCEEDED);
+			db.commit();
+
+			Logger.minor(this, "UnsafeContentTypeException " + uri + " : " + page.getId(), e);
+			return; // Ignore
+		} catch (IOException e) {
+			db.rollback();
+			Logger.error(this, "Bucket error?: " + e, e);
+		} catch (URISyntaxException e) {
+			db.rollback();
+			Logger.error(this, "Internal error: " + e, e);			
 		} catch (RuntimeException e) {
-			db.rollbackThreadTransaction();
+			db.rollback();
+			Logger.error(this, "Runtime Exception: " + e, e);		
 			throw e;
 		} finally {
+			data.free();
+
 			synchronized (this) {
 				runningFetch.remove(page);
 			}
@@ -418,23 +419,28 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		synchronized (this) {
 			if (stopped)
 				return;
-
-			db.beginThreadTransaction(Storage.EXCLUSIVE_TRANSACTION);
-			synchronized (page) {
-				if (fe.newURI != null) {
-					// redirect, mark as succeeded
-					queueURI(fe.newURI, "redirect from " + state.getURI(), false);
-					page.setStatus(Status.SUCCEEDED);
-				} else if (fe.isFatal()) {
-					// too many tries or fatal, mark as failed
-					page.setStatus(Status.FAILED);
-				} else {
-					// requeue at back
-					page.setStatus(Status.QUEUED);
+			
+			try {
+				synchronized (page) {
+					if (fe.newURI != null) {
+						// redirect, mark as succeeded
+						queueURI(fe.newURI, "redirect from " + state.getURI(), false);
+						page.setStatus(Status.SUCCEEDED);
+					} else if (fe.isFatal()) {
+						// too many tries or fatal, mark as failed
+						page.setStatus(Status.FAILED);
+					} else {
+						// requeue at back
+						page.setStatus(Status.QUEUED);
+					}
 				}
+				db.commit();
+			} catch (RuntimeException e) {
+				db.rollback();
+				throw e;
+			} finally {
+				runningFetch.remove(page);
 			}
-			db.endThreadTransaction();
-			runningFetch.remove(page);
 		}
 
 		startSomeRequests();
