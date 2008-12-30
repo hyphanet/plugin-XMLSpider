@@ -48,6 +48,7 @@ public class PerstRoot extends Persistent {
 		Term term = wordTerm.get(new Key(word));
 
 		if (create && term == null) {
+			word = new String(word); // force a new instance, prevent referring to the old char[]			
 			term = new Term(word, getStorage());
 			md5Term.put(term);
 			wordTerm.put(term);
