@@ -6,7 +6,6 @@ import java.util.List;
 import plugins.XMLSpider.org.garret.perst.FieldIndex;
 import plugins.XMLSpider.org.garret.perst.Key;
 import plugins.XMLSpider.org.garret.perst.Persistent;
-import plugins.XMLSpider.org.garret.perst.SortedCollection;
 import plugins.XMLSpider.org.garret.perst.Storage;
 import freenet.keys.FreenetURI;
 
@@ -16,9 +15,9 @@ public class PerstRoot extends Persistent {
 
 	protected FieldIndex<Page> idPage;
 	protected FieldIndex<Page> uriPage;
-	protected SortedCollection<Page> queuedPages;
-	protected SortedCollection<Page> failedPages;
-	protected SortedCollection<Page> succeededPages;
+	protected FieldIndex<Page> queuedPages;
+	protected FieldIndex<Page> failedPages;
+	protected FieldIndex<Page> succeededPages;
 	
 	private Config config;
 
@@ -33,9 +32,9 @@ public class PerstRoot extends Persistent {
 
 		root.idPage = storage.createFieldIndex(Page.class, "id", true);
 		root.uriPage = storage.createFieldIndex(Page.class, "uri", true);
-		root.queuedPages = storage.<Page> createSortedCollection(new PageTimeStampComparator(), false);
-		root.failedPages = storage.<Page> createSortedCollection(new PageTimeStampComparator(), false);
-		root.succeededPages = storage.<Page> createSortedCollection(new PageTimeStampComparator(), false);
+		root.queuedPages = storage.createFieldIndex(Page.class, "lastChange", false);
+		root.failedPages = storage.createFieldIndex(Page.class, "lastChange", false);
+		root.succeededPages = storage.createFieldIndex(Page.class, "lastChange", false);
 		
 		
 		root.config = new Config(storage);
@@ -77,7 +76,7 @@ public class PerstRoot extends Persistent {
 
 			idPage.append(page);
 			uriPage.put(page);
-			queuedPages.add(page);
+			queuedPages.put(page);
 		}
 
 		return page;
@@ -88,7 +87,7 @@ public class PerstRoot extends Persistent {
 		return page;
 	}
 	
-	SortedCollection<Page> getPageCollection(Status status) {
+	FieldIndex<Page> getPageIndex(Status status) {
 		switch (status) {
 		case FAILED:
 			return failedPages;
@@ -102,11 +101,11 @@ public class PerstRoot extends Persistent {
 	}
 
 	public synchronized Iterator<Page> getPages(Status status) {
-		return getPageCollection(status).iterator();
+		return getPageIndex(status).iterator();
 	}
 	
 	public synchronized int getPageCount(Status status) {
-		return getPageCollection(status).size();
+		return getPageIndex(status).size();
 	}
 
 	public void setConfig(Config config) {

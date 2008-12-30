@@ -3,9 +3,9 @@
  */
 package plugins.XMLSpider.db;
 
+import plugins.XMLSpider.org.garret.perst.FieldIndex;
 import plugins.XMLSpider.org.garret.perst.IPersistentMap;
 import plugins.XMLSpider.org.garret.perst.Persistent;
-import plugins.XMLSpider.org.garret.perst.SortedCollection;
 import plugins.XMLSpider.org.garret.perst.Storage;
 
 public class Page extends Persistent implements Comparable<Page> {
@@ -120,7 +120,7 @@ public class Page extends Persistent implements Comparable<Page> {
 
 		if (storage != null) {
 			PerstRoot root = (PerstRoot) storage.getRoot();
-			SortedCollection<Page> coll = root.getPageCollection(status);
+			FieldIndex<Page> coll = root.getPageIndex(status);
 			coll.remove(this);
 		}
 	}
@@ -134,8 +134,8 @@ public class Page extends Persistent implements Comparable<Page> {
 
 		if (storage != null) {
 			PerstRoot root = (PerstRoot) storage.getRoot();
-			SortedCollection<Page> coll = root.getPageCollection(status);
-			coll.add(this);
+			FieldIndex<Page> coll = root.getPageIndex(status);
+			coll.put(this);
 		}
 	}
 }
