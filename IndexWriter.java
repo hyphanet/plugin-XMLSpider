@@ -42,12 +42,15 @@ public class IndexWriter {
 	private int match;
 	private long time_taken;
 	private XMLSpider xmlSpider;
+	private boolean logMINOR = Logger.shouldLog(Logger.MINOR, this);
 
 	IndexWriter(XMLSpider xmlSpider) {
 		this.xmlSpider = xmlSpider;
 	}
 
 	public synchronized void makeIndex() throws Exception {
+		logMINOR = Logger.shouldLog(Logger.MINOR, this);
+		
 		try {
 			time_taken = System.currentTimeMillis();
 
@@ -64,8 +67,9 @@ public class IndexWriter {
 
 			time_taken = System.currentTimeMillis() - time_taken;
 
-			Logger.minor(this, "Spider: indexes regenerated - tProducedIndex="
-			        + (System.currentTimeMillis() - tProducedIndex) + "ms ago time taken=" + time_taken + "ms");
+			if (logMINOR)
+				Logger.minor(this, "Spider: indexes regenerated - tProducedIndex="
+				        + (System.currentTimeMillis() - tProducedIndex) + "ms ago time taken=" + time_taken + "ms");
 
 			tProducedIndex = System.currentTimeMillis();
 		} finally {
@@ -83,7 +87,8 @@ public class IndexWriter {
 	 */
 	private void makeMainIndex(Config config) throws IOException, NoSuchAlgorithmException {
 		// Produce the main index file.
-		Logger.minor(this, "Producing top index...");
+		if (logMINOR)
+			Logger.minor(this, "Producing top index...");
 
 		//the main index file 
 		File outputFile = new File(config.getIndexDir() + "index.xml");
@@ -238,7 +243,6 @@ public class IndexWriter {
 	}
 
 	private void generateSubIndex(Config config, int p, List<Term> list) throws Exception {
-		boolean logMINOR = Logger.shouldLog(Logger.MINOR, this);
 		/*
 		 * if the list is less than max allowed entries in a file then directly generate the xml
 		 * otherwise split the list into further sublists and iterate till the number of entries per
@@ -419,7 +423,7 @@ public class IndexWriter {
 			throw new TooBigIndexException();
 		}
 
-		if (Logger.shouldLog(Logger.MINOR, this))
+		if (logMINOR)
 			Logger.minor(this, "Spider: indexes regenerated.");
 	}
 
@@ -532,7 +536,7 @@ public class IndexWriter {
 			}
 		}
 
-		if (Logger.shouldLog(Logger.MINOR, this))
+		if (logMINOR)
 			Logger.minor(this, "Spider: indexes regenerated.");
 	}
 }
