@@ -550,9 +550,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 */
 	public class PageCallBack implements FoundURICallback{
 		protected final Page page;
+		
+		protected final boolean logDEBUG = Logger.shouldLog(Logger.DEBUG, this); // per instance, allow changing on the fly
 
 		PageCallBack(Page page) {
-			this.page = page;
+			this.page = page; 
 		}
 
 		public void foundURI(FreenetURI uri){
@@ -562,7 +564,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		public void foundURI(FreenetURI uri, boolean inline){
 			if (stopped)
 				throw new RuntimeException("plugin stopping");
-			Logger.debug(this, "foundURI " + uri + " on " + page);
+			if (logDEBUG)
+				Logger.debug(this, "foundURI " + uri + " on " + page);
 			queueURI(uri, "Added from " + page.getURI(), false);
 		}
 
@@ -571,8 +574,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		public void onText(String s, String type, URI baseURI){
 			if (stopped)
 				throw new RuntimeException("plugin stopping");
-
-			Logger.debug(this, "onText on " + page.getId() + " (" + baseURI + ")");
+			if (logDEBUG)
+				Logger.debug(this, "onText on " + page.getId() + " (" + baseURI + ")");
 
 			if ("title".equalsIgnoreCase(type) && (s != null) && (s.length() != 0) && (s.indexOf('\n') < 0)) {
 				/*
@@ -610,6 +613,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 
 		private void addWord(String word, int position) throws Exception {
+			if (logDEBUG)
+				Logger.debug(this, "addWord on " + page.getId() + " (" + word + "," + position + ")");
+			
 			if (word.length() < 3)
 				return;
 			Term term = getTermByWord(word, true);
