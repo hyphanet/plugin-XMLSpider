@@ -427,7 +427,7 @@ public class IndexWriter {
 			Logger.minor(this, "Spider: indexes regenerated.");
 	}
 
-	public void generateSubIndex(Config config, String filename) {
+	protected void generateSubIndex(Config config, String filename) {
 		//		generates the new subIndex
 		File outputFile = new File(filename);
 		BufferedOutputStream fos;
