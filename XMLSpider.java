@@ -147,9 +147,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				if (running >= root.getConfig().getMaxParallelRequests())
 					return;
 
-				// perpare to start
+				// Prepare to start
 				toStart = new ArrayList<ClientGetter>(root.getConfig().getMaxParallelRequests() - running);
-				synchronized (root) {
+				root.sharedLockPages(Status.QUEUED);
+				try {
 					Iterator<Page> it = root.getPages(Status.QUEUED);
 
 					while (running + toStart.size() < root.getConfig().getMaxParallelRequests() && it.hasNext()) {
@@ -168,6 +169,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 							page.setStatus(Status.FAILED);
 						}
 					}
+				} finally {
+					root.unlockPages(Status.QUEUED);
 				}
 			}
 		}
