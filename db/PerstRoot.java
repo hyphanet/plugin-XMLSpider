@@ -18,7 +18,7 @@ public class PerstRoot extends Persistent {
 	protected FieldIndex<Page> queuedPages;
 	protected FieldIndex<Page> failedPages;
 	protected FieldIndex<Page> succeededPages;
-	
+
 	private Config config;
 
 	public PerstRoot() {
@@ -35,12 +35,11 @@ public class PerstRoot extends Persistent {
 		root.queuedPages = storage.createFieldIndex(Page.class, "lastChange", false);
 		root.failedPages = storage.createFieldIndex(Page.class, "lastChange", false);
 		root.succeededPages = storage.createFieldIndex(Page.class, "lastChange", false);
-		
-		
+
 		root.config = new Config(storage);
-		
+
 		storage.setRoot(root);
-		
+
 		return root;
 	}
 
@@ -48,16 +47,16 @@ public class PerstRoot extends Persistent {
 		md5Term.exclusiveLock();
 		wordTerm.exclusiveLock();
 		try {
-		Term term = wordTerm.get(new Key(word));
+			Term term = wordTerm.get(new Key(word));
 
-		if (create && term == null) {
-			word = new String(word); // force a new instance, prevent referring to the old char[]			
-			term = new Term(word, getStorage());
-			md5Term.put(term);
-			wordTerm.put(term);
-		}
+			if (create && term == null) {
+				word = new String(word); // force a new instance, prevent referring to the old char[]			
+				term = new Term(word, getStorage());
+				md5Term.put(term);
+				wordTerm.put(term);
+			}
 
-		return term;
+			return term;
 		} finally {
 			wordTerm.unlock();
 			md5Term.unlock();
@@ -67,16 +66,16 @@ public class PerstRoot extends Persistent {
 	public Iterator<Term> getTermIterator() {
 		md5Term.sharedLock();
 		try {
-		return md5Term.iterator();
+			return md5Term.iterator();
 		} finally {
 			md5Term.unlock();
 		}
 	}
-	
+
 	public List<Term> getTermList() {
 		md5Term.sharedLock();
 		try {
-		return md5Term.getList(null, null);
+			return md5Term.getList(null, null);
 		} finally {
 			md5Term.unlock();
 		}
@@ -146,7 +145,7 @@ public class PerstRoot extends Persistent {
 			index.unlock();
 		}
 	}
-	
+
 	public int getPageCount(Status status) {
 		FieldIndex<Page> index = getPageIndex(status);
 		index.sharedLock();
@@ -158,11 +157,11 @@ public class PerstRoot extends Persistent {
 	}
 
 	public synchronized void setConfig(Config config) {		
-	    this.config = config;
-	    modify();
-    }
+		this.config = config;
+		modify();
+	}
 
 	public synchronized Config getConfig() {
-	    return config;
-    }
+		return config;
+	}
 }
