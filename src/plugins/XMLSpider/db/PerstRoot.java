@@ -136,6 +136,21 @@ public class PerstRoot extends Persistent {
 		}
 	}
 
+	public void exclusiveLock(Status status) {
+		FieldIndex<Page> index = getPageIndex(status);
+		index.exclusiveLock();
+	}
+
+	public void sharedLockPages(Status status) {
+		FieldIndex<Page> index = getPageIndex(status);
+		index.sharedLock();
+	}
+
+	public void unlockPages(Status status) {
+		FieldIndex<Page> index = getPageIndex(status);
+		index.unlock();
+	}
+	
 	public Iterator<Page> getPages(Status status) {
 		FieldIndex<Page> index = getPageIndex(status);
 		index.sharedLock();
