@@ -121,7 +121,12 @@ public class Page extends Persistent implements Comparable<Page> {
 		if (storage != null) {
 			PerstRoot root = (PerstRoot) storage.getRoot();
 			FieldIndex<Page> coll = root.getPageIndex(status);
-			coll.remove(this);
+			coll.exclusiveLock();
+			try {
+				coll.remove(this);
+			} finally {
+				coll.unlock();
+			}
 		}
 	}
 
@@ -135,7 +140,12 @@ public class Page extends Persistent implements Comparable<Page> {
 		if (storage != null) {
 			PerstRoot root = (PerstRoot) storage.getRoot();
 			FieldIndex<Page> coll = root.getPageIndex(status);
-			coll.put(this);
+			coll.exclusiveLock();
+			try {
+				coll.put(this);
+			} finally {
+				coll.unlock();
+			}
 		}
 	}
 }
