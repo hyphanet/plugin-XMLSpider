@@ -674,6 +674,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 */
 	private Storage initDB() {
 		Storage db = StorageFactory.getInstance().createStorage();
+		db.setProperty("perst.object.cache.kind", "pinned");
 		db.setProperty("perst.object.cache.init.size", 8192);
 		db.setProperty("perst.alternative.btree", true);
 		db.setProperty("perst.string.encoding", "UTF-8");
