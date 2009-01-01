@@ -458,6 +458,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			}
 			db.endThreadTransaction();
 			dbTransactionEnded = true;
+		} catch (Exception e) {
+			Logger.error(this, "Unexcepected exception in onFailure(): " + e, e);
+			throw new RuntimeException("Unexcepected exception in onFailure()", e);
 		} finally {
 			runningFetch.remove(page);
 			if (!dbTransactionEnded)
