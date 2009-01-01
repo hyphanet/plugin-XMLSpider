@@ -354,6 +354,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		        public Thread newThread(Runnable r) {
 			        Thread t = new NativeThread(r, "XMLSpider", NativeThread.NORM_PRIORITY - 1, true);
 			        t.setDaemon(true);
+			        t.setContextClassLoader(XMLSpider.this.getClass().getClassLoader());
 			        return t;
 		        }
 	        });
