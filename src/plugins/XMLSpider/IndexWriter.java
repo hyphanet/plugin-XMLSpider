@@ -50,7 +50,6 @@ public class IndexWriter {
 
 	public synchronized void makeIndex() throws Exception {
 		logMINOR = Logger.shouldLog(Logger.MINOR, this);
-		
 		try {
 			time_taken = System.currentTimeMillis();
 
