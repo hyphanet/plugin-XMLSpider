@@ -107,6 +107,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * @param uri the new uri that needs to be fetched for further indexing
 	 */
 	public void queueURI(FreenetURI uri, String comment, boolean force) {
+		db.beginThreadTransaction(Storage.EXCLUSIVE_TRANSACTION);
+		boolean dbTransactionEnded = false;
 		try {
 			String sURI = uri.toString();
 			for (String ext : root.getConfig().getBadlistedExtensions())
@@ -129,10 +131,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				page.setComment(comment);
 			}
 			
-			db.commit();
-		} catch (RuntimeException e) {
-			db.rollback();
-			throw e;
+			db.endThreadTransaction();
+			dbTransactionEnded = true;
+		} finally {
+			if (!dbTransactionEnded)
+				db.rollbackThreadTransaction();
 		}
 	}
 
@@ -150,6 +153,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 				// Prepare to start
 				toStart = new ArrayList<ClientGetter>(maxParallelRequests - running);
+				db.beginThreadTransaction(Storage.COOPERATIVE_TRANSACTION);
 				root.sharedLockPages(Status.QUEUED);
 				try {
 					Iterator<Page> it = root.getPages(Status.QUEUED);
@@ -172,6 +176,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 					}
 				} finally {
 					root.unlockPages(Status.QUEUED);
+					db.endThreadTransaction();
 				}
 			}
 		}
@@ -378,6 +383,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		Bucket data = result.asBucket();
 		String mimeType = cm.getMIMEType();
 		
+		boolean dbTransactionEnded = false;
+		db.beginThreadTransaction(Storage.EXCLUSIVE_TRANSACTION);
 		try {
 			/*
 			 * instead of passing the current object, the pagecallback object for every page is
@@ -391,33 +398,37 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			ContentFilter.filter(data, new NullBucketFactory(), mimeType, uri.toURI("http://127.0.0.1:8888/"),
 			        pageCallBack);
 			page.setStatus(Status.SUCCEEDED);
-			db.commit();
-
+			db.endThreadTransaction();
+			dbTransactionEnded  = true;
+			
 			Logger.minor(this, "Filtered " + uri + " : " + page.getId());
 		} catch (UnsafeContentTypeException e) {
 			page.setStatus(Status.SUCCEEDED);
-			db.commit();
+			db.endThreadTransaction();
+			dbTransactionEnded = true;
 
 			Logger.minor(this, "UnsafeContentTypeException " + uri + " : " + page.getId(), e);
 			return; // Ignore
 		} catch (IOException e) {
-			db.rollback();
 			Logger.error(this, "Bucket error?: " + e, e);
 		} catch (URISyntaxException e) {
-			db.rollback();
 			Logger.error(this, "Internal error: " + e, e);			
 		} catch (RuntimeException e) {
-			db.rollback();
 			Logger.error(this, "Runtime Exception: " + e, e);		
 			throw e;
 		} finally {
-			data.free();
+			try {
+				data.free();
 
-			synchronized (this) {
-				runningFetch.remove(page);
+				synchronized (this) {
+					runningFetch.remove(page);
+				}
+				if (!stopped)
+					startSomeRequests();
+			} finally {
+				if (!dbTransactionEnded)
+					db.rollbackThreadTransaction();
 			}
-			if (!stopped)
-				startSomeRequests();
 		}
 	}
 
@@ -427,7 +438,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		synchronized (this) {
 			if (stopped)
 				return;
-			
+		}
+
+		boolean dbTransactionEnded = false;
+		db.beginThreadTransaction(Storage.EXCLUSIVE_TRANSACTION);
 			try {
 				synchronized (page) {
 					if (fe.newURI != null) {
@@ -442,14 +456,13 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 						page.setStatus(Status.QUEUED);
 					}
 				}
-				db.commit();
-			} catch (RuntimeException e) {
-				db.rollback();
-				throw e;
+				db.endThreadTransaction();
+				dbTransactionEnded = true;
 			} finally {
 				runningFetch.remove(page);
+				if (!dbTransactionEnded)
+					db.rollbackThreadTransaction();
 			}
-		}
 
 		startSomeRequests();
 	} 
