@@ -87,21 +87,21 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * Lists the allowed mime types of the fetched page. 
 	 */
 	protected Set<String> allowedMIMETypes;	
-	
+
 	static int version = 33;
 	public static final String pluginName = "XML spider " + version;
 
 	public String getVersion() {
 		return version + " r" + Version.getSvnRevision();
 	}
-	
+
 	private FetchContext ctx;
 	private boolean stopped = true;
 
 	private NodeClientCore core;
 	private PageMaker pageMaker;	
 	private PluginRespirator pr;
-	
+
 	/**
 	 * Adds the found uri to the list of to-be-retrieved uris. <p>Every usk uri added as ssk.
 	 * @param uri the new uri that needs to be fetched for further indexing
@@ -130,7 +130,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				page.setStatus(Status.QUEUED);
 				page.setComment(comment);
 			}
-			
+
 			db.endThreadTransaction();
 			dbTransactionEnded = true;
 		} finally {
@@ -147,7 +147,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			synchronized (runningFetch) {
 				int running = runningFetch.size();
 				int maxParallelRequests = root.getConfig().getMaxParallelRequests();
-				
+
 				if (running >= maxParallelRequests)
 					return;
 
@@ -243,7 +243,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	private ClientGetter makeGetter(Page page) throws MalformedURLException {
 		ClientGetter getter = new ClientGetter(new ClientGetterCallback(page),
 				core.requestStarters.chkFetchScheduler,
-		        core.requestStarters.sskFetchScheduler, new FreenetURI(page.getURI()), ctx,
+				core.requestStarters.sskFetchScheduler, new FreenetURI(page.getURI()), ctx,
 		        getPollingPriorityProgress(), this, null, null);
 		return getter;
 	}
@@ -287,14 +287,14 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		callbackExecutor.execute(new MakeIndexCallback());
 		writeIndexScheduled = true;
 	}
-	
+
 	protected class MakeIndexCallback implements Runnable {
 		public void run() {
 			try {
 				synchronized (this) {
 					writingIndex = true;
 				}
-				
+
 				db.gc();
 				indexWriter.makeIndex();
 
@@ -312,7 +312,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			}
 		}
 	}
-		
+
 	// Set config asynchronously 
 	protected class SetConfigCallback implements Runnable {
 		private Config config;
@@ -332,7 +332,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		public int compare(Runnable o1, Runnable o2) {
 			if (o1.getClass() == o2.getClass())
 				return 0;
-			
+
 			return getPriority(o1) - getPriority(o2);
 		}
 
@@ -353,7 +353,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	// this is java.util.concurrent.Executor, not freenet.support.Executor
 	// always run with one thread --> more thread cause contention and slower!
 	public ThreadPoolExecutor callbackExecutor = new ThreadPoolExecutor( //
-	        1, 1, 600, TimeUnit.SECONDS, //
+			1, 1, 600, TimeUnit.SECONDS, //
 	        new PriorityBlockingQueue<Runnable>(5, new CallbackPrioritizer()), //
 	        new ThreadFactory() {
 		        public Thread newThread(Runnable r) {
@@ -363,7 +363,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			        return t;
 		        }
 	        });
-	
+
 	/**
 	 * Processes the successfully fetched uri for further outlinks.
 	 * 
@@ -382,7 +382,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		ClientMetadata cm = result.getMetadata();
 		Bucket data = result.asBucket();
 		String mimeType = cm.getMIMEType();
-		
+
 		boolean dbTransactionEnded = false;
 		db.beginThreadTransaction(Storage.EXCLUSIVE_TRANSACTION);
 		try {
@@ -396,11 +396,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			Logger.minor(this, "Successful: " + uri + " : " + page.getId());
 
 			ContentFilter.filter(data, new NullBucketFactory(), mimeType, uri.toURI("http://127.0.0.1:8888/"),
-			        pageCallBack);
+					pageCallBack);
 			page.setStatus(Status.SUCCEEDED);
 			db.endThreadTransaction();
 			dbTransactionEnded  = true;
-			
+
 			Logger.minor(this, "Filtered " + uri + " : " + page.getId());
 		} catch (UnsafeContentTypeException e) {
 			page.setStatus(Status.SUCCEEDED);
@@ -442,27 +442,27 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		boolean dbTransactionEnded = false;
 		db.beginThreadTransaction(Storage.EXCLUSIVE_TRANSACTION);
-			try {
-				synchronized (page) {
-					if (fe.newURI != null) {
-						// redirect, mark as succeeded
-						queueURI(fe.newURI, "redirect from " + state.getURI(), false);
-						page.setStatus(Status.SUCCEEDED);
-					} else if (fe.isFatal()) {
-						// too many tries or fatal, mark as failed
-						page.setStatus(Status.FAILED);
-					} else {
-						// requeue at back
-						page.setStatus(Status.QUEUED);
-					}
+		try {
+			synchronized (page) {
+				if (fe.newURI != null) {
+					// redirect, mark as succeeded
+					queueURI(fe.newURI, "redirect from " + state.getURI(), false);
+					page.setStatus(Status.SUCCEEDED);
+				} else if (fe.isFatal()) {
+					// too many tries or fatal, mark as failed
+					page.setStatus(Status.FAILED);
+				} else {
+					// requeue at back
+					page.setStatus(Status.QUEUED);
 				}
-				db.endThreadTransaction();
-				dbTransactionEnded = true;
-			} finally {
-				runningFetch.remove(page);
-				if (!dbTransactionEnded)
-					db.rollbackThreadTransaction();
 			}
+			db.endThreadTransaction();
+			dbTransactionEnded = true;
+		} finally {
+			runningFetch.remove(page);
+			if (!dbTransactionEnded)
+				db.rollbackThreadTransaction();
+		}
 
 		startSomeRequests();
 	} 
@@ -471,11 +471,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	private boolean writeIndexScheduled;
 
 	protected IndexWriter indexWriter;
-	
+
 	public IndexWriter getIndexWriter() {
 		return indexWriter;
 	}
-	
+
 	public void terminate(){
 		Logger.normal(this, "XMLSpider terminating");
 
@@ -486,7 +486,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				// shutting down, ignore
 			}
 			stopped = true;
-			
+
 			for (Map.Entry<Page, ClientGetter> me : runningFetch.entrySet()) {
 				ClientGetter getter = me.getValue();
 				Logger.minor(this, "Canceling request" + getter);
@@ -514,7 +514,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		this.core = pr.getNode().clientCore;
 		this.pr = pr;
 		pageMaker = pr.getPageMaker();
-		
+
 		Runtime.getRuntime().addShutdownHook(exitHook);
 
 		/* Initialize Fetch Context */
@@ -533,7 +533,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		// Initial Database
 		db = initDB();
-		
+
 		indexWriter = new IndexWriter(this);
 		webInterface = new WebInterface(this);
 
@@ -553,7 +553,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}
 
 	private WebInterface webInterface;
-	
+
 	public String handleHTTPGet(HTTPRequest request) throws PluginHTTPException {
 		return webInterface.handleHTTPGet(request);
 	}
@@ -570,7 +570,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 */
 	public class PageCallBack implements FoundURICallback{
 		protected final Page page;
-		
+
 		protected final boolean logDEBUG = Logger.shouldLog(Logger.DEBUG, this); // per instance, allow changing on the fly
 
 		PageCallBack(Page page) {
@@ -635,7 +635,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		private void addWord(String word, int position) throws Exception {
 			if (logDEBUG)
 				Logger.debug(this, "addWord on " + page.getId() + " (" + word + "," + position + ")");
-			
+
 			if (word.length() < 3)
 				return;
 			Term term = getTermByWord(word, true);
@@ -687,7 +687,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		return db;
 	}
-	
+
 	public PerstRoot getDbRoot() {
 		return root;
 	}
@@ -719,7 +719,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	public PageMaker getPageMaker() {
 		return pageMaker;
 	}
-	
+
 	public List<Page> getRunningFetch() {
 		synchronized (runningFetch) {
 			return new ArrayList<Page>(runningFetch.keySet());
