@@ -44,7 +44,10 @@ public class PerstRoot extends Persistent {
 		return root;
 	}
 
-	public synchronized Term getTermByWord(String word, boolean create) {
+	public Term getTermByWord(String word, boolean create) {
+		md5Term.exclusiveLock();
+		wordTerm.exclusiveLock();
+		try {
 		Term term = wordTerm.get(new Key(word));
 
 		if (create && term == null) {
@@ -55,39 +58,72 @@ public class PerstRoot extends Persistent {
 		}
 
 		return term;
-	}
-
-	public synchronized Iterator<Term> getTermIterator() {
-		return md5Term.iterator();
-	}
-	
-	public synchronized List<Term> getTermList() {
-		return md5Term.getList(null, null);
-	}
-
-	public synchronized int getTermCount() {
-		return md5Term.size();
-	}
-	
-	public synchronized Page getPageByURI(FreenetURI uri, boolean create, String comment) {
-		Page page = uriPage.get(new Key(uri.toString()));
-
-		if (create && page == null) {
-			page = new Page(uri.toString(), comment, getStorage());
-
-			idPage.append(page);
-			uriPage.put(page);
-			queuedPages.put(page);
+		} finally {
+			wordTerm.unlock();
+			md5Term.unlock();
 		}
+	}
 
-		return page;
+	public Iterator<Term> getTermIterator() {
+		md5Term.sharedLock();
+		try {
+		return md5Term.iterator();
+		} finally {
+			md5Term.unlock();
+		}
+	}
+	
+	public List<Term> getTermList() {
+		md5Term.sharedLock();
+		try {
+		return md5Term.getList(null, null);
+		} finally {
+			md5Term.unlock();
+		}
+	}
+
+	public int getTermCount() {
+		md5Term.sharedLock();
+		try {
+			return md5Term.size();
+		} finally {
+			md5Term.unlock();
+		}
+	}
+
+	public Page getPageByURI(FreenetURI uri, boolean create, String comment) {
+		idPage.exclusiveLock();
+		uriPage.exclusiveLock();
+		queuedPages.exclusiveLock();
+		try {
+			Page page = uriPage.get(new Key(uri.toString()));
+
+			if (create && page == null) {
+				page = new Page(uri.toString(), comment, getStorage());
+
+				idPage.append(page);
+				uriPage.put(page);
+				queuedPages.put(page);
+			}
+
+			return page;
+		} finally {
+			queuedPages.unlock();
+			uriPage.unlock();
+			idPage.unlock();
+		}
 	}
 
 	public Page getPageById(long id) {
-		Page page = idPage.get(id);
-		return page;
+		idPage.sharedLock();
+		try {
+			Page page = idPage.get(id);
+			return page;
+		} finally {
+			idPage.unlock();
+		}
 	}
-	
+
 	FieldIndex<Page> getPageIndex(Status status) {
 		switch (status) {
 		case FAILED:
@@ -101,20 +137,32 @@ public class PerstRoot extends Persistent {
 		}
 	}
 
-	public synchronized Iterator<Page> getPages(Status status) {
-		return getPageIndex(status).iterator();
+	public Iterator<Page> getPages(Status status) {
+		FieldIndex<Page> index = getPageIndex(status);
+		index.sharedLock();
+		try {
+			return index.iterator();
+		} finally {
+			index.unlock();
+		}
 	}
 	
-	public synchronized int getPageCount(Status status) {
-		return getPageIndex(status).size();
+	public int getPageCount(Status status) {
+		FieldIndex<Page> index = getPageIndex(status);
+		index.sharedLock();
+		try {
+			return index.size();
+		} finally {
+			index.unlock();
+		}
 	}
 
-	public void setConfig(Config config) {
+	public synchronized void setConfig(Config config) {		
 	    this.config = config;
 	    modify();
     }
 
-	public Config getConfig() {
+	public synchronized Config getConfig() {
 	    return config;
     }
 }
