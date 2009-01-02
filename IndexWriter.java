@@ -29,6 +29,7 @@ import org.w3c.dom.Text;
 
 import plugins.XMLSpider.db.Config;
 import plugins.XMLSpider.db.Page;
+import plugins.XMLSpider.db.PerstRoot;
 import plugins.XMLSpider.db.Term;
 import plugins.XMLSpider.db.TermPosition;
 import plugins.XMLSpider.org.garret.perst.Storage;
@@ -44,20 +45,18 @@ public class IndexWriter {
 	private Vector<String> indices;
 	private int match;
 	private long time_taken;
-	private XMLSpider xmlSpider;
 	private boolean logMINOR = Logger.shouldLog(Logger.MINOR, this);
 
-	IndexWriter(XMLSpider xmlSpider) {
-		this.xmlSpider = xmlSpider;
+	IndexWriter() {
 	}
 
-	public synchronized void makeIndex() throws Exception {
+	public synchronized void makeIndex(PerstRoot perstRoot) throws Exception {
 		logMINOR = Logger.shouldLog(Logger.MINOR, this);
-		xmlSpider.db.beginThreadTransaction(Storage.COOPERATIVE_TRANSACTION);
+		perstRoot.getStorage().beginThreadTransaction(Storage.COOPERATIVE_TRANSACTION);
 		try {
 			time_taken = System.currentTimeMillis();
 
-			Config config = xmlSpider.getConfig();
+			Config config = perstRoot.getConfig();
 
 			File indexDir = new File(config.getIndexDir());
 			if (!indexDir.exists() && !indexDir.isDirectory() && !indexDir.mkdirs()) {
@@ -65,7 +64,7 @@ public class IndexWriter {
 				return;
 			}
 
-			makeSubIndices(config);
+			makeSubIndices(perstRoot, config);
 			makeMainIndex(config);
 
 			time_taken = System.currentTimeMillis() - time_taken;
@@ -76,7 +75,7 @@ public class IndexWriter {
 
 			tProducedIndex = System.currentTimeMillis();
 		} finally {
-			xmlSpider.db.endThreadTransaction();
+			perstRoot.getStorage().endThreadTransaction();
 		}
 	}
 
@@ -209,11 +208,11 @@ public class IndexWriter {
 	 * 
 	 * @throws Exception
 	 */
-	private void makeSubIndices(Config config) throws Exception {
+	private void makeSubIndices(PerstRoot perstRoot, Config config) throws Exception {
 		Logger.normal(this, "Generating index...");
 
-		List<Term> termList = xmlSpider.getRoot().getTermList();
-		int termCount = xmlSpider.getRoot().getTermCount();
+		List<Term> termList = perstRoot.getTermList();
+		int termCount = perstRoot.getTermCount();
 
 		indices = new Vector<String>();
 		int prefix = (int) ((Math.log(termCount) - Math.log(config.getIndexMaxEntries())) / Math.log(16)) - 1;

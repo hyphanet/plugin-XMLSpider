@@ -301,7 +301,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				}
 
 				db.gc();
-				indexWriter.makeIndex();
+				indexWriter.makeIndex(getRoot());
 
 				synchronized (this) {
 					writingIndex = false;
@@ -546,7 +546,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		// Initial Database
 		db = initDB();
 
-		indexWriter = new IndexWriter(this);
+		indexWriter = new IndexWriter();
 		webInterface = new WebInterface(this);
 
 		FreenetURI[] initialURIs = core.getBookmarkURIs();
