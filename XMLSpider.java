@@ -643,7 +643,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			if (word.length() < 3)
 				return;
 			Term term = getTermByWord(word, true);
-			TermPosition termPos = page.getTermPosition(term);
+			TermPosition termPos = page.getTermPosition(term, true);
 			termPos.addPositions(position);
 		}
 	}
