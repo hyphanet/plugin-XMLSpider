@@ -107,14 +107,14 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 * @param uri the new uri that needs to be fetched for further indexing
 	 */
 	public void queueURI(FreenetURI uri, String comment, boolean force) {
+		String sURI = uri.toString();
+		for (String ext : root.getConfig().getBadlistedExtensions())
+			if (sURI.endsWith(ext))
+				return; // be smart
+
 		db.beginThreadTransaction(Storage.EXCLUSIVE_TRANSACTION);
 		boolean dbTransactionEnded = false;
 		try {
-			String sURI = uri.toString();
-			for (String ext : root.getConfig().getBadlistedExtensions())
-				if (sURI.endsWith(ext))
-					return; // be smart
-
 			if (uri.isUSK()) {
 				if (uri.getSuggestedEdition() < 0)
 					uri = uri.setSuggestedEdition((-1) * uri.getSuggestedEdition());
