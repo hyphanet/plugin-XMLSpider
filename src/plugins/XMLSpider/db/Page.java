@@ -75,8 +75,10 @@ public class Page extends Persistent implements Comparable<Page> {
 	}
 
 	public synchronized TermPosition getTermPosition(Term term, boolean create) {
-		if (termPosMap == null)
+		if (termPosMap == null) {
 			termPosMap = getStorage().createMap(String.class);
+			modify();
+		}
 
 		TermPosition tp = termPosMap.get(term.md5);
 		if (tp == null && create) {
@@ -86,6 +88,11 @@ public class Page extends Persistent implements Comparable<Page> {
 		}
 
 		return tp;
+	}
+	
+	public synchronized void clearTermPosition() {
+		termPosMap = null;
+		modify();
 	}
 	
 	@Override
