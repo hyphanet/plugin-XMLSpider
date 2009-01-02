@@ -9,6 +9,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
+import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import java.util.Vector;
@@ -331,7 +332,9 @@ public class IndexWriter {
 			/* Starting to generate index */
 			xmlDoc = impl.createDocument(null, "sub_index", null);
 			rootElement = xmlDoc.getDocumentElement();
-
+			if (logMINOR)
+				rootElement.appendChild(xmlDoc.createComment(new Date().toGMTString()));
+			
 			/* Adding header to the index */
 			Element headerElement = xmlDoc.createElement("header");
 			/* -> title */
@@ -392,6 +395,8 @@ public class IndexWriter {
 						}
 					}
 				}
+				if (logMINOR)
+					keywordsElement.appendChild(xmlDoc.createComment(term.getMD5()));
 				keywordsElement.appendChild(wordElement);
 			}
 			rootElement.appendChild(EntriesElement);
@@ -468,6 +473,9 @@ public class IndexWriter {
 
 			xmlDoc = impl.createDocument(null, "sub_index", null);
 			rootElement = xmlDoc.getDocumentElement();
+
+			if (logMINOR)
+				rootElement.appendChild(xmlDoc.createComment(new Date().toGMTString()));
 
 			/* Adding header to the index */
 			Element headerElement = xmlDoc.createElement("header");
