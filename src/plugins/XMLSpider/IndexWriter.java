@@ -47,6 +47,7 @@ public class IndexWriter {
 	private int match;
 	private long time_taken;
 	private boolean logMINOR = Logger.shouldLog(Logger.MINOR, this);
+	private boolean DEBUG = true;
 
 	IndexWriter() {
 	}
@@ -332,7 +333,7 @@ public class IndexWriter {
 			/* Starting to generate index */
 			xmlDoc = impl.createDocument(null, "sub_index", null);
 			rootElement = xmlDoc.getDocumentElement();
-			if (logMINOR)
+			if (DEBUG)
 				rootElement.appendChild(xmlDoc.createComment(new Date().toGMTString()));
 			
 			/* Adding header to the index */
@@ -395,7 +396,7 @@ public class IndexWriter {
 						}
 					}
 				}
-				if (logMINOR)
+				if (DEBUG)
 					keywordsElement.appendChild(xmlDoc.createComment(term.getMD5()));
 				keywordsElement.appendChild(wordElement);
 			}
@@ -474,7 +475,7 @@ public class IndexWriter {
 			xmlDoc = impl.createDocument(null, "sub_index", null);
 			rootElement = xmlDoc.getDocumentElement();
 
-			if (logMINOR)
+			if (DEBUG)
 				rootElement.appendChild(xmlDoc.createComment(new Date().toGMTString()));
 
 			/* Adding header to the index */
@@ -559,16 +560,50 @@ public class IndexWriter {
 		db.open(arg[0]);
 		PerstRoot root = (PerstRoot) db.getRoot();
 		IndexWriter writer = new IndexWriter();
+		
+		int benchmark = 0;
+		long[] timeTaken = null;
+		if (arg[1] != null) {
+			benchmark = Integer.parseInt(arg[1]);
+			timeTaken = new long[benchmark];
+		}
+		
 
-		do {
+		for (int i = 0; i < benchmark; i++) {
 			long startTime = System.currentTimeMillis();
 			writer.makeIndex(root);
 			long endTime = System.currentTimeMillis();
 			long memFree = Runtime.getRuntime().freeMemory();
 			long memTotal = Runtime.getRuntime().totalMemory();
 
-			System.out.println("Index generated in " + (endTime - startTime) + "ms. Used memory="
-			        + (memTotal - memFree));
-		} while ("BENCHMARK".equals(arg[1]));
+			System.out.println("Index generated in " + (endTime - startTime) //
+			        + "ms. Used memory=" + (memTotal - memFree));
+
+			if (benchmark > 0) {
+				timeTaken[i] = (endTime - startTime);
+
+				System.out.println("Cooling down.");
+				for (int j = 0; j < 3; j++) {
+					System.gc();
+					System.runFinalization();
+					Thread.sleep(3000);
+				}
+			}
+		}
+
+		if (benchmark > 0) {
+			long totalTime = 0;
+			long totalSqTime = 0;
+			for (long t : timeTaken) {
+				totalTime += t;
+				totalSqTime += t * t;
+			}
+
+			double meanTime = (totalTime / benchmark);
+			double meanSqTime = (totalSqTime / benchmark);
+
+			System.out.println("Mean time = " + (long) meanTime + "ms");
+			System.out.println("       sd = " + (long) Math.sqrt(meanSqTime - meanTime * meanTime) + "ms");
+		}
 	}
 }
