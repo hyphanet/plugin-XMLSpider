@@ -579,6 +579,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		PageCallBack(Page page) {
 			this.page = page; 
+			page.clearTermPosition();
 		}
 
 		public void foundURI(FreenetURI uri){
