@@ -72,7 +72,7 @@ import freenet.support.io.NullBucketFactory;
 public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless, FredPluginVersioned, FredPluginL10n, USKCallback {
 	public Config getConfig() {
 		// always return a clone, never allow changing directly
-		return root.getConfig().clone();
+		return getRoot().getConfig().clone();
 	}
 
 	// Set config asynchronously
@@ -108,7 +108,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 */
 	public void queueURI(FreenetURI uri, String comment, boolean force) {
 		String sURI = uri.toString();
-		for (String ext : root.getConfig().getBadlistedExtensions())
+		for (String ext : getRoot().getConfig().getBadlistedExtensions())
 			if (sURI.endsWith(ext))
 				return; // be smart
 
@@ -125,7 +125,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				}
 			}
 
-			Page page = root.getPageByURI(uri, true, comment);
+			Page page = getRoot().getPageByURI(uri, true, comment);
 			if (force && page.getStatus() != Status.QUEUED) {
 				page.setStatus(Status.QUEUED);
 				page.setComment(comment);
@@ -151,7 +151,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				return;
 			synchronized (runningFetch) {
 				int running = runningFetch.size();
-				int maxParallelRequests = root.getConfig().getMaxParallelRequests();
+				int maxParallelRequests = getRoot().getConfig().getMaxParallelRequests();
 
 				if (running >= maxParallelRequests)
 					return;
@@ -159,9 +159,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				// Prepare to start
 				toStart = new ArrayList<ClientGetter>(maxParallelRequests - running);
 				db.beginThreadTransaction(Storage.COOPERATIVE_TRANSACTION);
-				root.sharedLockPages(Status.QUEUED);
+				getRoot().sharedLockPages(Status.QUEUED);
 				try {
-					Iterator<Page> it = root.getPages(Status.QUEUED);
+					Iterator<Page> it = getRoot().getPages(Status.QUEUED);
 
 					while (running + toStart.size() < maxParallelRequests && it.hasNext()) {
 						Page page = it.next();
@@ -180,7 +180,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 						}
 					}
 				} finally {
-					root.unlockPages(Status.QUEUED);
+					getRoot().unlockPages(Status.QUEUED);
 					db.endThreadTransaction();
 				}
 			}
@@ -327,8 +327,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 
 		public void run() {
-			synchronized (root) {
-				root.getConfig().setValue(config);
+			synchronized (getRoot()) {
+				getRoot().getConfig().setValue(config);
 			}
 		}
 	}
@@ -671,15 +671,14 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}
 
 	public short getPollingPriorityNormal() {
-		return (short) Math.min(RequestStarter.MINIMUM_PRIORITY_CLASS, root.getConfig().getRequestPriority() + 1);
+		return (short) Math.min(RequestStarter.MINIMUM_PRIORITY_CLASS, getRoot().getConfig().getRequestPriority() + 1);
 	}
 
 	public short getPollingPriorityProgress() {
-		return root.getConfig().getRequestPriority();
+		return getRoot().getConfig().getRequestPriority();
 	}
 
 	protected Storage db;
-	protected PerstRoot root;
 
 	/**
 	 * Initializes Database
@@ -694,30 +693,30 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		db.open("XMLSpider-" + version + ".dbs");
 
-		root = (PerstRoot) db.getRoot();
+		PerstRoot root = (PerstRoot) db.getRoot();
 		if (root == null)
-			root = PerstRoot.createRoot(db);
+			PerstRoot.createRoot(db);
 
 		return db;
 	}
 
-	public PerstRoot getDbRoot() {
-		return root;
+	public PerstRoot getRoot() {
+		return (PerstRoot) db.getRoot();
 	}
 
 	protected Page getPageByURI(FreenetURI uri) {
-		return root.getPageByURI(uri, false, null);
+		return getRoot().getPageByURI(uri, false, null);
 	}
 
 	protected Page getPageById(long id) {
-		return root.getPageById(id);
+		return getRoot().getPageById(id);
 	}
 
 	// language for I10N
 	private LANGUAGE language;
 
 	protected Term getTermByWord(String word, boolean create) {
-		return root.getTermByWord(word, create);
+		return getRoot().getTermByWord(word, create);
 	}
 
 	public String getString(String key) {

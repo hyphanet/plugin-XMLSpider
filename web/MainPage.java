@@ -189,7 +189,7 @@ class MainPage implements WebPage {
 
 	//-- Utilities
 	private PageStatus getPageStatus(Status status) {
-		PerstRoot root = xmlSpider.getDbRoot();
+		PerstRoot root = xmlSpider.getRoot();
 		synchronized (root) {
 			int count = root.getPageCount(status);
 			Iterator<Page> it = root.getPages(status);
