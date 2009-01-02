@@ -112,19 +112,19 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			if (sURI.endsWith(ext))
 				return; // be smart
 
+		if (uri.isUSK()) {
+			if (uri.getSuggestedEdition() < 0)
+				uri = uri.setSuggestedEdition((-1) * uri.getSuggestedEdition());
+			try {
+				uri = ((USK.create(uri)).getSSK()).getURI();
+				(ctx.uskManager).subscribe(USK.create(uri), this, false, this);
+			} catch (Exception e) {
+			}
+		}
+
 		db.beginThreadTransaction(Storage.EXCLUSIVE_TRANSACTION);
 		boolean dbTransactionEnded = false;
 		try {
-			if (uri.isUSK()) {
-				if (uri.getSuggestedEdition() < 0)
-					uri = uri.setSuggestedEdition((-1) * uri.getSuggestedEdition());
-				try {
-					uri = ((USK.create(uri)).getSSK()).getURI();
-					(ctx.uskManager).subscribe(USK.create(uri), this, false, this);
-				} catch (Exception e) {
-				}
-			}
-
 			Page page = getRoot().getPageByURI(uri, true, comment);
 			if (force && page.getStatus() != Status.QUEUED) {
 				page.setStatus(Status.QUEUED);
