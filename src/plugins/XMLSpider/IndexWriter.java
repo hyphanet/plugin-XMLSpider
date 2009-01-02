@@ -54,7 +54,6 @@ public class IndexWriter {
 
 	public synchronized void makeIndex(PerstRoot perstRoot) throws Exception {
 		logMINOR = Logger.shouldLog(Logger.MINOR, this);
-		perstRoot.getStorage().beginThreadTransaction(Storage.COOPERATIVE_TRANSACTION);
 		try {
 			time_taken = System.currentTimeMillis();
 
@@ -77,7 +76,6 @@ public class IndexWriter {
 
 			tProducedIndex = System.currentTimeMillis();
 		} finally {
-			perstRoot.getStorage().endThreadTransaction();
 		}
 	}
 
@@ -360,7 +358,8 @@ public class IndexWriter {
 				Set<Page> pages = term.getPages();
 
 				for (Page page : pages) {
-					TermPosition termPos = page.getTermPosition(term);
+					TermPosition termPos = page.getTermPosition(term, false);
+					if (termPos == null) continue;
 					
 					synchronized (termPos) {
 						synchronized (page) {
@@ -556,6 +555,7 @@ public class IndexWriter {
 		db.setProperty("perst.alternative.btree", true);
 		db.setProperty("perst.string.encoding", "UTF-8");
 		db.setProperty("perst.concurrent.iterator", true);
+		db.setProperty("perst.file.readonly", true);
 
 		db.open(arg[0]);
 		PerstRoot root = (PerstRoot) db.getRoot();

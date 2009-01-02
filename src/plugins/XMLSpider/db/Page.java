@@ -74,12 +74,12 @@ public class Page extends Persistent implements Comparable<Page> {
 		return pageTitle;
 	}
 
-	public synchronized TermPosition getTermPosition(Term term) {
+	public synchronized TermPosition getTermPosition(Term term, boolean create) {
 		if (termPosMap == null)
 			termPosMap = getStorage().createMap(String.class);
 
 		TermPosition tp = termPosMap.get(term.md5);
-		if (tp == null) {
+		if (tp == null && create) {
 			tp = new TermPosition(getStorage());
 			term.pageSet.add(this);
 		}
