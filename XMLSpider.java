@@ -133,9 +133,14 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 			db.endThreadTransaction();
 			dbTransactionEnded = true;
+		} catch (RuntimeException e) {
+			Logger.error(this, "Runtime Exception: " + e, e);		
+			throw e;
 		} finally {
-			if (!dbTransactionEnded)
+			if (!dbTransactionEnded) {
+				Logger.minor(this, "rollback transaction", new Exception("debug"));
 				db.rollbackThreadTransaction();
+			}
 		}
 	}
 
@@ -426,8 +431,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				if (!stopped)
 					startSomeRequests();
 			} finally {
-				if (!dbTransactionEnded)
+				if (!dbTransactionEnded) {
+					Logger.minor(this, "rollback transaction", new Exception("debug"));
 					db.rollbackThreadTransaction();
+				}
 			}
 		}
 	}
@@ -463,8 +470,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			throw new RuntimeException("Unexcepected exception in onFailure()", e);
 		} finally {
 			runningFetch.remove(page);
-			if (!dbTransactionEnded)
+			if (!dbTransactionEnded) {
+				Logger.minor(this, "rollback transaction", new Exception("debug"));
 				db.rollbackThreadTransaction();
+			}
 		}
 
 		startSomeRequests();
