@@ -32,6 +32,7 @@ import plugins.XMLSpider.db.Term;
 import plugins.XMLSpider.db.TermPosition;
 import plugins.XMLSpider.org.garret.perst.Storage;
 import freenet.support.Logger;
+import freenet.support.io.Closer;
 
 /**
  * Write index to disk file
@@ -437,9 +438,8 @@ public class IndexWriter {
 		BufferedOutputStream fos;
 		try {
 			fos = new BufferedOutputStream(new FileOutputStream(outputFile));
-		} catch (FileNotFoundException e1) {
-			Logger.error(this, "Cannot open " + filename + " writing index : " + e1, e1);
-			return;
+		} catch (FileNotFoundException e) {
+			throw new RuntimeException(e);
 		}
 		try {
 			StreamResult resultStream;
@@ -459,7 +459,7 @@ public class IndexWriter {
 			} catch (javax.xml.parsers.ParserConfigurationException e) {
 				/* Will (should ?) never happen */
 				Logger.error(this, "Spider: Error while initializing XML generator: " + e.toString(), e);
-				return;
+				throw new RuntimeException(e);
 			}
 
 			impl = xmlBuilder.getDOMImplementation();
@@ -519,7 +519,7 @@ public class IndexWriter {
 			} catch (javax.xml.transform.TransformerConfigurationException e) {
 				Logger.error(this, "Spider: Error while serializing XML (transformFactory.newTransformer()): "
 				        + e.toString(), e);
-				return;
+				throw new RuntimeException(e);
 			}
 
 			serializer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
@@ -530,14 +530,10 @@ public class IndexWriter {
 				serializer.transform(domSource, resultStream);
 			} catch (javax.xml.transform.TransformerException e) {
 				Logger.error(this, "Spider: Error while serializing XML (transform()): " + e.toString(), e);
-				return;
+				throw new RuntimeException(e);
 			}
 		} finally {
-			try {
-				fos.close();
-			} catch (IOException e) {
-				// Ignore
-			}
+			Closer.close(fos);
 		}
 
 		if (logMINOR)
