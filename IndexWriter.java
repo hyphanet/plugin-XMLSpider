@@ -30,6 +30,7 @@ import plugins.XMLSpider.db.Config;
 import plugins.XMLSpider.db.Page;
 import plugins.XMLSpider.db.Term;
 import plugins.XMLSpider.db.TermPosition;
+import plugins.XMLSpider.org.garret.perst.Storage;
 import freenet.support.Logger;
 
 /**
@@ -50,6 +51,7 @@ public class IndexWriter {
 
 	public synchronized void makeIndex() throws Exception {
 		logMINOR = Logger.shouldLog(Logger.MINOR, this);
+		xmlSpider.db.beginThreadTransaction(Storage.COOPERATIVE_TRANSACTION);
 		try {
 			time_taken = System.currentTimeMillis();
 
@@ -72,6 +74,7 @@ public class IndexWriter {
 
 			tProducedIndex = System.currentTimeMillis();
 		} finally {
+			xmlSpider.db.endThreadTransaction();
 		}
 	}
 
