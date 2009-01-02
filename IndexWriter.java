@@ -33,6 +33,7 @@ import plugins.XMLSpider.db.PerstRoot;
 import plugins.XMLSpider.db.Term;
 import plugins.XMLSpider.db.TermPosition;
 import plugins.XMLSpider.org.garret.perst.Storage;
+import plugins.XMLSpider.org.garret.perst.StorageFactory;
 import freenet.support.Logger;
 import freenet.support.io.Closer;
 
@@ -545,5 +546,29 @@ public class IndexWriter {
 
 		if (logMINOR)
 			Logger.minor(this, "Spider: indexes regenerated.");
+	}
+	
+	public static void main(String[] arg) throws Exception {
+		Storage db = StorageFactory.getInstance().createStorage();
+		db.setProperty("perst.object.cache.kind", "pinned");
+		db.setProperty("perst.object.cache.init.size", 8192);
+		db.setProperty("perst.alternative.btree", true);
+		db.setProperty("perst.string.encoding", "UTF-8");
+		db.setProperty("perst.concurrent.iterator", true);
+
+		db.open(arg[0]);
+		PerstRoot root = (PerstRoot) db.getRoot();
+		IndexWriter writer = new IndexWriter();
+
+		do {
+			long startTime = System.currentTimeMillis();
+			writer.makeIndex(root);
+			long endTime = System.currentTimeMillis();
+			long memFree = Runtime.getRuntime().freeMemory();
+			long memTotal = Runtime.getRuntime().totalMemory();
+
+			System.out.println("Index generated in " + (endTime - startTime) + "ms. Used memory="
+			        + (memTotal - memFree));
+		} while ("BENCHMARK".equals(arg[1]));
 	}
 }
