@@ -251,7 +251,8 @@ public class IndexWriter {
 		 * subindex is less than the allowed value
 		 */
 		if (logMINOR)
-			Logger.minor(this, "Generating subindex for " + list.size() + " entries with prefix length " + p);
+			Logger.minor(this, "Generating subindex for " + list.size() + " entries with prefix ("
+			        + list.get(0).getMD5().substring(0, p) + ")");
 
 		try {
 			if (list.size() == 0)
@@ -264,7 +265,8 @@ public class IndexWriter {
 			// Handle below
 		}
 		if (logMINOR)
-			Logger.minor(this, "Too big subindex for " + list.size() + " entries with prefix length " + p);
+			Logger.minor(this, "Too big subindex for " + list.size() + " entries with prefix ("
+			        + list.get(0).getMD5().substring(0, p) + ")");
 		//prefix needs to be incremented
 		if (match <= p)
 			match = p + 1;
