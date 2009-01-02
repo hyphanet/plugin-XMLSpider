@@ -207,8 +207,8 @@ public class IndexWriter {
 	private void makeSubIndices(Config config) throws Exception {
 		Logger.normal(this, "Generating index...");
 
-		List<Term> termList = xmlSpider.getDbRoot().getTermList();
-		int termCount = xmlSpider.getDbRoot().getTermCount();
+		List<Term> termList = xmlSpider.getRoot().getTermList();
+		int termCount = xmlSpider.getRoot().getTermCount();
 
 		indices = new Vector<String>();
 		int prefix = (int) ((Math.log(termCount) - Math.log(config.getIndexMaxEntries())) / Math.log(16)) - 1;
