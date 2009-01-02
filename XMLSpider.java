@@ -549,19 +549,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		indexWriter = new IndexWriter(this);
 		webInterface = new WebInterface(this);
 
-		pr.getNode().executor.execute(new Runnable() {
-			public void run() {
-				// Add Bookmarks
-				FreenetURI[] initialURIs = core.getBookmarkURIs();
-				for (int i = 0; i < initialURIs.length; i++)
-					queueURI(initialURIs[i], "bookmark", false);
+		FreenetURI[] initialURIs = core.getBookmarkURIs();
+		for (int i = 0; i < initialURIs.length; i++)
+			queueURI(initialURIs[i], "bookmark", false);
 
-				try{
-					Thread.sleep(30 * 1000); // Let the node start up
-				} catch (InterruptedException e){}
-				startSomeRequests();
-			}
-		}, "Spider Plugin Starter");
+		startSomeRequests();
 	}
 
 	private WebInterface webInterface;
