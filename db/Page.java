@@ -81,6 +81,7 @@ public class Page extends Persistent implements Comparable<Page> {
 		TermPosition tp = termPosMap.get(term.md5);
 		if (tp == null && create) {
 			tp = new TermPosition(getStorage());
+			termPosMap.add(term.md5, tp);
 			term.pageSet.add(this);
 		}
 
