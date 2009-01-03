@@ -256,7 +256,6 @@ public class IndexWriter {
 		File outputFile = new File(config.getIndexDir() + "index_" + prefix + ".xml");
 		BufferedOutputStream fos = null;
 
-		IterableIterator<Term> termIterator = perstRoot.getTermIterator(prefix, prefix + "g");
 
 		int count = 0;
 		int estimateSize = 0;
@@ -290,15 +289,18 @@ public class IndexWriter {
 			subHeaderElement.appendChild(subHeaderText);
 			headerElement.appendChild(subHeaderElement);
 
+			/* List of files referenced in this subindex */
 			Element filesElement = xmlDoc.createElement("files"); /* filesElement != fileElement */
+			Set<Long> fileid = new HashSet<Long>();
 			
 			/* Adding word index */
 			Element keywordsElement = xmlDoc.createElement("keywords");
-			Set<Long> fileid = new HashSet<Long>();
+			IterableIterator<Term> termIterator = perstRoot.getTermIterator(prefix, prefix + "g");
 			for (Term term : termIterator) {
 				Element wordElement = xmlDoc.createElement("word");
 				wordElement.setAttribute("v", term.getWord());
-
+				if (DEBUG)
+					wordElement.setAttribute("debug:md5", term.getMD5());
 				count++;
 				estimateSize += 12;
 				estimateSize += term.getWord().length();
@@ -359,8 +361,6 @@ public class IndexWriter {
 						}
 					}
 				}
-				if (DEBUG)
-					keywordsElement.appendChild(xmlDoc.createComment(term.getMD5()));
 				keywordsElement.appendChild(wordElement);
 			}
 			
