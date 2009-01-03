@@ -9,6 +9,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.Vector;
@@ -248,7 +249,9 @@ public class IndexWriter {
 	 * @throws IOException
 	 */
 	private boolean generateXML(PerstRoot perstRoot, String prefix) throws IOException {
-		Config config = perstRoot.getConfig();
+		final Config config = perstRoot.getConfig();
+		final long MAX_SIZE = config.getIndexSubindexMaxSize();
+		final int MAX_ENTRIES = config.getIndexMaxEntries();
 		
 		File outputFile = new File(config.getIndexDir() + "index_" + prefix + ".xml");
 		BufferedOutputStream fos = null;
@@ -291,7 +294,7 @@ public class IndexWriter {
 			
 			/* Adding word index */
 			Element keywordsElement = xmlDoc.createElement("keywords");
-			Vector<Long> fileid = new Vector<Long>();
+			Set<Long> fileid = new HashSet<Long>();
 			for (Term term : termIterator) {
 				Element wordElement = xmlDoc.createElement("word");
 				wordElement.setAttribute("v", term.getWord());
@@ -299,13 +302,14 @@ public class IndexWriter {
 				count++;
 				estimateSize += 12;
 				estimateSize += term.getWord().length();
+
+				Set<Page> pages = term.getPages();
 				
-				if ((count > 1 && estimateSize > config.getIndexSubindexMaxSize())
-				        || (count > config.getIndexMaxEntries())) {
+				if ((count > 1 && (estimateSize + pages.size() * 13) > MAX_SIZE) || //
+						(count > MAX_ENTRIES)) {
 					return false;
 				}
 
-				Set<Page> pages = term.getPages();
 				for (Page page : pages) {
 					TermPosition termPos = page.getTermPosition(term, false);
 					if (termPos == null) continue;
@@ -318,12 +322,7 @@ public class IndexWriter {
 							 * the files mentioned in the entire subindex
 							 */
 							Element uriElement = xmlDoc.createElement("file");
-							Element fileElement = xmlDoc.createElement("file");
 							uriElement.setAttribute("id", Long.toString(page.getId()));
-							fileElement.setAttribute("id", Long.toString(page.getId()));
-							fileElement.setAttribute("key", page.getURI());
-							fileElement.setAttribute("title", page.getPageTitle() != null ? page.getPageTitle() : page
-							        .getURI());
 
 							/* Position by position */
 							int[] positions = termPos.positions;
@@ -343,6 +342,13 @@ public class IndexWriter {
 						
 							if (!fileid.contains(page.getId())) {
 								fileid.add(page.getId());
+
+								Element fileElement = xmlDoc.createElement("file");
+								fileElement.setAttribute("id", Long.toString(page.getId()));
+								fileElement.setAttribute("key", page.getURI());
+								fileElement.setAttribute("title", page.getPageTitle() != null ? page.getPageTitle()
+								        : page.getURI());
+								
 								filesElement.appendChild(fileElement);
 								
 								estimateSize += 15;
@@ -392,7 +398,7 @@ public class IndexWriter {
 			Closer.close(fos);
 		}
 		
-		if (outputFile.length() > config.getIndexSubindexMaxSize() && count > 1) {
+		if (outputFile.length() > MAX_SIZE && count > 1) {
 			outputFile.delete();
 			return false;
 		}
