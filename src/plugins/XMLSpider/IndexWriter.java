@@ -251,12 +251,12 @@ public class IndexWriter {
 		Config config = perstRoot.getConfig();
 		
 		File outputFile = new File(config.getIndexDir() + "index_" + prefix + ".xml");
-		BufferedOutputStream fos = new BufferedOutputStream(new FileOutputStream(outputFile));
-		StreamResult resultStream = new StreamResult(fos);
+		BufferedOutputStream fos = null;
 
 		IterableIterator<Term> termIterator = perstRoot.getTermIterator(prefix, prefix + "g");
 
 		int count = 0;
+		int estimateSize = 0;
 		try {
 			/* Initialize xml builder */
 			Document xmlDoc = null;
@@ -293,13 +293,19 @@ public class IndexWriter {
 			Element keywordsElement = xmlDoc.createElement("keywords");
 			Vector<Long> fileid = new Vector<Long>();
 			for (Term term : termIterator) {
-				count++;
-				
 				Element wordElement = xmlDoc.createElement("word");
 				wordElement.setAttribute("v", term.getWord());
 
-				Set<Page> pages = term.getPages();
+				count++;
+				estimateSize += 12;
+				estimateSize += term.getWord().length();
+				
+				if ((count > 1 && estimateSize > config.getIndexSubindexMaxSize())
+				        || (count > config.getIndexMaxEntries())) {
+					return false;
+				}
 
+				Set<Page> pages = term.getPages();
 				for (Page page : pages) {
 					TermPosition termPos = page.getTermPosition(term, false);
 					if (termPos == null) continue;
@@ -331,9 +337,18 @@ public class IndexWriter {
 							}
 							uriElement.appendChild(xmlDoc.createTextNode(positionList.toString()));
 							wordElement.appendChild(uriElement);
+							
+							estimateSize += 13;
+							estimateSize += positionList.length();
+						
 							if (!fileid.contains(page.getId())) {
 								fileid.add(page.getId());
 								filesElement.appendChild(fileElement);
+								
+								estimateSize += 15;
+								estimateSize += filesElement.getAttribute("id").length();
+								estimateSize += filesElement.getAttribute("key").length();
+								estimateSize += filesElement.getAttribute("title").length();
 							}
 						}
 					}
@@ -355,7 +370,7 @@ public class IndexWriter {
 			DOMSource domSource = new DOMSource(xmlDoc);
 			TransformerFactory transformFactory = TransformerFactory.newInstance();
 			Transformer serializer;
-
+			
 			try {
 				serializer = transformFactory.newTransformer();
 			} catch (javax.xml.transform.TransformerConfigurationException e) {
@@ -363,6 +378,10 @@ public class IndexWriter {
 			}
 			serializer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
 			serializer.setOutputProperty(OutputKeys.INDENT, "yes");
+
+			fos = new BufferedOutputStream(new FileOutputStream(outputFile));
+			StreamResult resultStream = new StreamResult(fos);
+			
 			/* final step */
 			try {
 				serializer.transform(domSource, resultStream);
