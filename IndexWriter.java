@@ -215,8 +215,6 @@ public class IndexWriter {
 	private void makeSubIndices(PerstRoot perstRoot) throws Exception {
 		Logger.normal(this, "Generating index...");
 
-		List<Term> termList = perstRoot.getTermList();
-		int termCount = perstRoot.getTermCount();
 
 		indices = new Vector<String>();
 		match = 1;
