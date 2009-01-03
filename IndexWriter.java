@@ -5,7 +5,6 @@ package plugins.XMLSpider;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
@@ -35,7 +34,6 @@ import plugins.XMLSpider.db.TermPosition;
 import plugins.XMLSpider.org.garret.perst.Storage;
 import plugins.XMLSpider.org.garret.perst.StorageFactory;
 import freenet.support.Logger;
-import freenet.support.io.Closer;
 
 /**
  * Write index to disk file
@@ -303,7 +301,7 @@ public class IndexWriter {
 	 *            number of matching bits of md5
 	 * @throws Exception
 	 */
-	protected void generateXML(Config config, List<Term> list, int prefix) throws TooBigIndexException, Exception {
+	private void generateXML(Config config, List<Term> list, int prefix) throws TooBigIndexException, Exception {
 		String p = list.get(0).getMD5().substring(0, prefix);
 		indices.add(p);
 		File outputFile = new File(config.getIndexDir() + "index_" + p + ".xml");
@@ -437,117 +435,6 @@ public class IndexWriter {
 			Logger.minor(this, "Spider: indexes regenerated.");
 	}
 
-	protected void generateSubIndex(Config config, String filename) {
-		//		generates the new subIndex
-		File outputFile = new File(filename);
-		BufferedOutputStream fos;
-		try {
-			fos = new BufferedOutputStream(new FileOutputStream(outputFile));
-		} catch (FileNotFoundException e) {
-			throw new RuntimeException(e);
-		}
-		try {
-			StreamResult resultStream;
-			resultStream = new StreamResult(fos);
-
-			/* Initialize xml builder */
-			Document xmlDoc = null;
-			DocumentBuilderFactory xmlFactory = null;
-			DocumentBuilder xmlBuilder = null;
-			DOMImplementation impl = null;
-			Element rootElement = null;
-
-			xmlFactory = DocumentBuilderFactory.newInstance();
-
-			try {
-				xmlBuilder = xmlFactory.newDocumentBuilder();
-			} catch (javax.xml.parsers.ParserConfigurationException e) {
-				/* Will (should ?) never happen */
-				Logger.error(this, "Spider: Error while initializing XML generator: " + e.toString(), e);
-				throw new RuntimeException(e);
-			}
-
-			impl = xmlBuilder.getDOMImplementation();
-
-			/* Starting to generate index */
-
-			xmlDoc = impl.createDocument(null, "sub_index", null);
-			rootElement = xmlDoc.getDocumentElement();
-
-			if (DEBUG)
-				rootElement.appendChild(xmlDoc.createComment(new Date().toGMTString()));
-
-			/* Adding header to the index */
-			Element headerElement = xmlDoc.createElement("header");
-
-			/* -> title */
-			Element subHeaderElement = xmlDoc.createElement("title");
-			Text subHeaderText = xmlDoc.createTextNode(config.getIndexTitle());
-
-			subHeaderElement.appendChild(subHeaderText);
-			headerElement.appendChild(subHeaderElement);
-
-			/* -> owner */
-			subHeaderElement = xmlDoc.createElement("owner");
-			subHeaderText = xmlDoc.createTextNode(config.getIndexOwner());
-
-			subHeaderElement.appendChild(subHeaderText);
-			headerElement.appendChild(subHeaderElement);
-
-			/* -> owner email */
-			if (config.getIndexOwnerEmail() != null) {
-				subHeaderElement = xmlDoc.createElement("email");
-				subHeaderText = xmlDoc.createTextNode(config.getIndexOwnerEmail());
-
-				subHeaderElement.appendChild(subHeaderText);
-				headerElement.appendChild(subHeaderElement);
-			}
-
-			Element filesElement = xmlDoc.createElement("files"); /* filesElement != fileElement */
-
-			Element EntriesElement = xmlDoc.createElement("entries");
-			EntriesElement.setNodeValue("0");
-			EntriesElement.setAttribute("value", "0");
-			//all index files are ready
-			/* Adding word index */
-			Element keywordsElement = xmlDoc.createElement("keywords");
-
-			rootElement.appendChild(EntriesElement);
-			rootElement.appendChild(headerElement);
-			rootElement.appendChild(filesElement);
-			rootElement.appendChild(keywordsElement);
-
-			/* Serialization */
-			DOMSource domSource = new DOMSource(xmlDoc);
-			TransformerFactory transformFactory = TransformerFactory.newInstance();
-			Transformer serializer;
-
-			try {
-				serializer = transformFactory.newTransformer();
-			} catch (javax.xml.transform.TransformerConfigurationException e) {
-				Logger.error(this, "Spider: Error while serializing XML (transformFactory.newTransformer()): "
-				        + e.toString(), e);
-				throw new RuntimeException(e);
-			}
-
-			serializer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
-			serializer.setOutputProperty(OutputKeys.INDENT, "yes");
-
-			/* final step */
-			try {
-				serializer.transform(domSource, resultStream);
-			} catch (javax.xml.transform.TransformerException e) {
-				Logger.error(this, "Spider: Error while serializing XML (transform()): " + e.toString(), e);
-				throw new RuntimeException(e);
-			}
-		} finally {
-			Closer.close(fos);
-		}
-
-		if (logMINOR)
-			Logger.minor(this, "Spider: indexes regenerated.");
-	}
-	
 	public static void main(String[] arg) throws Exception {
 		Storage db = StorageFactory.getInstance().createStorage();
 		db.setProperty("perst.object.cache.kind", "pinned");
