@@ -296,7 +296,7 @@ public class IndexWriter {
 				Element wordElement = xmlDoc.createElement("word");
 				wordElement.setAttribute("v", term.getWord());
 				if (DEBUG)
-					wordElement.setAttribute("debug:md5", term.getMD5());
+					wordElement.setAttribute("debugMd5", term.getMD5());
 				count++;
 				estimateSize += 12;
 				estimateSize += term.getWord().length();
