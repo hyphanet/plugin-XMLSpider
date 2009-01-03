@@ -31,14 +31,19 @@ import plugins.XMLSpider.db.Page;
 import plugins.XMLSpider.db.PerstRoot;
 import plugins.XMLSpider.db.Term;
 import plugins.XMLSpider.db.TermPosition;
+import plugins.XMLSpider.org.garret.perst.IterableIterator;
 import plugins.XMLSpider.org.garret.perst.Storage;
 import plugins.XMLSpider.org.garret.perst.StorageFactory;
 import freenet.support.Logger;
+import freenet.support.io.Closer;
 
 /**
  * Write index to disk file
  */
 public class IndexWriter {
+	private static final String[] HEX = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e",
+	        "f" }; 
+	
 	//- Writing Index
 	public long tProducedIndex;
 	private Vector<String> indices;
@@ -63,7 +68,7 @@ public class IndexWriter {
 				return;
 			}
 
-			makeSubIndices(perstRoot, config);
+			makeSubIndices(perstRoot);
 			makeMainIndex(config);
 
 			time_taken = System.currentTimeMillis() - time_taken;
@@ -206,109 +211,52 @@ public class IndexWriter {
 	 * 
 	 * @throws Exception
 	 */
-	private void makeSubIndices(PerstRoot perstRoot, Config config) throws Exception {
+	private void makeSubIndices(PerstRoot perstRoot) throws Exception {
 		Logger.normal(this, "Generating index...");
 
 		List<Term> termList = perstRoot.getTermList();
 		int termCount = perstRoot.getTermCount();
 
 		indices = new Vector<String>();
-		int prefix = (int) ((Math.log(termCount) - Math.log(config.getIndexMaxEntries())) / Math.log(16)) - 1;
-		if (prefix <= 0)
-			prefix = 1;
 		match = 1;
-		Vector<Term> list = new Vector<Term>();
 
-		Term term0 = termList.get(0);
-		String currentPrefix = term0.getMD5().substring(0, prefix);
-
-		int i = 0;
-		for (Term term : termList) {
-			String key = term.getMD5();
-			//create a list of the words to be added in the same subindex
-			if (key.startsWith(currentPrefix)) {
-				i++;
-				list.add(term);
-			} else {
-				//generate the appropriate subindex with the current list
-				generateSubIndex(config, prefix, list);
-
-				// next list
-				currentPrefix = key.substring(0, prefix);
-				list = new Vector<Term>();
-				list.add(term);
-			}
-		}
-
-		generateSubIndex(config, prefix, list);
+		for (String hex : HEX)
+			generateSubIndex(perstRoot, hex);
 	}
 
-	private void generateSubIndex(Config config, int p, List<Term> list) throws Exception {
-		/*
-		 * if the list is less than max allowed entries in a file then directly generate the xml
-		 * otherwise split the list into further sublists and iterate till the number of entries per
-		 * subindex is less than the allowed value
-		 */
+	private void generateSubIndex(PerstRoot perstRoot, String prefix) throws Exception {
 		if (logMINOR)
-			Logger.minor(this, "Generating subindex for " + list.size() + " entries with prefix ("
-			        + list.get(0).getMD5().substring(0, p) + ")");
+			Logger.minor(this, "Generating subindex for (" + prefix + ")");
 
-		try {
-			if (list.size() == 0)
-				return;
-			if (list.size() < config.getIndexMaxEntries()) {
-				generateXML(config, list, p);
-				return;
-			}
-		} catch (TooBigIndexException e) {
-			// Handle below
-		}
+		if (generateXML(perstRoot, prefix))
+			return;
+		
 		if (logMINOR)
-			Logger.minor(this, "Too big subindex for " + list.size() + " entries with prefix ("
-			        + list.get(0).getMD5().substring(0, p) + ")");
-		//prefix needs to be incremented
-		if (match <= p)
-			match = p + 1;
-		int prefix = p + 1;
-		int i = 0;
-		String str = list.get(i).getMD5();
-		int index = 0;
-		while (i < list.size()) {
-			Term term = list.get(i);
-			String key = term.getMD5();
-			if ((key.substring(0, prefix)).equals(str.substring(0, prefix))) {
-				i++;
-			} else {
-				generateSubIndex(config, prefix, list.subList(index, i));
-				index = i;
-				str = key;
-			}
-		}
-		generateSubIndex(config, prefix, list.subList(index, i));
-	}
+			Logger.minor(this, "Too big subindex for (" + prefix + ")");
 
-	private static class TooBigIndexException extends Exception {
-		private static final long serialVersionUID = -6172560811504794914L;
+		for (String hex : HEX)
+			generateSubIndex(perstRoot, prefix + hex);
 	}
 
 	/**
 	 * generates the xml index with the given list of words with prefix number of matching bits in
 	 * md5
 	 * 
-	 * @param list
-	 *            list of the words to be added in the index
 	 * @param prefix
-	 *            number of matching bits of md5
-	 * @throws Exception
+	 *            prefix string
+	 * @return successful
+	 * @throws IOException
 	 */
-	private void generateXML(Config config, List<Term> list, int prefix) throws TooBigIndexException, Exception {
-		String p = list.get(0).getMD5().substring(0, prefix);
-		indices.add(p);
-		File outputFile = new File(config.getIndexDir() + "index_" + p + ".xml");
+	private boolean generateXML(PerstRoot perstRoot, String prefix) throws IOException {
+		Config config = perstRoot.getConfig();
+		
+		File outputFile = new File(config.getIndexDir() + "index_" + prefix + ".xml");
 		BufferedOutputStream fos = new BufferedOutputStream(new FileOutputStream(outputFile));
-		StreamResult resultStream;
-		resultStream = new StreamResult(fos);
+		StreamResult resultStream = new StreamResult(fos);
 
+		IterableIterator<Term> termIterator = perstRoot.getTermIterator(prefix, prefix + "g");
+
+		int count = 0;
 		try {
 			/* Initialize xml builder */
 			Document xmlDoc = null;
@@ -321,8 +269,7 @@ public class IndexWriter {
 			try {
 				xmlBuilder = xmlFactory.newDocumentBuilder();
 			} catch (javax.xml.parsers.ParserConfigurationException e) {
-				Logger.error(this, "Spider: Error while initializing XML generator: " + e.toString(), e);
-				return;
+				throw new RuntimeException("Spider: Error while initializing XML generator", e);
 			}
 
 			impl = xmlBuilder.getDOMImplementation();
@@ -341,16 +288,14 @@ public class IndexWriter {
 			headerElement.appendChild(subHeaderElement);
 
 			Element filesElement = xmlDoc.createElement("files"); /* filesElement != fileElement */
-			Element EntriesElement = xmlDoc.createElement("entries");
-			EntriesElement.setNodeValue(list.size() + "");
-			EntriesElement.setAttribute("value", list.size() + "");
-
+			
 			/* Adding word index */
 			Element keywordsElement = xmlDoc.createElement("keywords");
 			Vector<Long> fileid = new Vector<Long>();
-			for (int i = 0; i < list.size(); i++) {
+			for (Term term : termIterator) {
+				count++;
+				
 				Element wordElement = xmlDoc.createElement("word");
-				Term term = list.get(i);
 				wordElement.setAttribute("v", term.getWord());
 
 				Set<Page> pages = term.getPages();
@@ -397,7 +342,11 @@ public class IndexWriter {
 					keywordsElement.appendChild(xmlDoc.createComment(term.getMD5()));
 				keywordsElement.appendChild(wordElement);
 			}
-			rootElement.appendChild(EntriesElement);
+			
+			Element entriesElement = xmlDoc.createElement("entries");
+			entriesElement.setAttribute("value", count + "");
+
+			rootElement.appendChild(entriesElement);
 			rootElement.appendChild(headerElement);
 			rootElement.appendChild(filesElement);
 			rootElement.appendChild(keywordsElement);
@@ -410,9 +359,7 @@ public class IndexWriter {
 			try {
 				serializer = transformFactory.newTransformer();
 			} catch (javax.xml.transform.TransformerConfigurationException e) {
-				Logger.error(this, "Spider: Error while serializing XML (transformFactory.newTransformer()): "
-				        + e.toString(), e);
-				return;
+				throw new RuntimeException("Spider: Error while serializing XML (transformFactory.newTransformer())", e);
 			}
 			serializer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
 			serializer.setOutputProperty(OutputKeys.INDENT, "yes");
@@ -420,19 +367,21 @@ public class IndexWriter {
 			try {
 				serializer.transform(domSource, resultStream);
 			} catch (javax.xml.transform.TransformerException e) {
-				Logger.error(this, "Spider: Error while serializing XML (transform()): " + e.toString(), e);
-				return;
+				throw new RuntimeException("Spider: Error while serializing XML (transform())", e);
 			}
 		} finally {
-			fos.close();
+			Closer.close(fos);
 		}
-		if (outputFile.length() > config.getIndexSubindexMaxSize() && list.size() > 1) {
+		
+		if (outputFile.length() > config.getIndexSubindexMaxSize() && count > 1) {
 			outputFile.delete();
-			throw new TooBigIndexException();
+			return false;
 		}
 
 		if (logMINOR)
 			Logger.minor(this, "Spider: indexes regenerated.");
+		indices.add(prefix);
+		return true;
 	}
 
 	public static void main(String[] arg) throws Exception {

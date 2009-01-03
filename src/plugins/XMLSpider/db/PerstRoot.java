@@ -4,6 +4,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import plugins.XMLSpider.org.garret.perst.FieldIndex;
+import plugins.XMLSpider.org.garret.perst.IterableIterator;
 import plugins.XMLSpider.org.garret.perst.Key;
 import plugins.XMLSpider.org.garret.perst.Persistent;
 import plugins.XMLSpider.org.garret.perst.Storage;
@@ -63,10 +64,10 @@ public class PerstRoot extends Persistent {
 		}
 	}
 
-	public Iterator<Term> getTermIterator() {
+	public IterableIterator<Term> getTermIterator(String from, String till) {
 		md5Term.sharedLock();
 		try {
-			return md5Term.iterator();
+			return md5Term.iterator(from, till, 0);
 		} finally {
 			md5Term.unlock();
 		}
