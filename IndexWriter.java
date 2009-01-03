@@ -260,13 +260,8 @@ public class IndexWriter {
 		int count = 0;
 		int estimateSize = 0;
 		try {
-			/* Initialize xml builder */
-			Document xmlDoc = null;
-			DocumentBuilderFactory xmlFactory = null;
-			DocumentBuilder xmlBuilder = null;
-			DOMImplementation impl = null;
-			Element rootElement = null;
-			xmlFactory = DocumentBuilderFactory.newInstance();
+			DocumentBuilderFactory xmlFactory = DocumentBuilderFactory.newInstance();
+			DocumentBuilder xmlBuilder;
 
 			try {
 				xmlBuilder = xmlFactory.newDocumentBuilder();
@@ -274,10 +269,11 @@ public class IndexWriter {
 				throw new RuntimeException("Spider: Error while initializing XML generator", e);
 			}
 
-			impl = xmlBuilder.getDOMImplementation();
+			DOMImplementation impl = xmlBuilder.getDOMImplementation();
 			/* Starting to generate index */
-			xmlDoc = impl.createDocument(null, "sub_index", null);
-			rootElement = xmlDoc.getDocumentElement();
+			Document xmlDoc = impl.createDocument(null, "sub_index", null);
+			
+			Element rootElement = xmlDoc.getDocumentElement();
 			if (DEBUG)
 				rootElement.appendChild(xmlDoc.createComment(new Date().toGMTString()));
 			
