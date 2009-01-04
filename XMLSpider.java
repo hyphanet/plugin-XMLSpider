@@ -332,6 +332,15 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 	}
 
+	protected class StartSomeRequestsCallback implements Runnable {
+		StartSomeRequestsCallback() {
+		}
+
+		public void run() {
+			startSomeRequests();
+		}
+	}
+
 	protected static class CallbackPrioritizer implements Comparator<Runnable> {
 		public int compare(Runnable o1, Runnable o2) {
 			if (o1.getClass() == o2.getClass())
@@ -349,6 +358,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				return 2;
 			else if (r instanceof SetConfigCallback)
 				return 3;
+			else if (r instanceof StartSomeRequestsCallback)
+				return 4;
 
 			return -1;
 		}
@@ -552,7 +563,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		for (int i = 0; i < initialURIs.length; i++)
 			queueURI(initialURIs[i], "bookmark", false);
 
-		startSomeRequests();
+		callbackExecutor.execute(new StartSomeRequestsCallback());
 	}
 
 	private WebInterface webInterface;
