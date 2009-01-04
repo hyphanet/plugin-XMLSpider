@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.Vector;
 
@@ -226,13 +225,15 @@ public class IndexWriter {
 	private void generateSubIndex(PerstRoot perstRoot, String prefix) throws Exception {
 		if (logMINOR)
 			Logger.minor(this, "Generating subindex for (" + prefix + ")");
+		if (prefix.length() > match)
+			match = prefix.length();
 
 		if (generateXML(perstRoot, prefix))
 			return;
 		
 		if (logMINOR)
 			Logger.minor(this, "Too big subindex for (" + prefix + ")");
-
+		
 		for (String hex : HEX)
 			generateSubIndex(perstRoot, prefix + hex);
 	}
