@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.PriorityBlockingQueue;
@@ -106,8 +107,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 */
 	public void queueURI(FreenetURI uri, String comment, boolean force) {
 		String sURI = uri.toString();
+		String lowerCaseURI = sURI.toLowerCase(Locale.US);
 		for (String ext : getRoot().getConfig().getBadlistedExtensions())
-			if (sURI.endsWith(ext))
+			if (lowerCaseURI.endsWith(ext))
 				return; // be smart
 
 		if (uri.isUSK()) {
