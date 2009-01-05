@@ -305,7 +305,8 @@ public class IndexWriter {
 				
 				if ((count > 1 && (estimateSize + pages.size() * 13) > MAX_SIZE) || //
 						(count > MAX_ENTRIES)) {
-					return false;
+					if (prefix.length() < 3 && indices.size() < 256) // FIXME this is a hack to limit number of files. remove after metadata fix
+						return false;
 				}
 
 				for (Page page : pages) {
@@ -395,8 +396,10 @@ public class IndexWriter {
 		}
 		
 		if (outputFile.length() > MAX_SIZE && count > 1) {
-			outputFile.delete();
-			return false;
+			if (prefix.length() < 3 && indices.size() < 256) { // FIXME this is a hack to limit number of files. remove after metadata fix
+				outputFile.delete();
+				return false;
+			}
 		}
 
 		if (logMINOR)
