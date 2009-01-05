@@ -6,7 +6,6 @@ package plugins.XMLSpider;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -71,8 +70,7 @@ import freenet.support.io.NullBucketFactory;
  */
 public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless, FredPluginVersioned, FredPluginL10n, USKCallback {
 	public Config getConfig() {
-		// always return a clone, never allow changing directly
-		return getRoot().getConfig().clone();
+		return getRoot().getConfig();
 	}
 
 	// Set config asynchronously
@@ -327,7 +325,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		public void run() {
 			synchronized (getRoot()) {
-				getRoot().getConfig().setValue(config);
+				Config oldConfig = getRoot().getConfig();
+				getRoot().setConfig(config);
+				
+				if (oldConfig.getMaxParallelRequests() < config.getMaxParallelRequests())
+					startSomeRequests();
 			}
 		}
 	}
@@ -350,13 +352,13 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 
 		private int getPriority(Runnable r) {
-			if (r instanceof MakeIndexCallback)
+			if (r instanceof SetConfigCallback)
 				return 0;
-			else if (r instanceof OnFailureCallback)
+			else if (r instanceof MakeIndexCallback)
 				return 1;
-			else if (r instanceof OnSuccessCallback)
+			else if (r instanceof OnFailureCallback)
 				return 2;
-			else if (r instanceof SetConfigCallback)
+			else if (r instanceof OnSuccessCallback)
 				return 3;
 			else if (r instanceof StartSomeRequestsCallback)
 				return 4;
