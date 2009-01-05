@@ -1345,11 +1345,13 @@ public class StorageImpl implements Storage {
             throw new StorageError(StorageError.STORAGE_NOT_OPENED);
         }
         objectCache.invalidate();
+		synchronized (objectCache){
         if (!modified) { 
             return;
         }
         rollback0();
         modified = false;
+		}
     }
 
     private final void rollback0() {
@@ -2517,6 +2519,7 @@ public class StorageImpl implements Storage {
                             freeId(oid);
                         }
                         obj.invalidate();
+						objectCache.clearDirty(obj);
                     }
                 }
             }
