@@ -23,6 +23,8 @@ public class Config extends Persistent implements Cloneable {
 	private int maxParallelRequests;
 	private String[] badlistedExtensions;
 	private short requestPriority;
+	
+	private boolean debug;
 
 	public Config() {
 	}
@@ -173,5 +175,14 @@ public class Config extends Persistent implements Cloneable {
 
 	public synchronized short getRequestPriority() {
 		return requestPriority;
+	}
+	
+	public synchronized boolean isDebug() {
+		return debug;
+	}
+
+	public synchronized void debug(boolean debug) {
+		assert !isPersistent();
+		this.debug = debug;
 	}
 }

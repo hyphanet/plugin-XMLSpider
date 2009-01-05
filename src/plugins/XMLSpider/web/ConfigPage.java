@@ -81,6 +81,11 @@ class ConfigPage implements WebPage {
 		addConfig(indexConfig, //
 		        "Index Owner Email", "Index Owner Email", // 
 		        "indexOwnerEmail", config.getIndexOwnerEmail());
+		addConfig(indexConfig, //
+		        "Write debug info", "Write debug info", // 
+		        "debug", //
+		        new String[] { "false", "true" }, //
+		        Boolean.toString(config.isDebug()));
 		
 		configForm.addChild("input", //
 		        new String[] { "type", "value" }, //
