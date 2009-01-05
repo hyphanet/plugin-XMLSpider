@@ -410,25 +410,34 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			PageCallBack pageCallBack = new PageCallBack(page);
 			Logger.minor(this, "Successful: " + uri + " : " + page.getId());
 
+			try {
 			ContentFilter.filter(data, new NullBucketFactory(), mimeType, uri.toURI("http://127.0.0.1:8888/"),
 					pageCallBack);
+			} catch (UnsafeContentTypeException e) {
+				// wrong mime type
+				page.setStatus(Status.SUCCEEDED);
+				db.endThreadTransaction();
+				dbTransactionEnded = true;
+
+				Logger.minor(this, "UnsafeContentTypeException " + uri + " : " + page.getId(), e);
+				return; // Ignore
+			} catch (IOException e) {
+				// ugh?
+				Logger.error(this, "Bucket error?: " + e, e);
+				return;
+			} catch (Exception e) {
+				// we have lots of invalid html on net - just normal, not error
+				Logger.normal(this, "exception on content filter for " + page, e);
+				return;
+			}
+
 			page.setStatus(Status.SUCCEEDED);
 			db.endThreadTransaction();
 			dbTransactionEnded  = true;
 
 			Logger.minor(this, "Filtered " + uri + " : " + page.getId());
-		} catch (UnsafeContentTypeException e) {
-			page.setStatus(Status.SUCCEEDED);
-			db.endThreadTransaction();
-			dbTransactionEnded = true;
-
-			Logger.minor(this, "UnsafeContentTypeException " + uri + " : " + page.getId(), e);
-			return; // Ignore
-		} catch (IOException e) {
-			Logger.error(this, "Bucket error?: " + e, e);
-		} catch (URISyntaxException e) {
-			Logger.error(this, "Internal error: " + e, e);			
 		} catch (RuntimeException e) {
+			// other runtime exceptions
 			Logger.error(this, "Runtime Exception: " + e, e);		
 			throw e;
 		} finally {
@@ -444,6 +453,9 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				if (!dbTransactionEnded) {
 					Logger.minor(this, "rollback transaction", new Exception("debug"));
 					db.rollbackThreadTransaction();
+					db.beginThreadTransaction(Storage.EXCLUSIVE_TRANSACTION);
+					page.setStatus(Status.FAILED);
+					db.endThreadTransaction();
 				}
 			}
 		}
