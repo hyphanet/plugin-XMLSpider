@@ -41,9 +41,16 @@ class ConfigPage implements WebPage {
 		if (request.isPartSet("badListedExtensions")) {
 			String v = request.getPartAsString("badListedExtensions", 512);
 			String[] v0 = v.split(",");
-			for (int i = 0; i < v0.length; i++)
+			boolean good = true;
+			for (int i = 0; i < v0.length; i++) {
 				v0[i] = v0[i].trim();
-			config.setBadlistedExtensions(v0);
+				if (v0[i].length() == 0 || v0[i].charAt(0) != '.') {
+					good = false;
+					break;
+				}
+			}
+			if (good)
+				config.setBadlistedExtensions(v0);
 		}
 		
 		if (request.isPartSet("indexDir")) {
