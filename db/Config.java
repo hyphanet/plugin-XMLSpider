@@ -6,6 +6,7 @@ package plugins.XMLSpider.db;
 import plugins.XMLSpider.org.garret.perst.Persistent;
 import plugins.XMLSpider.org.garret.perst.Storage;
 import freenet.node.RequestStarter;
+import freenet.support.Logger;
 
 public class Config extends Persistent implements Cloneable {
 	/**
@@ -23,7 +24,7 @@ public class Config extends Persistent implements Cloneable {
 	private int maxParallelRequests;
 	private String[] badlistedExtensions;
 	private short requestPriority;
-	
+
 	private boolean debug;
 
 	public Config() {
@@ -43,8 +44,8 @@ public class Config extends Persistent implements Cloneable {
 		maxParallelRequests = 100;
 
 		badlistedExtensions = new String[] { //
-		".ico", ".bmp", ".png", ".jpg", ".gif", // image
-		        ".zip", ".jar", ".gz", ".bz2", ".rar", // archive
+				".ico", ".bmp", ".png", ".jpg", ".gif", // image
+				".zip", ".jar", ".gz", ".bz2", ".rar", // archive
 		        ".7z", ".rar", ".arj", ".rpm", ".deb", //
 		        ".xpi", ".ace", ".cab", ".lza", ".lzh", //
 		        ".ace", ".exe", ".iso", // binary
@@ -53,37 +54,19 @@ public class Config extends Persistent implements Cloneable {
 		};
 
 		requestPriority = RequestStarter.IMMEDIATE_SPLITFILE_PRIORITY_CLASS;
-		
+
 		storage.makePersistent(this);
 	}
 
-	public synchronized void setValue(Config config) {
-		synchronized (config) {
-			indexDir = config.indexDir;
-			indexMaxEntries = config.indexMaxEntries;
-			indexSubindexMaxSize = config.indexSubindexMaxSize;
-
-			indexTitle = config.indexTitle;
-			indexOwner = config.indexOwner;
-			indexOwnerEmail = config.indexOwnerEmail;
-
-			maxShownURIs = config.maxShownURIs;
-
-			maxParallelRequests = config.maxParallelRequests;
-
-			badlistedExtensions = config.badlistedExtensions;
-
-			requestPriority = config.requestPriority;
-		}
-		
-		if (isPersistent())
-			modify();
-	}
-
 	public synchronized Config clone() {
-		Config newConfig = new Config();
-		newConfig.setValue(this);
-		return newConfig;
+		try {
+			Config config = (Config) super.clone();
+			assert !config.isPersistent();
+			return config;
+		} catch (CloneNotSupportedException e) {
+			Logger.error(this, "Impossible exception", e);
+			throw new RuntimeException(e);
+		}
 	}
 
 	public synchronized void setIndexDir(String indexDir) {
@@ -175,7 +158,7 @@ public class Config extends Persistent implements Cloneable {
 	public synchronized short getRequestPriority() {
 		return requestPriority;
 	}
-	
+
 	public synchronized boolean isDebug() {
 		return debug;
 	}
