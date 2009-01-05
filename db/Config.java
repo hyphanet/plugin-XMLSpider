@@ -160,7 +160,6 @@ public class Config extends Persistent implements Cloneable {
 
 	public synchronized void setBadlistedExtensions(String[] badlistedExtensions) {
 		assert !isPersistent();
-		;
 		this.badlistedExtensions = badlistedExtensions;
 	}
 
