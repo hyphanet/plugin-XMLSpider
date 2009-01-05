@@ -50,7 +50,6 @@ public class IndexWriter {
 	private int match;
 	private long time_taken;
 	private boolean logMINOR = Logger.shouldLog(Logger.MINOR, this);
-	private boolean DEBUG = true;
 
 	IndexWriter() {
 	}
@@ -273,8 +272,10 @@ public class IndexWriter {
 			Document xmlDoc = impl.createDocument(null, "sub_index", null);
 			
 			Element rootElement = xmlDoc.getDocumentElement();
-			if (DEBUG)
+			if (config.isDebug()) {
+				xmlDoc.createAttributeNS("urn:freenet:xmlspider:debug", "debug");
 				rootElement.appendChild(xmlDoc.createComment(new Date().toGMTString()));
+			}
 			
 			/* Adding header to the index */
 			Element headerElement = xmlDoc.createElement("header");
@@ -294,8 +295,8 @@ public class IndexWriter {
 			for (Term term : termIterator) {
 				Element wordElement = xmlDoc.createElement("word");
 				wordElement.setAttribute("v", term.getWord());
-				if (DEBUG)
-					wordElement.setAttribute("debugMd5", term.getMD5());
+				if (config.isDebug())
+					wordElement.setAttribute("debug:md5", term.getMD5());
 				count++;
 				estimateSize += 12;
 				estimateSize += term.getWord().length();
