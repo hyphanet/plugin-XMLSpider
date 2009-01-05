@@ -12,7 +12,6 @@ import freenet.support.HTMLNode;
 import freenet.support.api.HTTPRequest;
 
 class ConfigPage implements WebPage {
-
 	private final XMLSpider xmlSpider;
 	private final PageMaker pageMaker;
 	private final PluginRespirator pr;
@@ -22,8 +21,8 @@ class ConfigPage implements WebPage {
 		this.xmlSpider = xmlSpider;
 		pageMaker = xmlSpider.getPageMaker();
 		pr = xmlSpider.getPluginRespirator();
-		
-		config = xmlSpider.getConfig(); 
+
+		config = xmlSpider.getConfig();
 	}
 
 	/*
@@ -32,13 +31,43 @@ class ConfigPage implements WebPage {
 	 * @see plugins.XMLSpider.WebPage#processPostRequest(freenet.support.api.HTTPRequest,
 	 * freenet.support.HTMLNode)
 	 */
-	public void processPostRequest(HTTPRequest request, HTMLNode contentNode) {
-		// Create Index
-		if (request.isPartSet("testButton")) {
-			HTMLNode infobox = pageMaker.getInfobox("infobox infobox-success", "Test Button Pressed!");
-			infobox.addChild("#", "Test passed!");
-			contentNode.addChild(infobox);
+	public synchronized void processPostRequest(HTTPRequest request, HTMLNode contentNode) {
+		config = xmlSpider.getConfig().clone();
+		
+		if (request.isPartSet("maxParallelRequests")) {
+			int v = request.getIntPart("maxParallelRequests", config.getMaxParallelRequests());
+			config.setMaxParallelRequests(v);
 		}
+		if (request.isPartSet("badListedExtensions")) {
+			String v = request.getPartAsString("badListedExtensions", 512);
+			String[] v0 = v.split(",");
+			for (int i = 0; i < v0.length; i++)
+				v0[i] = v0[i].trim();
+			config.setBadlistedExtensions(v0);
+		}
+		
+		if (request.isPartSet("indexDir")) {
+			String v = request.getPartAsString("indexDir", 256);
+			config.setIndexDir(v);
+		}
+		if (request.isPartSet("indexTitle")) {
+			String v = request.getPartAsString("indexTitle", 256);
+			config.setIndexTitle(v);
+		}
+		if (request.isPartSet("indexOwner")) {
+			String v = request.getPartAsString("indexOwner", 256);
+			config.setIndexOwner(v);
+		}
+		if (request.isPartSet("indexOwnerEmail")) {
+			String v = request.getPartAsString("indexOwnerEmail", 256);
+			config.setIndexOwnerEmail(v);
+		}
+		if (request.isPartSet("debug")) {
+			String v = request.getPartAsString("debug", 10);
+			config.debug(Boolean.valueOf(v));
+		}
+		
+		xmlSpider.setConfig(config);
 	}
 
 	/*
@@ -47,7 +76,7 @@ class ConfigPage implements WebPage {
 	 * @see plugins.XMLSpider.WebPage#writeContent(freenet.support.api.HTTPRequest,
 	 * freenet.support.HTMLNode)
 	 */
-	public void writeContent(HTTPRequest request, HTMLNode contentNode) {
+	public void writeContent(HTTPRequest request, HTMLNode contentNode) {	
 		HTMLNode configBox = pageMaker.getInfobox("Configuration");
 		HTMLNode configContent = pageMaker.getContentNode(configBox);
 		HTMLNode configForm = pr.addFormChild(configContent, "plugins.XMLSpider.XMLSpider?ConfigPage", "configForm");
