@@ -153,7 +153,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				int running = runningFetch.size();
 				int maxParallelRequests = getRoot().getConfig().getMaxParallelRequests();
 
-				if (running >= maxParallelRequests)
+				if (running >= maxParallelRequests * 0.8)
 					return;
 
 				// Prepare to start
