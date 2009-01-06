@@ -341,6 +341,11 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 
 		public void run() {
+			try {
+				Thread.sleep(30000);
+			} catch (InterruptedException e) {
+				// ignore
+			}
 			startSomeRequests();
 		}
 	}
