@@ -273,7 +273,6 @@ public class IndexWriter {
 			
 			Element rootElement = xmlDoc.getDocumentElement();
 			if (config.isDebug()) {
-				xmlDoc.createAttributeNS("urn:freenet:xmlspider:debug", "debug");
 				rootElement.appendChild(xmlDoc.createComment(new Date().toGMTString()));
 			}
 			
@@ -295,8 +294,9 @@ public class IndexWriter {
 			for (Term term : termIterator) {
 				Element wordElement = xmlDoc.createElement("word");
 				wordElement.setAttribute("v", term.getWord());
-				if (config.isDebug())
-					wordElement.setAttribute("debug:md5", term.getMD5());
+				if (config.isDebug()) {
+					wordElement.setAttributeNS("urn:freenet:xmlspider:debug", "debug:md5", term.getMD5());
+				}
 				count++;
 				estimateSize += 12;
 				estimateSize += term.getWord().length();
