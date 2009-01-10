@@ -62,7 +62,7 @@ public class IndexWriter {
 			Config config = perstRoot.getConfig();
 
 			File indexDir = new File(config.getIndexDir());
-			if (!indexDir.exists() && !indexDir.isDirectory() && !indexDir.mkdirs()) {
+			if(((!indexDir.exists()) && !indexDir.mkdirs()) || (indexDir.exists() && !indexDir.isDirectory())) {
 				Logger.error(this, "Cannot create index directory: " + indexDir);
 				return;
 			}
