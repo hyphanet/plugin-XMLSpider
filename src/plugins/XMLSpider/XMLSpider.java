@@ -39,6 +39,7 @@ import freenet.client.async.BaseClientPutter;
 import freenet.client.async.ClientCallback;
 import freenet.client.async.ClientGetter;
 import freenet.client.async.USKCallback;
+import freenet.clients.http.NullLinkFixer;
 import freenet.clients.http.PageMaker;
 import freenet.clients.http.filter.ContentFilter;
 import freenet.clients.http.filter.FoundURICallback;
@@ -421,7 +422,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 			try {
 			ContentFilter.filter(data, new NullBucketFactory(), mimeType, uri.toURI("http://127.0.0.1:8888/"),
-					pageCallBack);
+					pageCallBack, NullLinkFixer.instance);
 			} catch (UnsafeContentTypeException e) {
 				// wrong mime type
 				page.setStatus(Status.SUCCEEDED);
