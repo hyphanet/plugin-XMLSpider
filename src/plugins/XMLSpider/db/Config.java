@@ -44,13 +44,13 @@ public class Config extends Persistent implements Cloneable {
 		maxParallelRequests = 100;
 
 		badlistedExtensions = new String[] { //
-				".ico", ".bmp", ".png", ".jpg", ".gif", // image
+				".ico", ".bmp", ".png", ".jpg", ".jpeg", ".gif", // image
 				".zip", ".jar", ".gz", ".bz2", ".rar", // archive
 		        ".7z", ".rar", ".arj", ".rpm", ".deb", //
 		        ".xpi", ".ace", ".cab", ".lza", ".lzh", //
 		        ".ace", ".exe", ".iso", // binary
 		        ".mpg", ".ogg", "ogv", ".mp3", ".avi", ".wv", ".swf", ".wmv", ".mkv", ".flac", ".ogm", // media
-		        ".css", ".sig", ".gml", ".df", "cbr",".gf" // other
+		        ".css", ".sig", ".gml", ".df", "cbr", ".gf", ".pdf" // other
 		};
 
 		requestPriority = RequestStarter.IMMEDIATE_SPLITFILE_PRIORITY_CLASS;
