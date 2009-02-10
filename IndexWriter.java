@@ -305,7 +305,7 @@ public class IndexWriter {
 				
 				if ((count > 1 && (estimateSize + pages.size() * 13) > MAX_SIZE) || //
 						(count > MAX_ENTRIES)) {
-					if (prefix.length() < 3 && indices.size() < 256) // FIXME this is a hack to limit number of files. remove after metadata fix
+					if (prefix.length() < 2 && indices.size() < 256) // FIXME this is a hack to limit number of files. remove after metadata fix
 						return false;
 				}
 
