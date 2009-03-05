@@ -126,17 +126,17 @@ public class IndexWriter {
 			rootElement = xmlDoc.getDocumentElement();
 
 			/* Adding header to the index */
-			Element headerElement = xmlDoc.createElement("header");
+			Element headerElement = xmlDoc.createElementNS(null, "header");
 
 			/* -> title */
-			Element subHeaderElement = xmlDoc.createElement("title");
+			Element subHeaderElement = xmlDoc.createElementNS(null, "title");
 			Text subHeaderText = xmlDoc.createTextNode(config.getIndexTitle());
 
 			subHeaderElement.appendChild(subHeaderText);
 			headerElement.appendChild(subHeaderElement);
 
 			/* -> owner */
-			subHeaderElement = xmlDoc.createElement("owner");
+			subHeaderElement = xmlDoc.createElementNS(null, "owner");
 			subHeaderText = xmlDoc.createTextNode(config.getIndexOwner());
 
 			subHeaderElement.appendChild(subHeaderText);
@@ -144,7 +144,7 @@ public class IndexWriter {
 
 			/* -> owner email */
 			if (config.getIndexOwnerEmail() != null) {
-				subHeaderElement = xmlDoc.createElement("email");
+				subHeaderElement = xmlDoc.createElementNS(null, "email");
 				subHeaderText = xmlDoc.createTextNode(config.getIndexOwnerEmail());
 
 				subHeaderElement.appendChild(subHeaderText);
@@ -154,18 +154,18 @@ public class IndexWriter {
 			 * the max number of digits in md5 to be used for matching with the search query is
 			 * stored in the xml
 			 */
-			Element prefixElement = xmlDoc.createElement("prefix");
+			Element prefixElement = xmlDoc.createElementNS(null, "prefix");
 			/* Adding word index */
-			Element keywordsElement = xmlDoc.createElement("keywords");
+			Element keywordsElement = xmlDoc.createElementNS(null, "keywords");
 			for (int i = 0; i < indices.size(); i++) {
 
-				Element subIndexElement = xmlDoc.createElement("subIndex");
-				subIndexElement.setAttribute("key", indices.elementAt(i));
+				Element subIndexElement = xmlDoc.createElementNS(null, "subIndex");
+				subIndexElement.setAttributeNS(null, "key", indices.elementAt(i));
 				//the subindex element key will contain the bits used for matching in that subindex
 				keywordsElement.appendChild(subIndexElement);
 			}
 
-			prefixElement.setAttribute("value", match + "");
+			prefixElement.setAttributeNS(null, "value", match + "");
 			rootElement.appendChild(prefixElement);
 			rootElement.appendChild(headerElement);
 			rootElement.appendChild(keywordsElement);
@@ -213,7 +213,6 @@ public class IndexWriter {
 	private void makeSubIndices(PerstRoot perstRoot) throws Exception {
 		Logger.normal(this, "Generating index...");
 
-
 		indices = new Vector<String>();
 		match = 1;
 
@@ -254,7 +253,6 @@ public class IndexWriter {
 		File outputFile = new File(config.getIndexDir() + "index_" + prefix + ".xml");
 		BufferedOutputStream fos = null;
 
-
 		int count = 0;
 		int estimateSize = 0;
 		try {
@@ -269,31 +267,35 @@ public class IndexWriter {
 
 			DOMImplementation impl = xmlBuilder.getDOMImplementation();
 			/* Starting to generate index */
-			Document xmlDoc = impl.createDocument(null, "sub_index", null);
+			Document xmlDoc = impl.createDocument("", "sub_index", null);
 			
 			Element rootElement = xmlDoc.getDocumentElement();
 			if (config.isDebug()) {
+				rootElement.setAttributeNS("http://www.w3.org/2000/xmlns/", "xmlns:debug", "urn:freenet:xmlspider:debug");
 				rootElement.appendChild(xmlDoc.createComment(new Date().toGMTString()));
 			}
 			
 			/* Adding header to the index */
-			Element headerElement = xmlDoc.createElement("header");
+			Element headerElement = xmlDoc.createElementNS(null, "header");
 			/* -> title */
-			Element subHeaderElement = xmlDoc.createElement("title");
+			Element subHeaderElement = xmlDoc.createElementNS(null, "title");
 			Text subHeaderText = xmlDoc.createTextNode(config.getIndexTitle());
 			subHeaderElement.appendChild(subHeaderText);
 			headerElement.appendChild(subHeaderElement);
 
 			/* List of files referenced in this subindex */
-			Element filesElement = xmlDoc.createElement("files"); /* filesElement != fileElement */
+			Element filesElement = xmlDoc.createElementNS(null, "files"); /*
+																		 * filesElement !=
+																		 * fileElement
+																		 */
 			Set<Long> fileid = new HashSet<Long>();
 			
 			/* Adding word index */
-			Element keywordsElement = xmlDoc.createElement("keywords");
+			Element keywordsElement = xmlDoc.createElementNS(null, "keywords");
 			IterableIterator<Term> termIterator = perstRoot.getTermIterator(prefix, prefix + "g");
 			for (Term term : termIterator) {
-				Element wordElement = xmlDoc.createElement("word");
-				wordElement.setAttribute("v", term.getWord());
+				Element wordElement = xmlDoc.createElementNS(null, "word");
+				wordElement.setAttributeNS(null, "v", term.getWord());
 				if (config.isDebug()) {
 					wordElement.setAttributeNS("urn:freenet:xmlspider:debug", "debug:md5", term.getMD5());
 				}
@@ -311,7 +313,8 @@ public class IndexWriter {
 
 				for (Page page : pages) {
 					TermPosition termPos = page.getTermPosition(term, false);
-					if (termPos == null) continue;
+					if (termPos == null)
+						continue;
 					
 					synchronized (termPos) {
 						synchronized (page) {
@@ -320,8 +323,8 @@ public class IndexWriter {
 							 * containing a particular word fileElement - lists the id,key,title of
 							 * the files mentioned in the entire subindex
 							 */
-							Element uriElement = xmlDoc.createElement("file");
-							uriElement.setAttribute("id", Long.toString(page.getId()));
+							Element uriElement = xmlDoc.createElementNS(null, "file");
+							uriElement.setAttributeNS(null, "id", Long.toString(page.getId()));
 
 							/* Position by position */
 							int[] positions = termPos.positions;
@@ -342,18 +345,18 @@ public class IndexWriter {
 							if (!fileid.contains(page.getId())) {
 								fileid.add(page.getId());
 
-								Element fileElement = xmlDoc.createElement("file");
-								fileElement.setAttribute("id", Long.toString(page.getId()));
-								fileElement.setAttribute("key", page.getURI());
-								fileElement.setAttribute("title", page.getPageTitle() != null ? page.getPageTitle()
-								        : page.getURI());
+								Element fileElement = xmlDoc.createElementNS(null, "file");
+								fileElement.setAttributeNS(null, "id", Long.toString(page.getId()));
+								fileElement.setAttributeNS(null, "key", page.getURI());
+								fileElement.setAttributeNS(null, "title", page.getPageTitle() != null ? page
+								        .getPageTitle() : page.getURI());
 								
 								filesElement.appendChild(fileElement);
 								
 								estimateSize += 15;
-								estimateSize += filesElement.getAttribute("id").length();
-								estimateSize += filesElement.getAttribute("key").length();
-								estimateSize += filesElement.getAttribute("title").length();
+								estimateSize += filesElement.getAttributeNS(null, "id").length();
+								estimateSize += filesElement.getAttributeNS(null, "key").length();
+								estimateSize += filesElement.getAttributeNS(null, "title").length();
 							}
 						}
 					}
@@ -361,8 +364,8 @@ public class IndexWriter {
 				keywordsElement.appendChild(wordElement);
 			}
 			
-			Element entriesElement = xmlDoc.createElement("entries");
-			entriesElement.setAttribute("value", count + "");
+			Element entriesElement = xmlDoc.createElementNS(null, "entries");
+			entriesElement.setAttributeNS(null, "value", count + "");
 
 			rootElement.appendChild(entriesElement);
 			rootElement.appendChild(headerElement);
@@ -428,7 +431,6 @@ public class IndexWriter {
 			timeTaken = new long[benchmark];
 		}
 		
-
 		for (int i = 0; i < benchmark; i++) {
 			long startTime = System.currentTimeMillis();
 			writer.makeIndex(root);
