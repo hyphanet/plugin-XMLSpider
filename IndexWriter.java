@@ -306,10 +306,8 @@ public class IndexWriter {
 				Set<Page> pages = term.getPages();
 				
 				if ((count > 1 && (estimateSize + pages.size() * 13) > MAX_SIZE) || //
-						(count > MAX_ENTRIES)) {
-					if (prefix.length() < 2 && indices.size() < 256) // FIXME this is a hack to limit number of files. remove after metadata fix
-						return false;
-				}
+						(count > MAX_ENTRIES))
+					return false;
 
 				for (Page page : pages) {
 					TermPosition termPos = page.getTermPosition(term, false);
@@ -399,10 +397,8 @@ public class IndexWriter {
 		}
 		
 		if (outputFile.length() > MAX_SIZE && count > 1) {
-			if (prefix.length() < 3 && indices.size() < 256) { // FIXME this is a hack to limit number of files. remove after metadata fix
-				outputFile.delete();
-				return false;
-			}
+			outputFile.delete();
+			return false;
 		}
 
 		if (logMINOR)
