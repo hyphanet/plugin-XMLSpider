@@ -14,7 +14,7 @@ public class Config extends Persistent implements Cloneable {
 	 */
 	private String indexDir;
 	private int indexMaxEntries;
-	private long indexSubindexMaxSize;
+	private int indexSubindexMaxSize;
 
 	private String indexTitle;
 	private String indexOwner;
@@ -87,12 +87,12 @@ public class Config extends Persistent implements Cloneable {
 		return indexMaxEntries;
 	}
 
-	public synchronized void setIndexSubindexMaxSize(long indexSubindexMaxSize) {
+	public synchronized void setIndexSubindexMaxSize(int indexSubindexMaxSize) {
 		assert !isPersistent();
 		this.indexSubindexMaxSize = indexSubindexMaxSize;
 	}
 
-	public synchronized long getIndexSubindexMaxSize() {
+	public synchronized int getIndexSubindexMaxSize() {
 		return indexSubindexMaxSize;
 	}
 
