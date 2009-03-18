@@ -67,6 +67,10 @@ public class IndexWriter {
 				return;
 			}
 
+			if (logMINOR)
+				Logger.minor(this, "Spider: regenerating index. MAX_SIZE=" + config.getIndexSubindexMaxSize() +
+					", MAX_ENTRIES=" + config.getIndexMaxEntries());
+
 			makeSubIndices(perstRoot);
 			makeMainIndex(config);
 
