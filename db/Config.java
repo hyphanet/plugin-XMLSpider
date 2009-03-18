@@ -32,7 +32,7 @@ public class Config extends Persistent implements Cloneable {
 
 	public Config(Storage storage) {
 		indexDir = "myindex7/";
-		indexMaxEntries = 1000;
+		indexMaxEntries = 4000;
 		indexSubindexMaxSize = 1 * 1024 * 1024;
 
 		indexTitle = "XMLSpider index";
