@@ -21,6 +21,8 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import com.db4o.ObjectContainer;
+
 import plugins.XMLSpider.db.Config;
 import plugins.XMLSpider.db.Page;
 import plugins.XMLSpider.db.PerstRoot;
@@ -37,6 +39,7 @@ import freenet.client.FetchResult;
 import freenet.client.InsertException;
 import freenet.client.async.BaseClientPutter;
 import freenet.client.async.ClientCallback;
+import freenet.client.async.ClientContext;
 import freenet.client.async.ClientGetter;
 import freenet.client.async.USKCallback;
 import freenet.clients.http.PageMaker;
@@ -47,6 +50,7 @@ import freenet.keys.FreenetURI;
 import freenet.keys.USK;
 import freenet.l10n.L10n.LANGUAGE;
 import freenet.node.NodeClientCore;
+import freenet.node.RequestClient;
 import freenet.node.RequestStarter;
 import freenet.pluginmanager.FredPlugin;
 import freenet.pluginmanager.FredPluginHTTP;
@@ -69,7 +73,7 @@ import freenet.support.io.NullBucketFactory;
  *  @author swati goyal
  *  
  */
-public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless, FredPluginVersioned, FredPluginL10n, USKCallback {
+public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless, FredPluginVersioned, FredPluginL10n, USKCallback, RequestClient {
 	public Config getConfig() {
 		return getRoot().getConfig();
 	}
@@ -95,6 +99,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}
 
 	private FetchContext ctx;
+	private ClientContext clientContext;
 	private boolean stopped = true;
 
 	private NodeClientCore core;
@@ -117,7 +122,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 				uri = uri.setSuggestedEdition((-1) * uri.getSuggestedEdition());
 			try {
 				uri = ((USK.create(uri)).getSSK()).getURI();
-				(ctx.uskManager).subscribe(USK.create(uri), this, false, this);
+				(clientContext.uskManager).subscribe(USK.create(uri), this, false, this);
 			} catch (Exception e) {
 			}
 		}
@@ -188,10 +193,10 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 		for (ClientGetter g : toStart) {
 			try {
-				g.start();
+				g.start(null, clientContext);
 				Logger.minor(this, g + " started");
 			} catch (FetchException e) {
-				g.getClientCallback().onFailure(e, g);
+				g.getClientCallback().onFailure(e, g, null);
 			}
 		}
 	}
@@ -203,7 +208,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			this.page = page;
 		}
 
-		public void onFailure(FetchException e, ClientGetter state) {
+		public void onFailure(FetchException e, ClientGetter state, ObjectContainer container) {
 			if (stopped)
 				return;
 
@@ -211,23 +216,23 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			Logger.minor(this, "Queued OnFailure: " + page + " (q:" + callbackExecutor.getQueue().size() + ")");
 		}
 
-		public void onFailure(InsertException e, BaseClientPutter state) {
+		public void onFailure(InsertException e, BaseClientPutter state, ObjectContainer container) {
 			// Ignore
 		}
 
-		public void onFetchable(BaseClientPutter state) {
+		public void onFetchable(BaseClientPutter state, ObjectContainer container) {
 			// Ignore
 		}
 
-		public void onGeneratedURI(FreenetURI uri, BaseClientPutter state) {
+		public void onGeneratedURI(FreenetURI uri, BaseClientPutter state, ObjectContainer container) {
 			// Ignore
 		}
 
-		public void onMajorProgress() {
+		public void onMajorProgress(ObjectContainer container) {
 			// Ignore
 		}
 
-		public void onSuccess(final FetchResult result, final ClientGetter state) {
+		public void onSuccess(final FetchResult result, final ClientGetter state, ObjectContainer container) {
 			if (stopped)
 				return;
 
@@ -235,7 +240,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 			Logger.minor(this, "Queued OnSuccess: " + page + " (q:" + callbackExecutor.getQueue().size() + ")");
 		}
 
-		public void onSuccess(BaseClientPutter state) {
+		public void onSuccess(BaseClientPutter state, ObjectContainer container) {
 			// Ignore
 		}
 
@@ -246,8 +251,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 	private ClientGetter makeGetter(Page page) throws MalformedURLException {
 		ClientGetter getter = new ClientGetter(new ClientGetterCallback(page),
-				core.requestStarters.chkFetchScheduler,
-				core.requestStarters.sskFetchScheduler, new FreenetURI(page.getURI()), ctx,
+				new FreenetURI(page.getURI()), ctx,
 		        getPollingPriorityProgress(), this, null, null);
 		return getter;
 	}
@@ -571,6 +575,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		allowedMIMETypes.add("text/plain");
 		allowedMIMETypes.add("application/xhtml+xml");
 		ctx.allowedMIMETypes = new HashSet<String>(allowedMIMETypes);
+		clientContext = pr.getNode().clientCore.clientContext;
 
 		stopped = false;
 
@@ -680,7 +685,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 	}
 
-	public void onFoundEdition(long l, USK key){
+	public void onFoundEdition(long l, USK key, ObjectContainer container, ClientContext context, boolean metadata, short codec, byte[] data){
 		FreenetURI uri = key.getURI();
 		/*-
 		 * FIXME this code don't make sense 
@@ -772,5 +777,13 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 
 	public PluginRespirator getPluginRespirator() {
 		return pr;
+	}
+
+	public boolean persistent() {
+		return false;
+	}
+
+	public void removeFrom(ObjectContainer container) {
+		throw new UnsupportedOperationException();
 	}
 }
