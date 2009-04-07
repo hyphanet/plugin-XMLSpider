@@ -34,9 +34,21 @@ class ConfigPage implements WebPage {
 	public synchronized void processPostRequest(HTTPRequest request, HTMLNode contentNode) {
 		config = xmlSpider.getConfig().clone();
 		
-		if (request.isPartSet("maxParallelRequests")) {
-			int v = request.getIntPart("maxParallelRequests", config.getMaxParallelRequests());
-			config.setMaxParallelRequests(v);
+		if (request.isPartSet("maxParallelRequestsWorking")) {
+			int v = request.getIntPart("maxParallelRequestsWorking", config.getMaxParallelRequestsWorking());
+			config.setMaxParallelRequestsWorking(v);
+		}
+		if (request.isPartSet("maxParallelRequestsNonWorking")) {
+			int v = request.getIntPart("maxParallelRequestsNonWorking", config.getMaxParallelRequestsNonWorking());
+			config.setMaxParallelRequestsNonWorking(v);
+		}
+		if (request.isPartSet("beginWorkingPeriod")) {
+			int v = request.getIntPart("beginWorkingPeriod", config.getBeginWorkingPeriod());
+			config.setBeginWorkingPeriod(v);
+		}
+		if (request.isPartSet("endWorkingPeriod")) {
+			int v = request.getIntPart("endWorkingPeriod", config.getEndWorkingPeriod());
+			config.setEndWorkingPeriod(v);
 		}
 		if (request.isPartSet("indexMaxEntries")) {
 			int v = request.getIntPart("indexMaxEntries", config.getIndexMaxEntries());
@@ -100,10 +112,29 @@ class ConfigPage implements WebPage {
 		
 		HTMLNode spiderConfig = configForm.addChild("ul", "class", "config");
 		addConfig(spiderConfig, //
-		        "Max Parallel Requests", "Maximum number of parallel requests.", // 
-		        "maxParallelRequests", //
+		        "Max Parallel Requests (Working)", "Maximum number of parallel requests if we are in the working period.", //
+		        "maxParallelRequestsWorking", //
 		        new String[] { "0", "10", "50", "100", "250", "500" }, //
-		        Integer.toString(config.getMaxParallelRequests()));
+		        Integer.toString(config.getMaxParallelRequestsWorking()));
+		addConfig(spiderConfig, //
+		        "Max Parallel Requests (Non-Working)", "Maximum number of parallel requests if we are not in the working period.", //
+		        "maxParallelRequestsNonWorking", //
+		        new String[] { "0", "10", "50", "100", "250", "500" }, //
+		        Integer.toString(config.getMaxParallelRequestsNonWorking()));
+
+		addConfig(spiderConfig, //
+		        "Working period beginning hour", "Beginning hour of the Working period.", //
+		        "beginWorkingPeriod", //
+		        new String[] { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11",
+			"12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23" }, //
+		        Integer.toString(config.getBeginWorkingPeriod()));
+		addConfig(spiderConfig, //
+		        "Working period ending hour", "Ending hour of the Working period.", //
+		        "endWorkingPeriod", //
+		        new String[] { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11",
+			"12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23" }, //
+		        Integer.toString(config.getEndWorkingPeriod()));
+
 		addConfig(spiderConfig, //
 		        "Bad Listed Extensions", "Comma seprated list of banned URI suffix.", // 
 		        "badListedExtensions", //
