@@ -1,6 +1,8 @@
 package plugins.XMLSpider.org.garret.perst;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.List;
+import java.util.RandomAccess;
 
 /**
  * Interface for one-to-many relation. There are two types of relations:
@@ -11,13 +13,7 @@ import java.util.*;
  * and standalone relation is represented by Relation persistent class created by
  * Storage.createRelation method.
  */
-public interface Link<T extends IPersistent> extends ITable<T>, List<T>, RandomAccess {
-    /**
-     * Get number of the linked objects 
-     * @return the number of related objects
-     */
-    public int size();
-    
+public interface Link<T> extends ITable<T>, List<T>, RandomAccess {
     /**
      * Set number of the linked objects 
      * @param newSize new number of linked objects (if it is greater than original number, 
@@ -46,7 +42,7 @@ public interface Link<T extends IPersistent> extends ITable<T>, List<T>, RandomA
      * @param i index of the object in the relation
      * @return stub representing referenced object
      */
-    public IPersistent getRaw(int i);
+    public Object getRaw(int i);
 
     /**
      * Replace i-th element of the relation
@@ -74,24 +70,11 @@ public interface Link<T extends IPersistent> extends ITable<T>, List<T>, RandomA
     public void removeObject(int i);
 
     /**
-     * Remove object from the relation
-     * @param o removed object
-     * @return <code>true</code> if relation is changed as the result of this operation
-     */
-    public boolean remove(Object o);
-
-    /**
      * Insert new object in the relation
      * @param i insert poistion, should be in [0,size()]
      * @param obj object inserted in the relation
      */
     public void insert(int i, T obj);
-
-    /**
-     * Add new object to the relation
-     * @param obj object inserted in the relation
-     */
-    public boolean add(T obj);
 
     /**
      * Add all elements of the array to the relation
@@ -118,14 +101,8 @@ public interface Link<T extends IPersistent> extends ITable<T>, List<T>, RandomA
      * size of the array can be greater than actual number of members. 
      * @return array of object with relation members used in implementation of Link class
      */
-    public IPersistent[] toRawArray(); 
+    public Object[] toRawArray(); 
 
-    /**
-     * Get relation members as array of object
-     * @return array of object with relation members
-     */
-    public IPersistent[] toPersistentArray();
-    
     /**
      * Get all relation members as array.
      * The runtime type of the returned array is that of the specified array.  
@@ -149,16 +126,6 @@ public interface Link<T extends IPersistent> extends ITable<T>, List<T>, RandomA
     * @return <code>true</code> if object is present in the collection, <code>false</code> otherwise
      */
     public boolean containsObject(T obj);
-
-     /**
-     * Check if there is linked object which is equal to the specified object.
-     * More formally, returns <tt>true</tt> if and only if this
-     * collection contains at least one element <tt>e</tt> such that
-     * <tt>(obj==null ? e==null : obj.equals(e))</tt>.<p>
-     * @param obj object to be searched in the index. Object should contain indexed field. 
-     * @return <code>true</code> if collection contains object equals to the specified
-     */
-    public boolean contains(Object obj);
 
     /**
      * Check if i-th element of Link is the same as specified obj

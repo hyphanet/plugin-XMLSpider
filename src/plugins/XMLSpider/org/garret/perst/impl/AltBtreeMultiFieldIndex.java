@@ -1,10 +1,17 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import plugins.XMLSpider.org.garret.perst.*;
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Map;
 
-import java.lang.reflect.*;
-import java.util.*;
+import plugins.XMLSpider.org.garret.perst.FieldIndex;
+import plugins.XMLSpider.org.garret.perst.IValue;
+import plugins.XMLSpider.org.garret.perst.IterableIterator;
+import plugins.XMLSpider.org.garret.perst.Key;
+import plugins.XMLSpider.org.garret.perst.Query;
+import plugins.XMLSpider.org.garret.perst.StorageError;
 
-class AltBtreeMultiFieldIndex<T extends IPersistent> extends AltBtree<T> implements FieldIndex<T> { 
+class AltBtreeMultiFieldIndex<T> extends AltBtree<T> implements FieldIndex<T> { 
     String   className;
     String[] fieldName;
 
@@ -19,7 +26,7 @@ class AltBtreeMultiFieldIndex<T extends IPersistent> extends AltBtree<T> impleme
         this.fieldName = fieldName;        
         this.className = ClassDescriptor.getClassName(cls);
         locateFields();
-        type = ClassDescriptor.tpRaw;        
+        type = ClassDescriptor.tpValue;        
     }
 
     private final void locateFields() 
@@ -48,7 +55,7 @@ class AltBtreeMultiFieldIndex<T extends IPersistent> extends AltBtree<T> impleme
         locateFields();
     }
 
-    static class CompoundKey implements Comparable {
+    static class CompoundKey implements Comparable, IValue {
         Object[] keys;
 
         public int compareTo(Object o) { 
@@ -78,16 +85,14 @@ class AltBtreeMultiFieldIndex<T extends IPersistent> extends AltBtree<T> impleme
         return new Key(new CompoundKey((Object[])key.oval), key.inclusion != 0);
     }
             
-    private Key extractKey(IPersistent obj) {
+    private Key extractKey(Object obj) {
         Object[] keys = new Object[fld.length];
         try { 
             for (int i = 0; i < keys.length; i++) { 
-                keys[i] = fld[i].get(obj);
-                if (keys[i] instanceof IPersistent) { 
-                    IPersistent p = (IPersistent)keys[i];
-                    if (!p.isPersistent()) { 
-                        getStorage().makePersistent(p);
-                    }
+                Object val = fld[i].get(obj);
+                keys[i] = val;
+                if (!ClassDescriptor.isEmbedded(val)) { 
+                    getStorage().makePersistent(val);
                 }
             }
         } catch (Exception x) { 
@@ -104,8 +109,8 @@ class AltBtreeMultiFieldIndex<T extends IPersistent> extends AltBtree<T> impleme
         return super.set(extractKey(obj), obj);
     }
 
-    public void remove(T obj) {
-        super.remove(extractKey(obj), obj);
+    public boolean remove(Object obj) {
+        return super.removeIfExists(extractKey(obj), obj);
     }
 
     public T remove(Key key) {
@@ -117,7 +122,7 @@ class AltBtreeMultiFieldIndex<T extends IPersistent> extends AltBtree<T> impleme
         if (unique) { 
             return super.get(key) != null;
         } else { 
-            IPersistent[] mbrs = get(key, key);
+            Object[] mbrs = get(key, key);
             for (int i = 0; i < mbrs.length; i++) { 
                 if (mbrs[i] == obj) { 
                     return true;
@@ -127,12 +132,12 @@ class AltBtreeMultiFieldIndex<T extends IPersistent> extends AltBtree<T> impleme
         }
     }
 
-    public boolean contains(T obj) {
+    public boolean contains(Object obj) {
         Key key = extractKey(obj);
         if (unique) { 
             return super.get(key) != null;
         } else { 
-            IPersistent[] mbrs = get(key, key);
+            Object[] mbrs = get(key, key);
             for (int i = 0; i < mbrs.length; i++) { 
                 if (mbrs[i].equals(obj)) { 
                     return true;
@@ -163,7 +168,7 @@ class AltBtreeMultiFieldIndex<T extends IPersistent> extends AltBtree<T> impleme
         throw new StorageError(StorageError.INCOMPATIBLE_KEY_TYPE);
     }
 
-    public T[] toPersistentArray() {
+    public T[] toArray() {
         T[] arr = (T[])Array.newInstance(cls, nElems);
         if (root != null) { 
             root.traverseForward(height, arr, 0);
@@ -198,7 +203,7 @@ class AltBtreeMultiFieldIndex<T extends IPersistent> extends AltBtree<T> impleme
     }
 }
 
-class AltBtreeCaseInsensitiveMultiFieldIndex<T extends IPersistent> extends AltBtreeMultiFieldIndex<T> {    
+class AltBtreeCaseInsensitiveMultiFieldIndex<T> extends AltBtreeMultiFieldIndex<T> {    
     AltBtreeCaseInsensitiveMultiFieldIndex() {}
 
     AltBtreeCaseInsensitiveMultiFieldIndex(Class cls, String[] fieldNames, boolean unique) {

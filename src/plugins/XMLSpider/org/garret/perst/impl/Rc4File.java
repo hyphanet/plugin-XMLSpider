@@ -1,5 +1,5 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import plugins.XMLSpider.org.garret.perst.*;
+import plugins.XMLSpider.org.garret.perst.IFile;
 
 // Rc4Cipher - the RC4 encryption method
 //
@@ -129,6 +129,7 @@ public class Rc4File implements IFile
 
     public void lock(boolean shared) { 
         file.lock(shared);
+        length = file.length() & ~(Page.pageSize-1);
     }
 
     public void unlock() { 

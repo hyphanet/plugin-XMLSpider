@@ -1,6 +1,8 @@
 package plugins.XMLSpider.org.garret.perst;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Map;
 
 /**
  * Interface of object index.
@@ -39,7 +41,7 @@ public interface GenericIndex<T> extends IPersistent, IResource, ITable<T> {
      * High boundary can be inclusive or exclusive. 
      * @return array of objects which keys belongs to the specified interval, ordered by key value
      */
-    public IPersistent[] get(Key from, Key till);
+    public Object[] get(Key from, Key till);
 
 
     /**
@@ -59,7 +61,7 @@ public interface GenericIndex<T> extends IPersistent, IResource, ITable<T> {
      * @param till inclusive high boundary. If <code>null</code> then high boundary is not specified.
      * @return array of objects which keys belongs to the specified interval, ordered by key value
      */
-    public IPersistent[] get(Object from, Object till);
+    public Object[] get(Object from, Object till);
 
     /**
      * Get objects which key value belongs to the specified range.
@@ -77,7 +79,7 @@ public interface GenericIndex<T> extends IPersistent, IResource, ITable<T> {
      * @param prefix string key prefix
      * @return array of objects which key starts with this prefix 
      */
-    public IPersistent[] getPrefix(String prefix);
+    public Object[] getPrefix(String prefix);
     
     /**
      * Get objects with string key prefix 
@@ -92,7 +94,7 @@ public interface GenericIndex<T> extends IPersistent, IResource, ITable<T> {
      * @param word string which prefixes are located in index
      * @return array of objects which key is prefix of specified word, ordered by key value
      */
-    public IPersistent[] prefixSearch(String word);
+    public Object[] prefixSearch(String word);
     
     /**
      * Locate all objects which key is prefix of specified word.
@@ -101,13 +103,6 @@ public interface GenericIndex<T> extends IPersistent, IResource, ITable<T> {
      */
     public ArrayList<T> prefixSearchList(String word);
     
-
-    /**
-     * Get all objects in the index as array ordered by index key.
-     * @return array of objects in the index ordered by key value
-     */
-    public IPersistent[] toPersistentArray();
-
     /**
      * Get iterator for traversing all objects in the index. 
      * Objects are iterated in the ascent key order. 
@@ -212,17 +207,6 @@ public interface GenericIndex<T> extends IPersistent, IResource, ITable<T> {
     public Class[] getKeyTypes();
 
     /**
-     * Get number of objects in the index
-     * @return number of objects in the index
-     */
-    public int size();
-    
-    /**
-     * Remove all objects from the index
-     */
-    public void clear();
-
-    /**
      * Get element at specified position. This methid is efficient only for random access indices
      * @param i position of element in the index<
      * @return object at sepcified position
@@ -230,6 +214,13 @@ public interface GenericIndex<T> extends IPersistent, IResource, ITable<T> {
      */
     T getAt(int i);
  
+    /**
+     * Get position of the first element with specified key. This method is efficient only for random access indices
+     * @param key located key
+     * @return position of the first element with this key or -1 if no such element is found
+     */    
+    int indexOf(Key key);
+
     /**
      * Get entry iterator of objects in the index starting with specified position.
      * This methid is efficient only for random access indices

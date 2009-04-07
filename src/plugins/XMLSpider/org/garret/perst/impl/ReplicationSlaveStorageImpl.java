@@ -1,9 +1,15 @@
 package plugins.XMLSpider.org.garret.perst.impl;
 
-import java.io.*;
-import java.net.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.Socket;
 
-import plugins.XMLSpider.org.garret.perst.*;
+import plugins.XMLSpider.org.garret.perst.IFile;
+import plugins.XMLSpider.org.garret.perst.IResource;
+import plugins.XMLSpider.org.garret.perst.PersistentResource;
+import plugins.XMLSpider.org.garret.perst.ReplicationSlaveStorage;
+import plugins.XMLSpider.org.garret.perst.StorageError;
 
 
 public abstract class ReplicationSlaveStorageImpl extends StorageImpl implements ReplicationSlaveStorage, Runnable
@@ -11,7 +17,7 @@ public abstract class ReplicationSlaveStorageImpl extends StorageImpl implements
     static final int REPL_CLOSE = -1;
     static final int REPL_SYNC  = -2;
     
-    public void open(IFile file, int pagePoolSize) {
+    public void open(IFile file, long pagePoolSize) {
         if (opened) {
             throw new StorageError(StorageError.STORAGE_ALREADY_OPENED);
         }

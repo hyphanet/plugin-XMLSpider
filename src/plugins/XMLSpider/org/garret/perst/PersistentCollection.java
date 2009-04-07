@@ -1,8 +1,9 @@
 package plugins.XMLSpider.org.garret.perst;
-import plugins.XMLSpider.org.garret.perst.*;
-import plugins.XMLSpider.org.garret.perst.impl.QueryImpl;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
 
-import  java.util.*;
+import plugins.XMLSpider.org.garret.perst.impl.QueryImpl;
 
 public abstract class PersistentCollection<T> extends PersistentResource implements ITable<T>
 {
@@ -261,6 +262,16 @@ public abstract class PersistentCollection<T> extends PersistentResource impleme
     public boolean isEmpty() {
 	return size() == 0;
     }
+
+    public void deallocateMembers() {
+        Iterator<T> i = iterator();
+        while (i.hasNext()) { 
+            storage.deallocate(i.next());
+        }
+        clear();
+    }
+
+
 
     /**
      * Default constructor

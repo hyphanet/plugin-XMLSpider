@@ -1,14 +1,25 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import plugins.XMLSpider.org.garret.perst.*;
+import java.lang.reflect.Array;
+import java.util.AbstractList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.NoSuchElementException;
+import java.util.RandomAccess;
 
-import  java.util.*;
-import  java.lang.reflect.Array;
+import plugins.XMLSpider.org.garret.perst.EmbeddedLink;
+import plugins.XMLSpider.org.garret.perst.ICloneable;
+import plugins.XMLSpider.org.garret.perst.IterableIterator;
+import plugins.XMLSpider.org.garret.perst.Link;
+import plugins.XMLSpider.org.garret.perst.PersistentIterator;
+import plugins.XMLSpider.org.garret.perst.Query;
 
-public class LinkImpl<T extends IPersistent> implements EmbeddedLink<T>, ICloneable 
+public class LinkImpl<T> implements EmbeddedLink<T>, ICloneable 
 { 
     private final void modify() { 
         if (owner != null) { 
-            owner.modify();
+            db.modify(owner);
         }
     }
 
@@ -28,6 +39,7 @@ public class LinkImpl<T extends IPersistent> implements EmbeddedLink<T>, IClonea
             reserveSpace(newSize - used);            
         }
         used = newSize;
+        modify();
     }
 
     public T get(int i) {
@@ -37,7 +49,7 @@ public class LinkImpl<T extends IPersistent> implements EmbeddedLink<T>, IClonea
         return (T)loadElem(i);
     }
 
-    public IPersistent getRaw(int i) {
+    public Object getRaw(int i) {
         if (i < 0 || i >= used) { 
             throw new IndexOutOfBoundsException();
         }
@@ -52,9 +64,9 @@ public class LinkImpl<T extends IPersistent> implements EmbeddedLink<T>, IClonea
 
     public void unpin() { 
         for (int i = 0, n = used; i < n; i++) { 
-            IPersistent elem = arr[i];
-            if (elem != null && !elem.isRaw() && elem.isPersistent()) { 
-                arr[i] = new PersistentStub(elem.getStorage(), elem.getOid());
+            Object elem = arr[i];
+            if (elem != null && db.isLoaded(elem)) { 
+                arr[i] = new PersistentStub(db, db.getOid(elem));
             }
         }
     }
@@ -121,11 +133,10 @@ public class LinkImpl<T extends IPersistent> implements EmbeddedLink<T>, IClonea
 
     void reserveSpace(int len) { 
         if (used + len > arr.length) { 
-            IPersistent[] newArr = new IPersistent[used + len > arr.length*2 ? used + len : arr.length*2];
+            Object[] newArr = new Object[used + len > arr.length*2 ? used + len : arr.length*2];
             System.arraycopy(arr, 0, newArr, 0, used);
             arr = newArr;
         }
-        modify();
     }
 
     public void add(int i, T obj) { 
@@ -140,11 +151,13 @@ public class LinkImpl<T extends IPersistent> implements EmbeddedLink<T>, IClonea
         System.arraycopy(arr, i, arr, i+1, used-i);
         arr[i] = obj;
         used += 1;
+        modify();
     }
 
     public boolean add(T obj) {
         reserveSpace(1);
         arr[used++] = obj;
+        modify();
         return true;
     }
 
@@ -166,6 +179,7 @@ public class LinkImpl<T extends IPersistent> implements EmbeddedLink<T>, IClonea
         reserveSpace(length);
         System.arraycopy(a, from, arr, used, length);
         used += length;
+        modify();
     }
 
     public boolean addAll(Link<T> link) {        
@@ -175,19 +189,16 @@ public class LinkImpl<T extends IPersistent> implements EmbeddedLink<T>, IClonea
             arr[j] = link.getRaw(i);
         }
         used += n;
+        modify();
         return true;
     }
 
-    public Object[] toArray() {
-        return toPersistentArray();
-    }
-
-    public IPersistent[] toRawArray() {
+    public Object[] toRawArray() {
         return arr;
     }
 
-    public IPersistent[] toPersistentArray() {
-        IPersistent[] a = new IPersistent[used];
+    public Object[] toArray() {
+        Object[] a = new Object[used];
         for (int i = used; --i >= 0;) { 
             a[i] = loadElem(i);
         }
@@ -216,12 +227,11 @@ public class LinkImpl<T extends IPersistent> implements EmbeddedLink<T>, IClonea
     }
 
     public int lastIndexOfObject(Object obj) {
-        int oid;
-        IPersistent[] a = arr;
-        if (obj instanceof IPersistent && (oid = ((IPersistent)obj).getOid()) != 0) { 
+        Object[] a = arr;
+        int oid = db.getOid(obj);
+        if (oid != 0) { 
             for (int i = used; --i >= 0;) {
-                IPersistent elem = a[i];
-                if (elem != null && elem.getOid() == oid) {
+                if (db.getOid(a[i]) == oid) {
                     return i;
                 }
             }
@@ -236,12 +246,11 @@ public class LinkImpl<T extends IPersistent> implements EmbeddedLink<T>, IClonea
     }
     
     public int indexOfObject(Object obj) {
-        int oid;
-        IPersistent[] a = arr;
-        if (obj instanceof IPersistent && (oid = ((IPersistent)obj).getOid()) != 0) { 
+        Object[] a = arr;
+        int oid = db.getOid(obj);
+        if (oid != 0) { 
             for (int i = 0, n = used; i < n; i++) {
-                IPersistent elem = a[i];
-                if (elem != null && elem.getOid() == oid) {
+                if (db.getOid(a[i]) == oid) {
                     return i;
                 }
             }
@@ -290,8 +299,17 @@ public class LinkImpl<T extends IPersistent> implements EmbeddedLink<T>, IClonea
     }
     
     public boolean containsElement(int i, T obj) {
-        IPersistent elem = arr[i];
-        return elem == obj || (elem != null && elem.getOid() != 0 && elem.getOid() == obj.getOid());
+        Object elem = arr[i];
+        return elem == obj || (elem != null && db.getOid(elem) == db.getOid(obj));
+    }
+
+    public void deallocateMembers() {
+        for (int i = used; --i >= 0;) { 
+            db.deallocate(arr[i]);
+            arr[i] = null;
+        }
+        used = 0;
+        modify();
     }
 
     public void clear() { 
@@ -306,7 +324,7 @@ public class LinkImpl<T extends IPersistent> implements EmbeddedLink<T>, IClonea
         return new SubList<T>(this, fromIndex, toIndex);
     }
 
-    static class SubList<T extends IPersistent> extends AbstractList<T> implements RandomAccess {
+    static class SubList<T> extends AbstractList<T> implements RandomAccess {
         private LinkImpl<T> l;
         private int offset;
         private int size;
@@ -447,19 +465,17 @@ public class LinkImpl<T extends IPersistent> implements EmbeddedLink<T>, IClonea
         }
     }
 
-    static class LinkIterator<T extends IPersistent> implements PersistentIterator, ListIterator<T> { 
-        private Link<T> link;
+    class LinkIterator implements PersistentIterator, ListIterator<T> { 
         private int     i;
         private int     last;
 
-        LinkIterator(Link<T> link, int index) { 
-            this.link = link;
+        LinkIterator(int index) { 
             i = index;
             last = -1;
         }
 
         public boolean hasNext() {
-            return i < link.size();
+            return i < size();
         }
 
         public T next() throws NoSuchElementException { 
@@ -467,7 +483,7 @@ public class LinkImpl<T extends IPersistent> implements EmbeddedLink<T>, IClonea
                 throw new NoSuchElementException();
             }
             last = i;
-            return link.get(i++);
+            return get(i++);
         }
 
         public int nextIndex() { 
@@ -482,7 +498,7 @@ public class LinkImpl<T extends IPersistent> implements EmbeddedLink<T>, IClonea
             if (!hasPrevious()) { 
                 throw new NoSuchElementException();
             }
-            return link.get(last = --i);
+            return get(last = --i);
         }
 
 	public int previousIndex() {
@@ -491,16 +507,16 @@ public class LinkImpl<T extends IPersistent> implements EmbeddedLink<T>, IClonea
 
         public int nextOid() throws NoSuchElementException { 
             if (!hasNext()) { 
-                throw new NoSuchElementException();
+                return 0;
             }
-            return link.getRaw(i++).getOid();
+            return db.getOid(getRaw(i++));
         }
 
         public void remove() {
 	    if (last < 0) { 
 		throw new IllegalStateException();
             }
-            link.removeObject(last);
+            removeObject(last);
             if (last < i) { 
                 i -= 1;
             }
@@ -510,11 +526,11 @@ public class LinkImpl<T extends IPersistent> implements EmbeddedLink<T>, IClonea
 	    if (last < 0) { 
 		throw new IllegalStateException();
             }
-            link.setObject(last, o);
+            setObject(last, o);
         }
 
 	public void add(T o) {
-            link.insert(i++, o);
+            insert(i++, o);
             last = -1;
         }
      }
@@ -574,11 +590,11 @@ public class LinkImpl<T extends IPersistent> implements EmbeddedLink<T>, IClonea
     }
 
     public Iterator<T> iterator() { 
-        return new LinkIterator<T>(this, 0);
+        return new LinkIterator(0);
     }
 
     public ListIterator<T> listIterator(int index) {
-        return new LinkIterator<T>(this, index);
+        return new LinkIterator(index);
     }
 
     public ListIterator<T> listIterator() {
@@ -587,9 +603,9 @@ public class LinkImpl<T extends IPersistent> implements EmbeddedLink<T>, IClonea
 
     private final T loadElem(int i) 
     {
-        IPersistent elem = arr[i];
-        if (elem != null && elem.isRaw()) { 
-            elem = ((StorageImpl)elem.getStorage()).lookupObject(elem.getOid(), null);
+        Object elem = arr[i];
+        if (elem != null && db.isRaw(elem)) { 
+            elem = db.lookupObject(db.getOid(elem), null);
         }
         return (T)elem;
     }
@@ -599,34 +615,38 @@ public class LinkImpl<T extends IPersistent> implements EmbeddedLink<T>, IClonea
         return query.select(cls, iterator(), predicate);
     }
 
-    public void setOwner(IPersistent obj) { 
+    public void setOwner(Object obj) { 
         owner = obj;
     }
 
-    public IPersistent getOwner() { 
+    public Object getOwner() { 
         return owner;
     }
 
     LinkImpl() {}
 
-    public LinkImpl(int initSize) {
-        arr = new IPersistent[initSize];
+    public LinkImpl(StorageImpl db, int initSize) {
+        this.db = db;
+        arr = new Object[initSize];
     }
 
-    public LinkImpl(T[] arr, IPersistent owner) { 
+    public LinkImpl(StorageImpl db, T[] arr, Object owner) { 
+        this.db = db;
         this.arr = arr;
         this.owner = owner;
         used = arr.length;
     }
 
-    public LinkImpl(Link link, IPersistent owner) { 
+    public LinkImpl(StorageImpl db, Link link, Object owner) { 
+        this.db = db;
         used = link.size();
-        arr = new IPersistent[used];
+        arr = new Object[used];
         System.arraycopy(arr, 0, link.toRawArray(), 0, used);
         this.owner = owner;
     }
 
-    IPersistent[] arr;
-    int           used;
-    transient IPersistent owner;
+    Object[] arr;
+    int      used;
+    transient Object owner;
+    transient StorageImpl db;
 }

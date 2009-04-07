@@ -1,9 +1,12 @@
 package plugins.XMLSpider.org.garret.perst.fulltext;
 
-import java.io.*;
-import java.util.*;
+import java.io.IOException;
+import java.io.Reader;
+import java.util.ArrayList;
+import java.util.HashSet;
 
-import plugins.XMLSpider.org.garret.perst.*;
+import plugins.XMLSpider.org.garret.perst.Persistent;
+import plugins.XMLSpider.org.garret.perst.Storage;
 
 /**
  * Helper class for full text search.
@@ -12,7 +15,40 @@ import plugins.XMLSpider.org.garret.perst.*;
  */
 public class FullTextSearchHelper extends Persistent
 {
-    protected int maxWordLength = 100;
+    /**
+     * Weight of nearness criteria in rank formula 
+     */
+    public float nearnessWeight = 10.0f;
+    
+    /**
+     * Penalty of locating search keywords in reverse order
+     */
+    public int   wordSwapPenalty = 10;
+    
+    /**
+     * Maximal word length
+     */
+    public int   maxWordLength = 100;
+
+    /**
+     * Keyword for logical AND in query
+     */
+    public String AND = "AND";
+
+    /**
+     * Keyword for logical OR in query
+     */
+    public String OR  = "OR";
+
+    /**
+     * Keyword for logical NOT in query
+     */
+    public String NOT = "NOT";
+    
+    /**
+     * List of stop words ignored in parsed text and query
+     */
+    public String[] stopWords = new String[] { "a", "the", "at", "on", "of", "to", "an" };
 
     /**
      * Perform stemming of the word
@@ -26,6 +62,13 @@ public class FullTextSearchHelper extends Persistent
     }
     
     /**
+     * Check of character is part of the word
+     */
+    public boolean isWordChar(char ch) { 
+        return Character.isLetter(ch) || Character.isDigit(ch);
+    }
+
+    /**
      * Split text of the documents into tokens
      * @param reader stream with document text
      * @return array of occurrences of words in thedocument
@@ -36,14 +79,14 @@ public class FullTextSearchHelper extends Persistent
         int ch = reader.read();
         
         while (ch > 0) {
-            if (Character.isLetter((char)ch) || Character.isDigit((char)ch)) {
+            if (isWordChar((char)ch)) { 
                 StringBuffer buf = new StringBuffer();
                 int wordPos = pos;
                 do { 
                     pos += 1;
                     buf.append((char)ch);
                     ch = reader.read();
-                } while (ch > 0 && (Character.isLetter((char)ch) || Character.isDigit((char)ch)));
+                } while (ch > 0 && isWordChar((char)ch));
                 String word = buf.toString().toLowerCase();
                 if (word.length() <= maxWordLength && !isStopWord(word)) { 
                     list.add(new Occurrence(word, wordPos, 0));
@@ -56,21 +99,13 @@ public class FullTextSearchHelper extends Persistent
         return (Occurrence[])list.toArray(new Occurrence[list.size()]);
     }
 
-    protected String AND;
-    protected String OR;
-    protected String NOT;
-    
     protected transient HashSet stopList;
 
     protected void fillStopList() {
         stopList = new HashSet();
-        stopList.add("a");
-        stopList.add("the");
-        stopList.add("at");
-        stopList.add("on");
-        stopList.add("of");
-        stopList.add("to");
-        stopList.add("an");
+        for (int i = 0; i < stopWords.length; i++) { 
+            stopList.add(stopWords[i]);
+        }
     }
 
     public void onLoad() { 
@@ -92,9 +127,6 @@ public class FullTextSearchHelper extends Persistent
     public FullTextSearchHelper(Storage storage) 
     { 
         super(storage);
-        AND = "AND";
-        OR  = "OR";
-        NOT = "NOT";
         fillStopList();
     }
 
@@ -143,9 +175,9 @@ public class FullTextSearchHelper extends Persistent
                 } else if (ch == ')') { 
                     pos = p + 1;
                     return token = TKN_RPAR;
-                } else if (Character.isLetter(ch) || Character.isDigit(ch)) { 
+                } else if (isWordChar(ch)) { 
                     wordPos = p;
-                    while (++p < len && (Character.isLetter(q.charAt(p)) || Character.isDigit(q.charAt(p))));
+                    while (++p < len && isWordChar(q.charAt(p)));
                     String word = q.substring(wordPos, p);
                     pos = p;
                     if (word.equals(AND)) { 

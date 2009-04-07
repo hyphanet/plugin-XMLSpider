@@ -1,9 +1,16 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import plugins.XMLSpider.org.garret.perst.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Map;
 
-import java.util.*;
+import plugins.XMLSpider.org.garret.perst.Assert;
+import plugins.XMLSpider.org.garret.perst.IValue;
+import plugins.XMLSpider.org.garret.perst.Index;
+import plugins.XMLSpider.org.garret.perst.IterableIterator;
+import plugins.XMLSpider.org.garret.perst.Key;
+import plugins.XMLSpider.org.garret.perst.StorageError;
 
-class BtreeCompoundIndex<T extends IPersistent> extends Btree<T> implements Index<T> { 
+class BtreeCompoundIndex<T> extends Btree<T> implements Index<T> { 
     int[]    types;
 
     BtreeCompoundIndex() {}
@@ -45,10 +52,10 @@ class BtreeCompoundIndex<T extends IPersistent> extends Btree<T> implements Inde
             return ClassDescriptor.tpDate;
         } else if (c.equals(byte[].class)) { 
             return ClassDescriptor.tpArrayOfByte;
-        } else if (IPersistent.class.isAssignableFrom(c)) {
-            return ClassDescriptor.tpObject;
+        } else if (IValue.class.isAssignableFrom(c)) {
+            return ClassDescriptor.tpValue;
         } else { 
-            throw new StorageError(StorageError.UNSUPPORTED_INDEX_TYPE, c);
+            return ClassDescriptor.tpObject;
         }
     }
 
@@ -180,7 +187,7 @@ class BtreeCompoundIndex<T extends IPersistent> extends Btree<T> implements Inde
                 v = new Byte(data[offs++]);
                 break;
               case ClassDescriptor.tpShort:
-                v = Short.valueOf(Bytes.unpack2(data, offs));
+                v = new Short(Bytes.unpack2(data, offs));
                 offs += 2;
                 break;
               case ClassDescriptor.tpChar:
@@ -285,7 +292,7 @@ class BtreeCompoundIndex<T extends IPersistent> extends Btree<T> implements Inde
                 break;
               case ClassDescriptor.tpObject:
                 buf.extend(dst+4);
-                Bytes.pack4(buf.arr, dst, v == null ? 0 : ((IPersistent)v).getOid());
+                Bytes.pack4(buf.arr, dst, v == null ? 0 : getStorage().getOid(v));
                 dst += 4;
                 break;
               case ClassDescriptor.tpLong:

@@ -1,8 +1,10 @@
 package plugins.XMLSpider.org.garret.perst.impl;
 
-import plugins.XMLSpider.org.garret.perst.*;
-
 import java.util.ArrayList;
+
+import plugins.XMLSpider.org.garret.perst.Persistent;
+import plugins.XMLSpider.org.garret.perst.PersistentComparator;
+import plugins.XMLSpider.org.garret.perst.Storage;
 
 public class TtreePage extends Persistent  { 
     static final int maxItems = (Page.pageSize-ObjectHeader.sizeof-4*5)/4;
@@ -12,7 +14,7 @@ public class TtreePage extends Persistent  {
     TtreePage   right;
     int         balance;
     int         nItems;
-    IPersistent item[];
+    Object      item[];
 
     static class PageReference { 
         TtreePage pg;
@@ -26,16 +28,17 @@ public class TtreePage extends Persistent  {
 
     TtreePage() {}
 
-    TtreePage(IPersistent mbr) { 
+    TtreePage(Storage db, Object mbr) { 
+        super(db);
         nItems = 1;
-        item = new IPersistent[maxItems];
+        item = new Object[maxItems];
         item[0] = mbr;
     }
 
-    final IPersistent loadItem(int i) 
+    final Object loadItem(int i) 
     { 
-        IPersistent mbr = item[i];
-        mbr.load();
+        Object mbr = item[i];
+        getStorage().load(mbr);
         return mbr;
     }
 
@@ -93,7 +96,7 @@ public class TtreePage extends Persistent  {
         return true;
     }
     
-    final boolean contains(PersistentComparator comparator, IPersistent key)
+    final boolean contains(PersistentComparator comparator, Object key)
     { 
         int l, r, m, n;
         load();
@@ -199,7 +202,7 @@ public class TtreePage extends Persistent  {
         return false;
     }
 
-    final boolean containsObject(PersistentComparator comparator, IPersistent mbr)
+    final boolean containsObject(PersistentComparator comparator, Object mbr)
     { 
         int l, r, m, n;
         load();
@@ -259,7 +262,7 @@ public class TtreePage extends Persistent  {
     static final int OVERFLOW   = 3;
     static final int UNDERFLOW  = 4;
 
-    final int insert(PersistentComparator comparator, IPersistent mbr, boolean unique, PageReference ref) 
+    final int insert(PersistentComparator comparator, Object mbr, boolean unique, PageReference ref) 
     { 
         load();
         int n = nItems;
@@ -279,7 +282,7 @@ public class TtreePage extends Persistent  {
             } 
             if (left == null) { 
                 modify();
-                left = new TtreePage(mbr);
+                left = new TtreePage(getStorage(), mbr);
             } else {
                 pg = ref.pg;
                 ref.pg = left;
@@ -337,7 +340,7 @@ public class TtreePage extends Persistent  {
             }
             if (right == null) { 
                  modify();
-                 right = new TtreePage(mbr);
+                 right = new TtreePage(getStorage(), mbr);
             } else { 
                 pg = ref.pg;
                 ref.pg = right;
@@ -407,7 +410,7 @@ public class TtreePage extends Persistent  {
             nItems += 1;
             return OK;
         } else { 
-            IPersistent reinsertItem;
+            Object reinsertItem;
             if (balance >= 0) { 
                 reinsertItem = loadItem(0);
                 System.arraycopy(item, 1, item, 0, r-1);
@@ -509,7 +512,7 @@ public class TtreePage extends Persistent  {
         }
     }
     
-    final int remove(PersistentComparator comparator, IPersistent mbr, PageReference ref)
+    final int remove(PersistentComparator comparator, Object mbr, PageReference ref)
     {
         load();
         TtreePage pg;
@@ -618,7 +621,7 @@ public class TtreePage extends Persistent  {
     }
 
 
-    final int toArray(IPersistent[] arr, int index) { 
+    final int toArray(Object [] arr, int index) { 
         load();
         if (left != null) { 
             index = left.toArray(arr, index);

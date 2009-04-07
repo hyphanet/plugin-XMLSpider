@@ -1,19 +1,21 @@
 package plugins.XMLSpider.org.garret.perst;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Map;
 
 /**
  * Interface of object spatial index.
  * Spatial index is used to allow fast selection of spatial objects belonging to the specified rectangle.
  * Spatial index is implemented using Guttman R-Tree with quadratic split algorithm.
  */
-public interface SpatialIndex<T extends IPersistent> extends IPersistent, IResource, ITable<T> { 
+public interface SpatialIndex<T> extends IPersistent, IResource, ITable<T> { 
     /**
      * Find all objects located in the selected rectangle
      * @param r selected rectangle
      * @return array of objects which enveloping rectangle intersects with specified rectangle
      */
-    public IPersistent[] get(Rectangle r);
+    public Object[] get(Rectangle r);
 
     /**
      * Find all objects located in the selected rectangle
@@ -39,21 +41,10 @@ public interface SpatialIndex<T extends IPersistent> extends IPersistent, IResou
     public void remove(Rectangle r, T obj);
 
     /**
-     * Get number of objects in the index
-     * @return number of objects in the index
-     */
-    public int  size();
-    
-    /**
      * Get wrapping rectangle 
      * @return minimal rectangle containing all rectangles in the index, <code>null</code> if index is empty     
      */
     public Rectangle getWrappingRectangle();
-
-    /**
-     * Remove all objects from the index
-     */
-    public void clear();
 
     /**
      * Get iterator through all members of the index

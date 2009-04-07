@@ -1,15 +1,19 @@
 package plugins.XMLSpider.org.garret.perst.impl;
 
-import plugins.XMLSpider.org.garret.perst.*;
-
-import java.io.*;
+import java.io.IOException;
+import java.io.Reader;
+import java.text.DateFormat;
+import java.text.ParsePosition;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
-import java.util.Date;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.text.ParsePosition;
-import java.lang.reflect.Field;
+
+import plugins.XMLSpider.org.garret.perst.BitIndex;
+import plugins.XMLSpider.org.garret.perst.Key;
+import plugins.XMLSpider.org.garret.perst.XMLImportException;
 
 public class XMLImporter { 
     public XMLImporter(StorageImpl storage, Reader reader) { 
@@ -49,14 +53,14 @@ public class XMLImporter {
                 throwException("Element name expected");
             }
             String elemName = scanner.getIdentifier();
-            if (elemName.equals("plugins.XMLSpider.org.garret.perst.impl.Btree") 
-                || elemName.equals("plugins.XMLSpider.org.garret.perst.impl.BitIndexImpl")
-                || elemName.equals("plugins.XMLSpider.org.garret.perst.impl.PersistentSet") 
-                || elemName.equals("plugins.XMLSpider.org.garret.perst.impl.BtreeFieldIndex") 
-                || elemName.equals("plugins.XMLSpider.org.garret.perst.impl.BtreeCaseInsensitiveFieldIndex") 
-                || elemName.equals("plugins.XMLSpider.org.garret.perst.impl.BtreeCompoundIndex") 
-                || elemName.equals("plugins.XMLSpider.org.garret.perst.impl.BtreeMultiFieldIndex")
-                || elemName.equals("plugins.XMLSpider.org.garret.perst.impl.BtreeCaseInsensitiveMultiFieldIndex")) 
+            if (elemName.equals("org.garret.perst.impl.Btree") 
+                || elemName.equals("org.garret.perst.impl.BitIndexImpl")
+                || elemName.equals("org.garret.perst.impl.PersistentSet") 
+                || elemName.equals("org.garret.perst.impl.BtreeFieldIndex") 
+                || elemName.equals("org.garret.perst.impl.BtreeCaseInsensitiveFieldIndex") 
+                || elemName.equals("org.garret.perst.impl.BtreeCompoundIndex") 
+                || elemName.equals("org.garret.perst.impl.BtreeMultiFieldIndex")
+                || elemName.equals("org.garret.perst.impl.BtreeCaseInsensitiveMultiFieldIndex")) 
             { 
                 createIndex(elemName);
             } else { 
@@ -76,8 +80,8 @@ public class XMLImporter {
         private XMLElement next;
         private XMLElement prev;
         private String     name;
-        private HashMap    siblings;
-        private HashMap    attributes;
+        private HashMap<String,XMLElement>  siblings;
+        private HashMap<String,String>      attributes;
         private String     svalue;
         private long       ivalue;
         private double     rvalue;
@@ -97,9 +101,9 @@ public class XMLImporter {
 
         final void addSibling(XMLElement elem) { 
             if (siblings == null) { 
-                siblings = new HashMap();
+                siblings = new HashMap<String,XMLElement>();
             }
-            XMLElement prev = (XMLElement)siblings.get(elem.name);
+            XMLElement prev = siblings.get(elem.name);
             if (prev != null) { 
                 elem.next = null;
                 elem.prev = prev.prev;
@@ -122,13 +126,30 @@ public class XMLImporter {
 
         final XMLElement getSibling(String name) { 
             if (siblings != null) { 
-                return (XMLElement)siblings.get(name);
+                return siblings.get(name);
             }
             return null;
         }
+
+        final static Collection<XMLElement> EMPTY_COLLECTION = new ArrayList<XMLElement>();
         
+        final Collection<XMLElement> getSiblings() { 
+            return (siblings != null) ? siblings.values() : EMPTY_COLLECTION;
+        } 
+
+        final XMLElement getFirstSibling() { 
+            for (XMLElement e : getSiblings()) { 
+                return e;
+            }
+            return null;
+        }
+
         final XMLElement getNextSibling() { 
             return next;
+        }
+        
+        final String getName() {
+            return name;
         }
 
         final int getCounter() { 
@@ -136,7 +157,7 @@ public class XMLImporter {
         }
 
         final String getAttribute(String name) { 
-            return attributes != null ? (String)attributes.get(name) : null;
+            return attributes != null ? attributes.get(name) : null;
         }
 
         final void setIntValue(long val) { 
@@ -244,7 +265,7 @@ public class XMLImporter {
     
     final Key createCompoundKey(int[] types, String[] values) throws XMLImportException
     {
-        IPersistent obj;
+        Object obj;
         Date date;
         ByteBuffer buf = new ByteBuffer();
         int dst = 0;
@@ -299,7 +320,7 @@ public class XMLImporter {
                     dst += 8;
                     break;
                   case ClassDescriptor.tpString:
-                    dst = buf.packString(dst, value, storage.encoding);
+                    dst = buf.packString(dst, value);
                     break;
                   case ClassDescriptor.tpArrayOfByte:
                     buf.extend(dst + 4 + (value.length() >>> 1));
@@ -444,13 +465,13 @@ public class XMLImporter {
         if (className != null) { 
             Class cls = ClassDescriptor.loadClass(storage, className); 
             if (fieldName != null) { 
-                if (indexType.equals("plugins.XMLSpider.org.garret.perst.impl.BtreeCaseInsensitiveFieldIndex")) {
+                if (indexType.equals("org.garret.perst.impl.BtreeCaseInsensitiveFieldIndex")) {
                     btree = new BtreeCaseInsensitiveFieldIndex(cls, fieldName, unique, autoinc);
                 } else { 
                     btree = new BtreeFieldIndex(cls, fieldName, unique, autoinc);
                 }
             } else if (fieldNames != null) { 
-                if (indexType.equals("plugins.XMLSpider.org.garret.perst.impl.BtreeCaseInsensitiveMultiFieldIndex")) {
+                if (indexType.equals("org.garret.perst.impl.BtreeCaseInsensitiveMultiFieldIndex")) {
                     btree = new BtreeCaseInsensitiveMultiFieldIndex(cls, fieldNames, unique);
                 } else { 
                     btree = new BtreeMultiFieldIndex(cls, fieldNames, unique);
@@ -462,20 +483,20 @@ public class XMLImporter {
             if (types != null) { 
                 btree = new BtreeCompoundIndex(types, unique);
             } else if (type == null) { 
-                if (indexType.equals("plugins.XMLSpider.org.garret.perst.impl.PersistentSet")) { 
+                if (indexType.equals("org.garret.perst.impl.PersistentSet")) { 
                     btree = new PersistentSet();
                 } else { 
                     throwException("Key type is not specified for index");
                 }
             } else { 
-                if (indexType.equals("plugins.XMLSpider.org.garret.perst.impl.BitIndexImpl")) { 
+                if (indexType.equals("org.garret.perst.impl.BitIndexImpl")) { 
                     btree = new BitIndexImpl();
                 } else { 
                     btree = new Btree(mapType(type), unique);
                 }
             }
         }
-        storage.assignOid(btree, oid);
+        storage.assignOid(btree, oid, false);
 
         while ((tkn = scanner.scan()) == XMLScanner.XML_LT) {
             if (scanner.scan() != XMLScanner.XML_IDENT
@@ -505,7 +526,7 @@ public class XMLImporter {
                     key = createKey(btree.type, getAttribute(ref, "key"));
                 }
             }
-            IPersistent obj = new PersistentStub(storage, mapId(getIntAttribute(ref, "id")));
+            Object obj = new PersistentStub(storage, mapId(getIntAttribute(ref, "id")));
             if (btree instanceof BitIndex) { 
                 ((BitIndex)btree).put(obj, mask);
             } else { 
@@ -564,26 +585,15 @@ public class XMLImporter {
         throws XMLImportException
     { 
         if (elem == null || elem.isNullValue()) {
-            buf.extend(offs + 4);
-            Bytes.pack4(buf.arr, offs, -1);
-            offs += 4;
+            offs = buf.packI4(offs, -1);
         } else if (elem.isStringValue()) {
             String hexStr = elem.getStringValue();
             int len = hexStr.length();
-            if (hexStr.startsWith("#")) { 
-                buf.extend(offs + 4 + len/2-1);
-                Bytes.pack4(buf.arr, offs, -2-getHexValue(hexStr.charAt(1)));  
-                offs += 4;
-                for (int j = 2; j < len; j += 2) { 
-                    buf.arr[offs++] = (byte)((getHexValue(hexStr.charAt(j)) << 4) | getHexValue(hexStr.charAt(j+1)));
-                }
-             } else { 
-                buf.extend(offs + 4 + len/2);
-                Bytes.pack4(buf.arr, offs, len/2);
-                offs += 4;
-                for (int j = 0; j < len; j += 2) { 
-                    buf.arr[offs++] = (byte)((getHexValue(hexStr.charAt(j)) << 4) | getHexValue(hexStr.charAt(j+1)));
-                }
+            buf.extend(offs + 4 + len/2);
+            Bytes.pack4(buf.arr, offs, len/2);
+            offs += 4;
+            for (int j = 0; j < len; j += 2) { 
+                buf.arr[offs++] = (byte)((getHexValue(hexStr.charAt(j)) << 4) | getHexValue(hexStr.charAt(j+1)));
             }
         } else { 
             XMLElement ref = elem.getSibling("ref");
@@ -611,6 +621,65 @@ public class XMLImporter {
             }
         }
         return offs;
+    }
+
+    int importRef(XMLElement elem, int offs, ByteBuffer buf) throws XMLImportException
+    {
+        int oid = 0;
+        if (elem != null) {
+            if (elem.isStringValue()) {
+                String str = elem.getStringValue();
+                offs = buf.packI4(offs, -1-ClassDescriptor.tpString);
+                return buf.packString(offs, str);
+            } else {
+                XMLElement value = elem.getFirstSibling();
+                if (value == null) { 
+                    throwException("object reference expected");
+                }
+                String name = value.getName();
+                if (name.equals("scalar")) { 
+                    int tid = getIntAttribute(value, "type");
+                    String hexStr = getAttribute(value, "value");
+                    int len = hexStr.length();
+                    buf.extend(offs + 4 + len/2);
+                    Bytes.pack4(buf.arr, offs, -1-tid);
+                    offs += 4;
+                    if (tid == ClassDescriptor.tpCustom) { 
+                        try { 
+                            Object obj = storage.serializer.parse(hexStr);  
+                            storage.serializer.pack(obj, buf.getOutputStream());                    
+                            offs = buf.size();
+                        } catch (Exception x) { 
+                            throwException("exception in custom serializer: " + x);
+                        }                        
+                    } else { 
+                        for (int j = 0; j < len; j += 2) { 
+                            buf.arr[offs++] = (byte)((getHexValue(hexStr.charAt(j)) << 4) | getHexValue(hexStr.charAt(j+1)));
+                        }
+                    }
+                    return offs;
+                } else if (name.equals("ref")) { 
+                    oid = mapId(getIntAttribute(value, "id"));
+                } else { 
+                    Class cls = ClassDescriptor.loadClass(storage, name); 
+                    ClassDescriptor desc = storage.getClassDescriptor(cls);
+                    offs = buf.packI4(offs, -ClassDescriptor.tpValueTypeBias - desc.getOid());
+                    if (desc.isCollection) { 
+                        XMLElement item = value.getSibling("element");
+                        int len = (item == null) ? 0 : item.getCounter(); 
+                        offs = buf.packI4(offs, len);
+                        while (--len >= 0) { 
+                            offs = importRef(item, offs, buf);
+                            item = item.getNextSibling();
+                        }
+                    } else { 
+                        offs = packObject(value, desc, offs, buf);
+                    }
+                    return offs;
+                }
+            }
+        }
+        return buf.packI4(offs, oid);
     }
 
     final int packObject(XMLElement objElem, ClassDescriptor desc, int offs, ByteBuffer buf) 
@@ -765,28 +834,14 @@ public class XMLImporter {
                         } else { 
                             throwException("Conversion for field " + fieldName + " is not possible");
                         }
-                        offs = buf.packString(offs, value, storage.encoding);
+                        offs = buf.packString(offs, value);
                         continue;
                     } 
-                    buf.extend(offs + 4);
-                    Bytes.pack4(buf.arr, offs, -1);
-                    offs += 4;
+                    offs = buf.packI4(offs, -1);
                     continue;
                 case ClassDescriptor.tpObject:
-                {
-                    int oid = 0;
-                    if (elem != null) {
-                        XMLElement ref = elem.getSibling("ref");
-                        if (ref == null) { 
-                            throwException("<ref> element expected");
-                        }
-                        oid = mapId(getIntAttribute(ref, "id"));
-                    }
-                    buf.extend(offs + 4);
-                    Bytes.pack4(buf.arr, offs, oid);
-                    offs += 4;
+                    offs = importRef(elem, offs, buf);
                     continue;
-                }
                 case ClassDescriptor.tpValue:
                     offs = packObject(elem, fd.valueDesc, offs, buf);
                     continue;
@@ -801,19 +856,17 @@ public class XMLImporter {
                     }
                     String str = elem.getStringValue();                    
                     try { 
-                        CustomSerializable obj = storage.serializer.parse(str);                        
+                        Object obj = storage.serializer.parse(str);                        
                         storage.serializer.pack(obj, buf.getOutputStream());                    
                         offs = buf.size();
-                    } catch (IOException x) { 
+                    } catch (Exception x) { 
                         throwException("exception in custom serializer: " + x);
                     }                        
                     break;
                 }
                 case ClassDescriptor.tpArrayOfBoolean:
                     if (elem == null || elem.isNullValue()) {
-                        buf.extend(offs + 4);
-                        Bytes.pack4(buf.arr, offs, -1);
-                        offs += 4;
+                        offs = buf.packI4(offs, -1);
                     } else {
                         XMLElement item = elem.getSibling("element");
                         int len = (item == null) ? 0 : item.getCounter(); 
@@ -836,9 +889,7 @@ public class XMLImporter {
                 case ClassDescriptor.tpArrayOfChar:
                 case ClassDescriptor.tpArrayOfShort:
                     if (elem == null || elem.isNullValue()) {
-                        buf.extend(offs + 4);
-                        Bytes.pack4(buf.arr, offs, -1);
-                        offs += 4;
+                        offs = buf.packI4(offs, -1);
                     } else {
                         XMLElement item = elem.getSibling("element");
                         int len = (item == null) ? 0 : item.getCounter(); 
@@ -860,9 +911,7 @@ public class XMLImporter {
                     continue;
                 case ClassDescriptor.tpArrayOfInt:
                     if (elem == null || elem.isNullValue()) {
-                        buf.extend(offs + 4);
-                        Bytes.pack4(buf.arr, offs, -1);
-                        offs += 4;
+                        offs = buf.packI4(offs, -1);
                     } else {
                         XMLElement item = elem.getSibling("element");
                         int len = (item == null) ? 0 : item.getCounter(); 
@@ -884,9 +933,7 @@ public class XMLImporter {
                     continue;
                 case ClassDescriptor.tpArrayOfEnum:
                     if (elem == null || elem.isNullValue()) {
-                        buf.extend(offs + 4);
-                        Bytes.pack4(buf.arr, offs, -1);
-                        offs += 4;
+                        offs = buf.packI4(offs, -1);
                     } else {
                         XMLElement item = elem.getSibling("element");
                         int len = (item == null) ? 0 : item.getCounter(); 
@@ -913,9 +960,7 @@ public class XMLImporter {
                     continue;
                 case ClassDescriptor.tpArrayOfLong:
                     if (elem == null || elem.isNullValue()) {
-                        buf.extend(offs + 4);
-                        Bytes.pack4(buf.arr, offs, -1);
-                        offs += 4;
+                        offs = buf.packI4(offs, -1);
                     } else {
                         XMLElement item = elem.getSibling("element");
                         int len = (item == null) ? 0 : item.getCounter(); 
@@ -937,9 +982,7 @@ public class XMLImporter {
                     continue;
                 case ClassDescriptor.tpArrayOfFloat:
                     if (elem == null || elem.isNullValue()) {
-                        buf.extend(offs + 4);
-                        Bytes.pack4(buf.arr, offs, -1);
-                        offs += 4;
+                        offs = buf.packI4(offs, -1);
                     } else {
                         XMLElement item = elem.getSibling("element");
                         int len = (item == null) ? 0 : item.getCounter(); 
@@ -961,9 +1004,7 @@ public class XMLImporter {
                     continue;
                 case ClassDescriptor.tpArrayOfDouble:
                     if (elem == null || elem.isNullValue()) {
-                        buf.extend(offs + 4);
-                        Bytes.pack4(buf.arr, offs, -1);
-                        offs += 4;
+                        offs = buf.packI4(offs, -1);
                     } else {
                         XMLElement item = elem.getSibling("element");
                         int len = (item == null) ? 0 : item.getCounter(); 
@@ -985,9 +1026,7 @@ public class XMLImporter {
                     continue;
                 case ClassDescriptor.tpArrayOfDate:
                     if (elem == null || elem.isNullValue()) {
-                        buf.extend(offs + 4);
-                        Bytes.pack4(buf.arr, offs, -1);
-                        offs += 4;
+                        offs = buf.packI4(offs, -1);
                     } else {
                         XMLElement item = elem.getSibling("element");
                         int len = (item == null) ? 0 : item.getCounter(); 
@@ -1013,9 +1052,7 @@ public class XMLImporter {
                     continue;
                 case ClassDescriptor.tpArrayOfString:
                     if (elem == null || elem.isNullValue()) {
-                        buf.extend(offs + 4);
-                        Bytes.pack4(buf.arr, offs, -1);
-                        offs += 4;
+                        offs = buf.packI4(offs, -1);
                     } else {
                         XMLElement item = elem.getSibling("element");
                         int len = (item == null) ? 0 : item.getCounter(); 
@@ -1035,7 +1072,7 @@ public class XMLImporter {
                             } else { 
                                 throwException("Conversion for field " + fieldName + " is not possible");
                             }
-                            offs = buf.packString(offs, value, storage.encoding);
+                            offs = buf.packString(offs, value);
                             item = item.getNextSibling();
                         }
                     }
@@ -1043,56 +1080,27 @@ public class XMLImporter {
                 case ClassDescriptor.tpArrayOfObject:
                 case ClassDescriptor.tpLink:
                     if (elem == null || elem.isNullValue()) {
-                        buf.extend(offs + 4);
-                        Bytes.pack4(buf.arr, offs, -1);
-                        offs += 4;
+                        offs = buf.packI4(offs, -1);
                     } else {
                         XMLElement item = elem.getSibling("element");
                         int len = (item == null) ? 0 : item.getCounter(); 
-                        buf.extend(offs + 4 + len*4);
-                        Bytes.pack4(buf.arr, offs, len);
-                        offs += 4;
+                        offs = buf.packI4(offs, len);
                         while (--len >= 0) { 
-                            XMLElement ref = item.getSibling("ref");
-                            if (ref == null) { 
-                                throwException("<ref> element expected");
-                            }
-                            int oid = mapId(getIntAttribute(ref, "id"));
-                            Bytes.pack4(buf.arr, offs, oid);
+                            offs = importRef(item, offs, buf);
                             item = item.getNextSibling();
-                            offs += 4;
                         }
                     }
                     continue;
                 case ClassDescriptor.tpArrayOfValue:
                     if (elem == null || elem.isNullValue()) {
-                        buf.extend(offs + 4);
-                        Bytes.pack4(buf.arr, offs, -1);
-                        offs += 4;
+                        offs = buf.packI4(offs, -1);
                     } else {
                         XMLElement item = elem.getSibling("element");
                         int len = (item == null) ? 0 : item.getCounter(); 
-                        Bytes.pack4(buf.arr, offs, len);
-                        offs += 4;
+                        offs = buf.packI4(offs, len);
                         ClassDescriptor elemDesc = fd.valueDesc;
                         while (--len >= 0) {
                             offs = packObject(item, elemDesc, offs, buf);
-                            item = item.getNextSibling();
-                        }
-                    }
-                    continue;
-                case ClassDescriptor.tpArrayOfRaw:
-                    if (elem == null || elem.isNullValue()) {
-                        buf.extend(offs + 4);
-                        Bytes.pack4(buf.arr, offs, -1);
-                        offs += 4;
-                    } else {
-                        XMLElement item = elem.getSibling("element");
-                        int len = (item == null) ? 0 : item.getCounter(); 
-                        Bytes.pack4(buf.arr, offs, len);
-                        offs += 4;
-                        while (--len >= 0) {
-                            offs = importBinary(item, offs, buf, fieldName);
                             item = item.getNextSibling();
                         }
                     }
@@ -1240,7 +1248,7 @@ public class XMLImporter {
         
         final int scan() throws XMLImportException
         {
-            int i, ch;
+            int i, ch, quote;
             boolean floatingPoint;
 
             while (true) { 
@@ -1281,6 +1289,8 @@ public class XMLImporter {
                   case '=':
                     return XML_EQ;
                   case '"':
+                  case '\'':
+                    quote = ch;
                     i = 0;
                     while (true) { 
                         ch = get();
@@ -1289,11 +1299,17 @@ public class XMLImporter {
                         } else if (ch == '&') { 
                             switch (get()) { 
                               case 'a':
-                                if (get() != 'm' || get() != 'p' || get() != ';') { 
-                                    throw new XMLImportException(line, column, "Bad XML file format");
+                                ch = get();
+                                if (ch == 'm') { 
+                                    if (get() == 'p' && get() == ';') { 
+                                        ch = '&';
+                                        break;
+                                    }
+                                } else if (ch == 'p' && get() == 'o' && get() == 's' && get() == ';') { 
+                                    ch = '\'';
+                                    break;
                                 }
-                                ch = '&';
-                                break;
+                                throw new XMLImportException(line, column, "Bad XML file format");
                               case 'l':
                                 if (get() != 't' || get() != ';') { 
                                     throw new XMLImportException(line, column, "Bad XML file format");
@@ -1315,7 +1331,7 @@ public class XMLImporter {
                               default: 
                                 throw new XMLImportException(line, column, "Bad XML file format");
                             }
-                        } else if (ch == '"') { 
+                        } else if (ch == quote) { 
                             slen = i;
                             return XML_SCONST;
                         }

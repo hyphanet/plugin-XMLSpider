@@ -1,7 +1,8 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import plugins.XMLSpider.org.garret.perst.*;
+import java.util.ArrayList;
 
-import  java.util.ArrayList;
+import plugins.XMLSpider.org.garret.perst.Assert;
+import plugins.XMLSpider.org.garret.perst.Key;
 
 class BtreePage { 
     static final int firstKeyOffs = 4;
@@ -1628,7 +1629,7 @@ class BtreePage {
     }
 
     static int traverseForward(StorageImpl db, int pageId, int type, int height, 
-                               IPersistent[] result, int pos)
+                               Object[] result, int pos)
     {
         Page pg = db.getPage(pageId);
         int oid;

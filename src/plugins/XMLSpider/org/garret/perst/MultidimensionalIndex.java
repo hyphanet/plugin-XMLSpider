@@ -1,6 +1,7 @@
 package plugins.XMLSpider.org.garret.perst;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
 
 /**
  * Interface of multidimensional index.
@@ -8,7 +9,7 @@ import java.util.*;
  * "select from StockOptions where Symbol between 'AAB' and 'ABC' and Price > 100 and Volume between 1000 and 10000".
  * Each component of the object is represented as separate dimension in the index.
  */
-public interface MultidimensionalIndex<T extends IPersistent> extends IPersistent, IResource, ITable<T> 
+public interface MultidimensionalIndex<T> extends IPersistent, IResource, ITable<T> 
 {
     /**
      * Get comparator used in this index
@@ -16,20 +17,6 @@ public interface MultidimensionalIndex<T extends IPersistent> extends IPersisten
      */
     public MultidimensionalComparator<T> getComparator();
 
-    /**
-     * Add new object in the index. 
-     * @param obj object to be inserted in index. 
-     * @return true if object was successfully added
-     */
-    public boolean add(T obj);
-
-    /**
-     * Remove object from the index
-     * @param obj object removed from the index. 
-     * @return true id object was removed, false if object was not found in the index
-     */        
-    public boolean remove(T obj);
-        
     /**
      * Get iterator for traversing all objects in the index. 
      * Objects are iterated in the ascent key order. 
@@ -86,23 +73,6 @@ public interface MultidimensionalIndex<T extends IPersistent> extends IPersisten
      */
     public ArrayList<T> queryByExample(T low, T high);
 
-    /**
-     * Remove all objects from the index
-     */
-    public void clear();
-
-    /**
-     * Check if specified object belongs to the index
-     * @param member which is searched in the index
-     * @return true if specified object is present in the index
-     */
-    public boolean contains(Object member);
-
-    /**
-     * Get number of objects in the index
-     * @return number of objects in the index
-     */
-    public int size();
 
     /**
      * Optimize index to make search more efficient.

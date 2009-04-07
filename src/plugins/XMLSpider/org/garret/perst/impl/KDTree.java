@@ -1,10 +1,20 @@
 package plugins.XMLSpider.org.garret.perst.impl;
 
-import plugins.XMLSpider.org.garret.perst.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.Random;
+import java.util.Stack;
 
-import java.util.*;
+import plugins.XMLSpider.org.garret.perst.IterableIterator;
+import plugins.XMLSpider.org.garret.perst.MultidimensionalComparator;
+import plugins.XMLSpider.org.garret.perst.MultidimensionalIndex;
+import plugins.XMLSpider.org.garret.perst.Persistent;
+import plugins.XMLSpider.org.garret.perst.PersistentCollection;
+import plugins.XMLSpider.org.garret.perst.PersistentIterator;
+import plugins.XMLSpider.org.garret.perst.Storage;
 
-public class KDTree<T extends IPersistent> extends PersistentCollection<T> implements MultidimensionalIndex<T>{
+public class KDTree<T> extends PersistentCollection<T> implements MultidimensionalIndex<T>{
     KDTreeNode root;
     int        nMembers;
     int        height;
@@ -31,14 +41,15 @@ public class KDTree<T extends IPersistent> extends PersistentCollection<T> imple
     static final int TRUNCATE  = 2;
     
 
-    static class KDTreeNode<T extends IPersistent> extends Persistent 
+    static class KDTreeNode<T> extends Persistent 
     {
         KDTreeNode  left;
         KDTreeNode  right;
         T           obj;
         boolean     deleted;
         
-        KDTreeNode(T obj) { 
+        KDTreeNode(Storage db, T obj) {
+            super(db);
             this.obj = obj;
         }        
 
@@ -46,7 +57,7 @@ public class KDTree<T extends IPersistent> extends PersistentCollection<T> imple
 
         public void load() {
             super.load();
-            obj.load();
+            getStorage().load(obj);
         }
 
         public boolean recursiveLoading() {
@@ -58,7 +69,7 @@ public class KDTree<T extends IPersistent> extends PersistentCollection<T> imple
             load();
             int diff = comparator.compare(ins, obj, level % comparator.getNumberOfDimensions());
             if (diff == MultidimensionalComparator.EQ && deleted) { 
-                obj.deallocate();
+                getStorage().deallocate(obj);
                 modify();
                 obj = ins;
                 deleted = false;
@@ -66,7 +77,7 @@ public class KDTree<T extends IPersistent> extends PersistentCollection<T> imple
             } else if (diff != MultidimensionalComparator.GT) { 
                 if (left == null) { 
                     modify();
-                    left = new KDTreeNode<T>(ins);
+                    left = new KDTreeNode<T>(getStorage(), ins);
                     return level+1;
                 } else { 
                     return left.insert(ins, comparator, level + 1);
@@ -74,7 +85,7 @@ public class KDTree<T extends IPersistent> extends PersistentCollection<T> imple
             } else { 
                 if (right == null) { 
                     modify();
-                    right = new KDTreeNode<T>(ins);
+                    right = new KDTreeNode<T>(getStorage(), ins);
                     return level+1;
                 } else { 
                     return right.insert(ins, comparator, level + 1);
@@ -123,7 +134,7 @@ public class KDTree<T extends IPersistent> extends PersistentCollection<T> imple
         public void deallocate() { 
             load();
             if (deleted) { 
-                obj.deallocate();
+                getStorage().deallocate(obj);
             }
             if (left != null) { 
                 left.deallocate();
@@ -138,14 +149,14 @@ public class KDTree<T extends IPersistent> extends PersistentCollection<T> imple
     public void optimize() { 
         Iterator<T> itr = iterator();
         int n = nMembers;
-        IPersistent[] members = new IPersistent[n];
+        Object[] members = new Object[n];
         for (int i = 0; i < n; i++) { 
             members[i] = itr.next();
         }
         Random rnd = new Random();
         for (int i = 0; i < n; i++) { 
             int j = rnd.nextInt(n);
-            IPersistent tmp = members[j];
+            Object tmp = members[j];
             members[j] = members[i];
             members[i] = tmp;
         }
@@ -159,7 +170,7 @@ public class KDTree<T extends IPersistent> extends PersistentCollection<T> imple
     { 
         modify();
         if (root == null) {
-            root = new KDTreeNode<T>(obj);
+            root = new KDTreeNode<T>(getStorage(), obj);
             height = 1;
         } else {  
             int level = root.insert(obj, comparator, 0);
@@ -171,7 +182,7 @@ public class KDTree<T extends IPersistent> extends PersistentCollection<T> imple
         return true;
     }
 
-    public boolean remove(T obj) 
+    public boolean remove(Object obj) 
     {
         if (root == null) { 
             return false;
@@ -239,8 +250,8 @@ public class KDTree<T extends IPersistent> extends PersistentCollection<T> imple
         }
     }
 
-    public boolean contains(T member) {
-        Iterator<T> i = iterator(member);
+    public boolean contains(Object member) {
+        Iterator<T> i = iterator((T)member);
         while (i.hasNext()) { 
             if (i.next() == member) { 
                 return true;
@@ -369,7 +380,12 @@ public class KDTree<T extends IPersistent> extends PersistentCollection<T> imple
         }
         
         public int nextOid() { 
-            return next().getOid();
+            if (!hasNext()) { 
+                return 0;
+            }
+            curr = next;
+            next = null;
+            return getStorage().getOid(curr.obj);
         }
         
         public void remove() { 

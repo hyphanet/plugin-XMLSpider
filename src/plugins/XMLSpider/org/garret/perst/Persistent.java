@@ -117,9 +117,9 @@ public class Persistent implements IPersistent, ICloneable
     transient int     oid;
     transient int     state;
 
-    static private final int RAW   = 1;
-    static private final int DIRTY = 2;
-    static private final int DELETED = 4;
+    static public final int RAW   = 1;
+    static public final int DIRTY = 2;
+    static public final int DELETED = 4;
 
     public void assignOid(Storage storage, int oid, boolean raw) { 
         this.oid = oid;

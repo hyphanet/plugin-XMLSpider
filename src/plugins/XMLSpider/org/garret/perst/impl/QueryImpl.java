@@ -1,19 +1,45 @@
 package plugins.XMLSpider.org.garret.perst.impl;
 
-import java.lang.reflect.*;
-import java.util.*;
-import java.text.*;
-import java.util.Arrays.*;
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.text.DateFormat;
+import java.text.ParsePosition;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Hashtable;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 
-import plugins.XMLSpider.org.garret.perst.*;
+import plugins.XMLSpider.org.garret.perst.CodeGenerator;
+import plugins.XMLSpider.org.garret.perst.CompileError;
+import plugins.XMLSpider.org.garret.perst.GenericIndex;
+import plugins.XMLSpider.org.garret.perst.IResource;
+import plugins.XMLSpider.org.garret.perst.Index;
+import plugins.XMLSpider.org.garret.perst.IndexProvider;
+import plugins.XMLSpider.org.garret.perst.IterableIterator;
+import plugins.XMLSpider.org.garret.perst.IteratorWrapper;
+import plugins.XMLSpider.org.garret.perst.JSQLArithmeticException;
+import plugins.XMLSpider.org.garret.perst.JSQLNoSuchFieldException;
+import plugins.XMLSpider.org.garret.perst.JSQLNullPointerException;
+import plugins.XMLSpider.org.garret.perst.JSQLRuntimeException;
+import plugins.XMLSpider.org.garret.perst.Key;
+import plugins.XMLSpider.org.garret.perst.Query;
+import plugins.XMLSpider.org.garret.perst.Resolver;
+import plugins.XMLSpider.org.garret.perst.Storage;
 
 class FilterIterator<T> extends IterableIterator<T> { 
     Iterator     iterator;
     Node         condition;
     QueryImpl<T> query;
     int[]        indexVar;
-    long[]       intAggragateFuncValue;
-    double[]     realAggragateFuncValue;
+    long[]       intAggregateFuncValue;
+    double[]     realAggregateFuncValue;
     Object[]     containsArray;
     T            currObj;
     Object       containsElem;
@@ -58,7 +84,7 @@ class FilterIterator<T> extends IterableIterator<T> {
     }
         
     
-    FilterIterator(QueryImpl query, Iterator<T> iterator, Node condition) { 
+    FilterIterator(QueryImpl query, Iterator iterator, Node condition) { 
         this.query = query;
         this.iterator = iterator;
         this.condition = condition;
@@ -66,9 +92,87 @@ class FilterIterator<T> extends IterableIterator<T> {
     }
 }
 
+class UnionIterator implements Iterator { 
+    GenericIndex index;
+    Iterator currIterator;
+    Class keyType;
+    Iterator alternativesIterator;
+    Object currObj;
 
+    UnionIterator(GenericIndex index, Iterator currIterator, Iterable alternatives) { 
+        this.index = index;
+        this.currIterator = currIterator;
+        this.alternativesIterator = alternatives.iterator();
+        keyType = index.getKeyType();
+    }
+    
+    public boolean hasNext() { 
+        if (currObj != null) { 
+            return true;
+        }
+        while (currIterator == null || !currIterator.hasNext()) { 
+            if (!alternativesIterator.hasNext()) { 
+                return false;
+            }
+            Object value = alternativesIterator.next();
+            currIterator = index.iterator(value, value, Index.ASCENT_ORDER);
+        }
+        currObj = currIterator.next();
+        return true;
+    }
 
-class Node { 
+    public Object next() { 
+        if (!hasNext()) { 
+            throw new NoSuchElementException();
+        }
+        Object obj = currObj;
+        currObj = null;
+        return obj;
+    }
+        
+
+    public void remove() {
+        throw new UnsupportedOperationException();
+    }
+}
+    
+class JoinIterator implements Iterator { 
+    GenericIndex joinIndex;
+    Iterator iterator;
+    Iterator joinIterator;
+    Object currObj;
+
+    public boolean hasNext() { 
+        if (currObj != null) { 
+            return true;
+        }
+        while (joinIterator == null || !joinIterator.hasNext()) { 
+            if (!iterator.hasNext()) { 
+                return false;
+            }
+            Object obj = iterator.next();
+            Key key = new Key(obj);
+            joinIterator = joinIndex.iterator(key, key, Index.ASCENT_ORDER);
+        }
+        currObj = joinIterator.next();
+        return true;
+    }
+
+    public Object next() { 
+        if (!hasNext()) { 
+            throw new NoSuchElementException();
+        }
+        Object obj = currObj;
+        currObj = null;
+        return obj;
+    }
+
+    public void remove() {
+        throw new UnsupportedOperationException();
+    }
+}
+        
+class Node implements CodeGenerator.Code { 
     int type;
     int tag;
 
@@ -342,6 +446,10 @@ class Node {
     }
     
     String getFieldName() { 
+        return null;
+    }
+
+    Field getField() { 
         return null;
     }
 
@@ -1210,14 +1318,13 @@ class BinOpNode extends Node {
             return compare(left.evaluateObj(t), right.evaluateObj(t)) >= 0;
           case opInAny:
           {
-              Object elem = left.evaluateObj(t);
+              Object key = left.evaluateObj(t);
               Object set =  right.evaluateObj(t);
               if (set instanceof String) {
-                  return ((String)set).indexOf((String)elem) >= 0;
-              } else {  
-                  Object[] arr = (Object[])set;
-                  for (int i = arr.length; --i >= 0;) { 
-                      if (elem.equals(arr[i])) { 
+                  return ((String)set).indexOf((String)key) >= 0;
+              } else {
+                  for (Object elem : (Iterable)set) { 
+                      if (elem.equals(key)) { 
                           return true;
                       }
                   }
@@ -1716,6 +1823,10 @@ class LoadAnyNode extends Node {
         return Object.class;
     }
 
+    Field getField() { 
+        return f;
+    }
+
     String getFieldName() { 
         if (base != null) { 
             if (base.tag != opCurrent) { 
@@ -1821,12 +1932,12 @@ class ResolveNode extends Node {
         return resolver.resolve(expr.evaluateObj(t));
     }
     
+    Field getField() { 
+        return (expr != null) ? expr.getField() : null; 
+    }
+
     String getFieldName() { 
-        if (expr != null) { 
-            return expr.getFieldName(); 
-        } else { 
-            return null; 
-        } 
+        return (expr != null) ? expr.getFieldName() : null; 
     }
 
     ResolveNode(Node expr, Resolver resolver, Class resolvedClass) { 
@@ -1848,8 +1959,20 @@ class LoadNode extends Node {
             && equalObjects(((LoadNode)o).base, base);
     }
 
+    public boolean isSelfField() { 
+        return base == null || base.tag == opCurrent;
+    }
+
     Class getType() { 
         return field.getType();
+    }
+
+    Class getDeclaringClass() { 
+        return field.getDeclaringClass();
+    }
+
+    Field getField() { 
+        return field;
     }
 
     String getFieldName() { 
@@ -1929,11 +2052,11 @@ class AggregateFunctionNode extends Node {
     }
 
     long    evaluateInt(FilterIterator t) {
-        return t.intAggragateFuncValue[index];
+        return t.intAggregateFuncValue[index];
     }
 
     double  evaluateReal(FilterIterator t) {
-        return t.realAggragateFuncValue[index];
+        return t.realAggregateFuncValue[index];
     }
 
     AggregateFunctionNode(int type, int tag, Node arg) {
@@ -1987,6 +2110,10 @@ class ElementNode extends Node {
         arrayName = array;
         type = f.getType();
         field = f;
+    }
+
+    Field getField() { 
+        return field;
     }
 
     String getFieldName() { 
@@ -2215,9 +2342,9 @@ class ContainsNode extends Node implements Comparator {
         Arrays.sort(sortedArray, 0, len, this);
 
         n = aggregateFunctions.size();
-        if (t.intAggragateFuncValue == null || t.intAggragateFuncValue.length < n) { 
-            t.intAggragateFuncValue = new long[n];
-            t.realAggragateFuncValue = new double[n];
+        if (t.intAggregateFuncValue == null || t.intAggregateFuncValue.length < n) { 
+            t.intAggregateFuncValue = new long[n];
+            t.realAggregateFuncValue = new double[n];
         }
         for (i = 0; i < len; i = j) {             
             for (j = i+1; j < len && compare(sortedArray[i], sortedArray[j]) == 0; j++);
@@ -2263,7 +2390,7 @@ class ContainsNode extends Node implements Comparator {
                       case opCount:
                         ival = j - i;
                     }
-                    t.intAggragateFuncValue[k] = ival;
+                    t.intAggregateFuncValue[k] = ival;
                 } else {
                     double rval = 0.0;
 
@@ -2301,7 +2428,7 @@ class ContainsNode extends Node implements Comparator {
                             }
                         }
                     }
-                    t.realAggragateFuncValue[k] = rval;
+                    t.realAggregateFuncValue[k] = rval;
                 }
             }
             t.containsElem = saveContainsElem;
@@ -2413,6 +2540,10 @@ class OrderNode {
         }
     }
 
+    String getName() { 
+        return fieldName != null ? fieldName : field != null ? field.getName() : method.getName();
+    }
+
     OrderNode(int type, Field field) { 
         this.type = type;
         this.field = field;
@@ -2454,6 +2585,15 @@ class ParameterNode extends LiteralNode {
 
     Object getValue() {
         return params.get(index);
+    }
+
+    ParameterNode(ArrayList parameterList, int index, int type) { 
+        super(type, opParameter);
+        params = parameterList;
+        this.index = index;
+        while (index >= parameterList.size()) { 
+            parameterList.add(null);
+        }
     }
 
     ParameterNode(ArrayList parameterList) { 
@@ -2545,25 +2685,60 @@ public class QueryImpl<T> implements Query<T>
         str = new char[buf.length];
         compile();
     }
+    
+    public Iterator<T> iterator()
+    {
+        return execute();
+    }
+
+    public IterableIterator<T> execute()
+    {      
+        switch (classExtentLock) { 
+        case None:
+            break;
+        case Shared:
+            ((IResource)classExtent).sharedLock();
+            break;
+        case Exclusive:
+            ((IResource)classExtent).exclusiveLock();
+            break;
+        }
+        return execute(classExtent.iterator());
+    }
 
     public IterableIterator<T> execute(Iterator<T> iterator)
     {       
-        IterableIterator<T> result = (IterableIterator<T>)applyIndex(tree);
+        IndexSearchResult result = tree != null ? applyIndex(tree, null) : null;
+        IterableIterator<T> resultIterator;
         if (result == null) { 
+            if (tree == null && order != null && order.ascent && order.next == null) {
+                GenericIndex index = getIndex(cls, order.getName()); 
+                if (index != null) {
+                    return filter((IterableIterator<T>)index.iterator(), null);
+                }
+            }
             if (storage.listener != null) { 
                 storage.listener.sequentialSearchPerformed(query);
             }
-            result = new FilterIterator<T>(this, iterator, tree);
+            resultIterator = filter(iterator, tree);
+        } else { 
+            resultIterator = result.iterator;
+            if (order == null || (result.key != null && order.field.equals(result.key) && order.ascent && order.next == null)) {
+                return resultIterator;
+            }
         }
         if (order != null) {
             ArrayList<T> list = new ArrayList<T>();
-            while (result.hasNext()) { 
-                list.add(result.next());
+            while (resultIterator.hasNext()) { 
+                list.add(resultIterator.next());
+            }
+            if (storage.listener != null) { 
+                storage.listener.sortResultSetPerformed(query);
             }
             sort(list);
             return new IteratorWrapper<T>(list.iterator());
         }
-        return result;
+        return resultIterator;
     }
             
     private void sort(ArrayList<T> selection) { 
@@ -2668,6 +2843,33 @@ public class QueryImpl<T> implements Query<T>
         resolveMap.put(original, new ResolveMapping(resolved, resolver));
     }
 
+    public void setIndexProvider(IndexProvider indexProvider) {
+        this.indexProvider = indexProvider;
+    }
+
+    public void setClassExtent(Collection<T> set, ClassExtentLockType lock)
+    {
+        classExtent = set;
+        classExtentLock = lock;
+    }
+
+    public void setClass(Class cls) { 
+        this.cls = cls;
+    }
+
+    public CodeGenerator getCodeGenerator()
+    {
+        return getCodeGenerator(cls);
+    }
+
+    public CodeGenerator getCodeGenerator(Class cls)
+    {
+        order = null;
+        tree = null;
+        parameters.clear();
+        return new CodeGeneratorImpl(this, cls);
+    }
+
     public void addIndex(String key, GenericIndex<T> index) { 
         if (indices == null) { 
             indices = new HashMap();
@@ -2675,8 +2877,17 @@ public class QueryImpl<T> implements Query<T>
         indices.put(key, index);
     }
 
-    private final GenericIndex<T> getIndex(String key) { 
-        return indices != null ? (GenericIndex)indices.get(key) : null;
+    private final GenericIndex getIndex(Class ctx, String key) { 
+        if (indices != null && cls == ctx) { 
+            GenericIndex index = (GenericIndex)indices.get(key);
+            if (index != null) { 
+                return index;
+            }
+        }
+        if (indexProvider != null) { 
+            return indexProvider.getIndex(ctx, key);
+        }
+        return null;
     }
         
     private static Key keyLiteral(Class type, Node node, boolean inclusive) {
@@ -2729,6 +2940,9 @@ public class QueryImpl<T> implements Query<T>
     ArrayList     parameters;
     boolean       runtimeErrorsReporting;
     HashMap       resolveMap;
+    IndexProvider indexProvider;
+    Collection<T> classExtent;
+    Query.ClassExtentLockType classExtentLock;
 
     HashMap<String,GenericIndex<T>> indices;
     StorageImpl   storage;
@@ -3058,56 +3272,54 @@ public class QueryImpl<T> implements Query<T>
         return new UnaryOpNode(Node.tpDate, Node.opStrToDate, expr);
     }
 		
-    final int compare(Node expr, BinOpNode list)
+    final Node compare(Node expr, BinOpNode list)
     {
+        BinOpNode tree = null; 
         int n = 1;
-        if (list.left != null) { 
-            n = compare(expr, (BinOpNode)list.left);
-        }
-        Node elem = list.right;
-        int cop = Node.opNop;
-        if (elem.type == Node.tpUnknown) { 
-            elem.type = expr.type;
-        }
-        if (expr.type == Node.tpInt) { 
-            if (elem.type == Node.tpReal) { 
-                expr = new UnaryOpNode(Node.tpReal, Node.opIntToReal, expr);
-                cop = Node.opRealEq;
-            } else if (elem.type == Node.tpInt) { 
-                cop = Node.opIntEq;
+        do { 
+            Node elem = list.right;
+            int cop = Node.opNop;
+            if (elem.type == Node.tpUnknown) { 
+                elem.type = expr.type;
             }
-        } else if (expr.type == Node.tpReal) {
-            if (elem.type == Node.tpReal) { 
-                cop = Node.opRealEq;
-            } else if (elem.type == Node.tpInt) { 
-                cop = Node.opRealEq;
-                elem = int2real(elem);
+            if (expr.type == Node.tpInt) { 
+                if (elem.type == Node.tpReal) { 
+                    expr = new UnaryOpNode(Node.tpReal, Node.opIntToReal, expr);
+                    cop = Node.opRealEq;
+                } else if (elem.type == Node.tpInt) { 
+                    cop = Node.opIntEq;
+                }
+            } else if (expr.type == Node.tpReal) {
+                if (elem.type == Node.tpReal) { 
+                    cop = Node.opRealEq;
+                } else if (elem.type == Node.tpInt) { 
+                    cop = Node.opRealEq;
+                    elem = int2real(elem);
+                }
+            } else if (expr.type == Node.tpDate && elem.type == Node.tpDate) {
+                cop = Node.opDateEq;
+            } else if (expr.type == Node.tpStr && elem.type == Node.tpStr) {
+                cop = Node.opStrEq;
+            } else if (expr.type == Node.tpObj && elem.type == Node.tpObj) {
+                cop = Node.opObjEq;
+            } else if (expr.type == Node.tpBool && elem.type == Node.tpBool) {
+                cop = Node.opBoolEq;
+            } else if (expr.type == Node.tpAny) { 
+                cop = Node.opAnyEq;
             }
-        } else if (expr.type == Node.tpDate && elem.type == Node.tpDate) {
-            cop = Node.opDateEq;
-        } else if (expr.type == Node.tpStr && elem.type == Node.tpStr) {
-            cop = Node.opStrEq;
-        } else if (expr.type == Node.tpObj && elem.type == Node.tpObj) {
-            cop = Node.opObjEq;
-        } else if (expr.type == Node.tpBool && elem.type == Node.tpBool) {
-            cop = Node.opBoolEq;
-        } else if (expr.type == Node.tpAny) { 
-            cop = Node.opAnyEq;
-        }
-        if (cop == Node.opNop) { 
-            throw new CompileError("Expression "+n+" in right part of IN "+
-                                   "operator has incompatible type", pos);
-        } 
-        list.type = Node.tpBool;
-        if (list.left != null) { 
-            list.right = new BinOpNode(Node.tpBool, cop, expr, elem);
-            list.tag = Node.opBoolOr;
-        } else { 
-            list.left = expr;
-            list.right = elem;
-            list.tag = cop;
-        }
-        return ++n;
+            if (cop == Node.opNop) { 
+                throw new CompileError("Expression "+n+" in right part of IN "+
+                                       "operator has incompatible type", pos);
+            }
+            n += 1;
+            BinOpNode cmp = new BinOpNode(Node.tpBool, cop, expr, elem);
+            if (tree == null) { 
+                tree = cmp; 
+            } else {
+                tree = new BinOpNode(Node.tpBool, Node.opBoolOr, cmp, tree);
+            }
+        } while ((list = (BinOpNode)list.left) != null);
+        return tree;
     }
 
 
@@ -3157,7 +3369,7 @@ public class QueryImpl<T> implements Query<T>
             right = addition();
             if (cop == tknIn) { 
                 int type;
-                if (right.type != Node.tpList && (left.type == Node.tpAny || right.type == Node.tpAny)) { 
+                if (right.type != Node.tpList && (left.type == Node.tpAny || right.type == Node.tpAny || right.type == Node.tpUnknown)) { 
                     left = new BinOpNode(Node.tpBool, Node.opInAny, left, right);
                 } else {                     
                     switch (right.type) {
@@ -3187,7 +3399,7 @@ public class QueryImpl<T> implements Query<T>
                                                    rightPos);
                         }
                         left = new BinOpNode(Node.tpBool, Node.opScanArrayChar,
-                                         left, right);
+                                             left, right);
                         break;
                       case Node.tpArrayInt2:
                         if (left.type != Node.tpInt) { 
@@ -3258,8 +3470,7 @@ public class QueryImpl<T> implements Query<T>
                                              left, right);
                         break;
                       case Node.tpList:
-                        compare(left, (BinOpNode)right);
-                        left = right;
+                        left = compare(left, (BinOpNode)right);
                         break;
                       default:
                         throw new CompileError("List of expressions or array expected", 
@@ -4140,149 +4351,286 @@ public class QueryImpl<T> implements Query<T>
         return expr;
     }
 
-    final IterableIterator<T> filter(IterableIterator iterator, Node condition) { 
+    final IterableIterator<T> filter(Iterator iterator, Node condition) { 
         return new FilterIterator<T>(this, iterator, condition);
     }
 
-    final IterableIterator<T> applyIndex(Node condition) 
+
+    final JoinIterator join(LoadNode deref, JoinIterator parent)
     {
-        Node filterCondition = null;
-        Node expr = condition;
-        Iterator result;
-        if (expr.tag == Node.opBoolAnd) { 
-            filterCondition = ((BinOpNode)expr).right;
-            expr = ((BinOpNode)expr).left;
-        }      
-        if (expr.tag == Node.opContains) { 
-            ContainsNode contains = (ContainsNode)expr;
-            if (contains.withExpr == null) { 
-                return null;
-            }
-            if (contains.havingExpr != null) { 
-                filterCondition = condition;
-            }
-            expr = contains.withExpr;
+        if (deref.base == null || deref.base.tag != Node.opLoad) { 
+            return null;
         }
-        if (expr instanceof BinOpNode) { 
-            BinOpNode cmp = (BinOpNode)expr;
-            String key = cmp.left.getFieldName();
-            if (key != null && cmp.right instanceof LiteralNode) {
-                GenericIndex index = getIndex(key);           
-                if (index == null) { 
+        deref = (LoadNode)deref.base;
+        GenericIndex joinIndex = getIndex(deref.getDeclaringClass(), deref.field.getName());
+        if (joinIndex == null) { 
+            return null;
+        }
+        parent.joinIndex = joinIndex;
+        if (deref.isSelfField()) { 
+            return parent;
+        }
+        JoinIterator child = new JoinIterator();
+        child.iterator = parent;
+        return join(deref, child);
+    }
+
+
+    final Iterator binOpIndex(GenericIndex index, BinOpNode cmp)
+    {
+        Key key;
+        switch (cmp.tag) { 
+        case Node.opInAny:
+        case Node.opScanCollection:
+            return new UnionIterator(index, null, (Iterable)((LiteralNode)cmp.right).getValue());
+        case Node.opAnyEq:
+        case Node.opIntEq:
+        case Node.opRealEq:
+        case Node.opStrEq:
+        case Node.opDateEq:
+        case Node.opBoolEq:
+            if ((key = keyLiteral(index.getKeyType(), cmp.right, true)) != null) { 
+                return index.iterator(key, key, Index.ASCENT_ORDER);
+            }
+            break;
+        case Node.opIntGt:
+        case Node.opRealGt:
+        case Node.opStrGt:
+        case Node.opDateGt:
+        case Node.opAnyGt:
+            if ((key = keyLiteral(index.getKeyType(), cmp.right, false)) != null) { 
+                return index.iterator(key, null, Index.ASCENT_ORDER);
+            }
+            break;
+        case Node.opIntGe:
+        case Node.opRealGe:
+        case Node.opStrGe:
+        case Node.opDateGe:
+        case Node.opAnyGe:
+            if ((key = keyLiteral(index.getKeyType(), cmp.right, true)) != null) { 
+                return index.iterator(key, null, Index.ASCENT_ORDER);
+            }
+            break;
+        case Node.opIntLt:
+        case Node.opRealLt:
+        case Node.opStrLt:
+        case Node.opDateLt:
+        case Node.opAnyLt:
+            if ((key = keyLiteral(index.getKeyType(), cmp.right, false)) != null) { 
+                return index.iterator(null, key, Index.ASCENT_ORDER);
+            }
+            break;
+        case Node.opIntLe:
+        case Node.opRealLe:
+        case Node.opStrLe:
+        case Node.opDateLe:
+        case Node.opAnyLe:
+            if ((key = keyLiteral(index.getKeyType(), cmp.right, true)) != null) { 
+                return index.iterator(null, key, Index.ASCENT_ORDER);
+            }
+            break;
+        }
+        return null;
+    }
+        
+
+
+    final Iterator tripleOpIndex(GenericIndex index, CompareNode cmp)
+    {
+        switch (cmp.tag) { 
+        case Node.opIntBetween:
+        case Node.opStrBetween:
+        case Node.opRealBetween:
+        case Node.opDateBetween:
+        case Node.opAnyBetween:
+        {
+            Key value1 = keyLiteral(index.getKeyType(), cmp.o2, true);
+            Key value2 = keyLiteral(index.getKeyType(), cmp.o3, true);
+            if (value1 != null && value2 != null) { 
+                return index.iterator(value1, value2, Index.ASCENT_ORDER);
+            }
+            break;
+        }
+        case Node.opStrLike:
+        case Node.opStrLikeEsc:
+        {
+            String pattern = (String)((LiteralNode)cmp.o2).getValue();
+            char escape = cmp.o3 != null ? ((String)((LiteralNode)cmp.o3).getValue()).charAt(0) : '\\';
+            int pref = 0;
+            while (pref < pattern.length()) { 
+                char ch = pattern.charAt(pref);
+                if (ch == '%' || ch == '_') { 
+                    break;
+                } else if (ch == escape) { 
+                    pref += 2;
+                } else { 
+                    pref += 1;
+                }
+            }
+            if (pref > 0) { 
+                if (pref == pattern.length()) { 
+                    Key value = new Key(pattern);
+                    return index.iterator(value, value, Index.ASCENT_ORDER);
+                } else {
+                    return index.prefixIterator(pattern.substring(0, pref));
+                }
+            }
+        }
+        }
+        return null;
+    }
+
+    class IndexSearchResult { 
+        IterableIterator<T>  iterator;
+        Field                key;
+
+        IndexSearchResult(IterableIterator<T> iterator, Field key) { 
+            this.iterator = iterator;
+            this.key = key;
+        }
+    }
+
+    static boolean isEqComparison(Node node) { 
+        switch (node.tag) {
+        case Node.opAnyEq:
+        case Node.opIntEq:
+        case Node.opRealEq:
+        case Node.opStrEq:
+        case Node.opDateEq:
+        case Node.opBoolEq:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    final IndexSearchResult applyIndex(Node condition, Node filterCondition) 
+    {
+        ArrayList alternatives = null;
+        switch (condition.tag) { 
+            case Node.opBoolAnd:
+            { 
+                BinOpNode and = (BinOpNode)condition;            
+                IndexSearchResult result = applyIndex(and.left, filterCondition == null ? and.right : filterCondition);
+                if (result != null) { 
+                    return result;
+                }
+                return applyIndex(and.right, filterCondition == null ? and.left : filterCondition);
+            }      
+            case Node.opContains:
+            {
+                ContainsNode contains = (ContainsNode)condition;
+                if (contains.withExpr == null) { 
                     return null;
                 }
-                switch (expr.tag) { 
-                  case Node.opAnyEq:
-                  case Node.opIntEq:
-                  case Node.opRealEq:
-                  case Node.opStrEq:
-                  case Node.opDateEq:
-                  case Node.opBoolEq:
-                  {
-                      Key value = keyLiteral(index.getKeyType(), cmp.right, true);
-                      if (value != null) { 
-                          return filter(index.iterator(value, value, Index.ASCENT_ORDER), filterCondition);
-                      }
-                      return null;
-                  }
-                  case Node.opIntGt:
-                  case Node.opRealGt:
-                  case Node.opStrGt:
-                  case Node.opDateGt:
-                  case Node.opAnyGt:
-                  {
-                      Key value = keyLiteral(index.getKeyType(), cmp.right, false);
-                      if (value != null) { 
-                          return filter(index.iterator(value, null, Index.ASCENT_ORDER), filterCondition);
-                      }
-                      return null;
-                  }
-                  case Node.opIntGe:
-                  case Node.opRealGe:
-                  case Node.opStrGe:
-                  case Node.opDateGe:
-                  case Node.opAnyGe:
-                  {
-                      Key value = keyLiteral(index.getKeyType(), cmp.right, true);
-                      if (value != null) { 
-                          return filter(index.iterator(value, null, Index.ASCENT_ORDER), filterCondition);
-                      }
-                      return null;
-                  }
-                  case Node.opIntLt:
-                  case Node.opRealLt:
-                  case Node.opStrLt:
-                  case Node.opDateLt:
-                  case Node.opAnyLt:
-                  {
-                      Key value = keyLiteral(index.getKeyType(), cmp.right, false);
-                      if (value != null) { 
-                          return filter(index.iterator(null, value, Index.ASCENT_ORDER), filterCondition);
-                      }
-                      return null;
-                  }
-                  case Node.opIntLe:
-                  case Node.opRealLe:
-                  case Node.opStrLe:
-                  case Node.opDateLe:
-                  case Node.opAnyLe:
-                  {
-                      Key value = keyLiteral(index.getKeyType(), cmp.right, true);
-                      if (value != null) { 
-                          return filter(index.iterator(null, value, Index.ASCENT_ORDER), filterCondition);
-                      }
-                      return null;
-                  }
+                if (filterCondition == null && contains.havingExpr != null) { 
+                    filterCondition = condition;
                 }
+                return applyIndex(contains.withExpr, filterCondition);
             }
-        } else if (expr instanceof CompareNode) {             
-            CompareNode cmp = (CompareNode)expr;
+            case Node.opBoolOr:
+            {
+                 BinOpNode or = (BinOpNode)condition;
+                 if (isEqComparison(or.left) && ((BinOpNode)or.left).right instanceof LiteralNode) { 
+                     int cop = or.left.tag;
+                     Node base = ((BinOpNode)or.left).left;
+                     Node right = or.right;                
+                     alternatives = new ArrayList();
+                     while (right instanceof BinOpNode) { 
+                         Node cmp;
+                         if (right.tag == Node.opBoolOr) { 
+                             or = (BinOpNode)right;
+                             right = or.right;
+                             cmp = or.left;
+                         } else { 
+                             cmp = right;
+                             right = null;
+                         }
+                         if (cmp.tag != cop
+                             || !base.equals(((BinOpNode)cmp).left) 
+                             || !(((BinOpNode)cmp).right instanceof LiteralNode))
+                         {
+                             return null;
+                         }
+                         alternatives.add(((LiteralNode)((BinOpNode)cmp).right).getValue());
+                     }
+                     if (right != null) { 
+                         return null;
+                     }
+                     condition = or.left;
+                 } else { 
+                     return null;
+                 }
+            }        
+        }
+        if (condition instanceof BinOpNode) { 
+            BinOpNode cmp = (BinOpNode)condition;
+            String key = cmp.left.getFieldName();
+            if (key != null && cmp.right instanceof LiteralNode) {
+                GenericIndex index = getIndex(cls, key);  
+                if (index == null) { 
+                    if (cmp.left.tag == Node.opLoad) { 
+                        LoadNode deref = (LoadNode)cmp.left;
+                        index = getIndex(deref.getDeclaringClass(), deref.field.getName());
+                        if (index != null) { 
+                            JoinIterator lastJoinIterator = new JoinIterator();
+                            JoinIterator firstJoinIterator = join(deref, lastJoinIterator);
+                            if (firstJoinIterator != null) { 
+                                Iterator iterator = binOpIndex(index, cmp);
+                                if (iterator != null) { 
+                                    if (alternatives != null) { 
+                                        iterator = new UnionIterator(index, iterator, alternatives);
+                                    }
+                                    lastJoinIterator.iterator = iterator;
+                                    return new IndexSearchResult(filter(firstJoinIterator, filterCondition), null);
+                                }
+                            }
+                        }
+                    }
+                } else { 
+                    Iterator iterator = binOpIndex(index, cmp);
+                    if (iterator != null) {  
+                        if (alternatives != null) { 
+                            iterator = new UnionIterator(index, iterator, alternatives);
+                        }
+                        return new IndexSearchResult(filter(iterator, filterCondition), 
+                                                     alternatives == null ? cmp.left.getField() : null);
+                    }
+                }
+            } 
+        } else if (condition instanceof CompareNode) {             
+            CompareNode cmp = (CompareNode)condition;
             String key = cmp.o1.getFieldName();
             if (key != null && cmp.o2 instanceof LiteralNode && (cmp.o3 == null || cmp.o3 instanceof LiteralNode))
             {
-                GenericIndex index = getIndex(key);           
+                GenericIndex index = getIndex(cls, key);           
                 if (index == null) { 
-                    return null;
-                }
-                switch (expr.tag) { 
-                  case Node.opIntBetween:
-                  case Node.opStrBetween:
-                  case Node.opRealBetween:
-                  case Node.opDateBetween:
-                  case Node.opAnyBetween:
-                  {
-                      Key value1 = keyLiteral(index.getKeyType(), cmp.o2, true);
-                      Key value2 = keyLiteral(index.getKeyType(), cmp.o3, true);
-                      if (value1 != null && value2 != null) { 
-                          return filter(index.iterator(value1, value2, Index.ASCENT_ORDER), filterCondition);
-                      }
-                      return null;
-                  }
-                  case Node.opStrLike:
-                  case Node.opStrLikeEsc:
-                  {
-                      String pattern = (String)((LiteralNode)cmp.o2).getValue();
-                      char escape = cmp.o3 != null ? ((String)((LiteralNode)cmp.o3).getValue()).charAt(0) : '\\';
-                      int pref = 0;
-                      while (pref < pattern.length()) { 
-                          char ch = pattern.charAt(pref);
-                          if (ch == '%' || ch == '_') { 
-                              break;
-                          } else if (ch == escape) { 
-                              pref += 2;
-                          } else { 
-                              pref += 1;
-                          }
-                      }
-                      if (pref > 0) { 
-                          if (pref == pattern.length()) { 
-                              Key value = new Key(pattern);
-                              return filter(index.iterator(value, value, Index.ASCENT_ORDER), filterCondition);
-                          } else if (filterCondition == null) {
-                              return filter(index.prefixIterator(pattern.substring(0, pref)), condition);
-                          }
-                      }
-                  }
+                    if (cmp.o1.tag == Node.opLoad) { 
+                        LoadNode deref = (LoadNode)cmp.o1;
+                        index = getIndex(deref.getDeclaringClass(), deref.field.getName());
+                        if (index != null) { 
+                            JoinIterator lastJoinIterator = new JoinIterator();
+                            JoinIterator firstJoinIterator = join(deref, lastJoinIterator);
+                            if (firstJoinIterator != null) { 
+                                Iterator iterator = tripleOpIndex(index, cmp);
+                                if (iterator != null) { 
+                                    lastJoinIterator.iterator = iterator;
+                                    return new IndexSearchResult(
+                                        filter(firstJoinIterator, 
+                                               (filterCondition == null && (cmp.tag == Node.opStrLike || cmp.tag == Node.opStrLikeEsc))
+                                               ? condition : filterCondition), null);
+                                }
+                            }
+                        }
+                    }
+                } else { 
+                    Iterator iterator = tripleOpIndex(index, cmp);
+                    if (iterator != null) { 
+                        return new IndexSearchResult(
+                            filter(iterator, 
+                                   (filterCondition == null && (cmp.tag == Node.opStrLike || cmp.tag == Node.opStrLikeEsc)) 
+                                   ? condition : filterCondition), cmp.o1.getField());
+                    }
                 }
             }
         }
@@ -4292,7 +4640,10 @@ public class QueryImpl<T> implements Query<T>
     final void compile() {
         pos = 0;
         vars = 0;
-        tree = checkType(Node.tpBool, disjunction());
+        Node predicate = checkType(Node.tpBool, disjunction());
+        if (predicate.tag != Node.opTrue) { 
+            tree = predicate;
+        }
         OrderNode last = null;
         order = null;
         if (lex == tknEof) {    

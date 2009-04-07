@@ -1,8 +1,18 @@
 package plugins.XMLSpider.org.garret.perst.impl;
 
+import java.io.UnsupportedEncodingException;
+
 import plugins.XMLSpider.org.garret.perst.StorageError;
 
-import java.io.UnsupportedEncodingException;
+class ArrayPos {
+    byte[] body;
+    int    offs;
+
+    ArrayPos(byte[] body, int offs) { 
+        this.body = body;
+        this.offs = offs;
+    }
+}
 
 //
 // Class for packing/unpacking data
@@ -25,28 +35,72 @@ public class Bytes {
     public static double unpackF8(byte[] arr, int offs) { 
         return Double.longBitsToDouble(Bytes.unpack8(arr, offs));
     }
-    public static String unpackStr(byte[] arr, int offs, String encoding) { 
+    public static int skipString(byte[] arr, int offs) { 
+        int len = unpack4(arr, offs);
+        offs += 4;
+        if (len > 0) { 
+            offs += len*2;
+        } else if (len < -1) {
+            offs -= len+2;
+        } 
+        return offs;
+    }
+ 
+    public static String unpackString(byte[] arr, int offs, String encoding) { 
         int len = unpack4(arr, offs);        
         offs += 4;
+        String str = null;
         if (len >= 0) { 
             char[] chars = new char[len];
             for (int i = 0; i < len; i++) { 
                 chars[i] = (char)unpack2(arr, offs);
                 offs += 2;
-            }
-            return new String(chars);
+            } 
+            str = new String(chars);
         } else if (len < -1) { 
+            len = -len - 2;
             if (encoding != null) { 
                 try { 
-                    return new String(arr, offs, -len-2, encoding);
+                    str = new String(arr, offs, len, encoding);
                 } catch (UnsupportedEncodingException x) { 
                     throw new StorageError(StorageError.UNSUPPORTED_ENCODING);
                 }
             } else { 
-                return new String(arr, offs, -len-2);
+                str = new String(arr, offs, len);
             }
+            offs += len;
         }
-        return null;
+        return str;
+    }
+
+    public static String unpackString(ArrayPos pos, String encoding) { 
+        int offs = pos.offs;
+        byte[] arr = pos.body;
+        int len = unpack4(arr, offs);        
+        offs += 4;
+        String str = null;
+        if (len >= 0) { 
+            char[] chars = new char[len];
+            for (int i = 0; i < len; i++) { 
+                chars[i] = (char)unpack2(arr, offs);
+                offs += 2;
+            } 
+            str = new String(chars);
+        } else if (len < -1) { 
+            len = -len - 2;
+            if (encoding != null) { 
+                try { 
+                    str = new String(arr, offs, len, encoding);
+                } catch (UnsupportedEncodingException x) { 
+                    throw new StorageError(StorageError.UNSUPPORTED_ENCODING);
+                }
+            } else { 
+                str = new String(arr, offs, len);
+            }
+            offs += len;
+        }
+        pos.offs = offs;
+        return str;
     }
 
     public static void pack2(byte[] arr, int offs, short val) { 
@@ -69,7 +123,7 @@ public class Bytes {
     public static void packF8(byte[] arr, int offs, double val) { 
         pack8(arr, offs, Double.doubleToLongBits(val));
     }
-    public static int packStr(byte[] arr, int offs, String str, String encoding) { 
+    public static int packString(byte[] arr, int offs, String str, String encoding) { 
         if (str == null) { 
             Bytes.pack4(arr, offs, -1);
             offs += 4;

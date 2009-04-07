@@ -1,6 +1,8 @@
 package plugins.XMLSpider.org.garret.perst.impl;
 
-import plugins.XMLSpider.org.garret.perst.*;
+import plugins.XMLSpider.org.garret.perst.CustomAllocator;
+import plugins.XMLSpider.org.garret.perst.Persistent;
+import plugins.XMLSpider.org.garret.perst.Storage;
 
 public class DefaultAllocator extends Persistent implements CustomAllocator { 
     public DefaultAllocator(Storage storage) { 

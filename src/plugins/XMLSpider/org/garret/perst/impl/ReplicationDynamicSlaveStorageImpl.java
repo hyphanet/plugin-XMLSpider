@@ -1,9 +1,10 @@
 package plugins.XMLSpider.org.garret.perst.impl;
 
-import java.io.*;
-import java.net.*;
+import java.io.IOException;
+import java.net.Socket;
 
-import plugins.XMLSpider.org.garret.perst.*;
+import plugins.XMLSpider.org.garret.perst.IFile;
+import plugins.XMLSpider.org.garret.perst.StorageError;
 
 
 public class ReplicationDynamicSlaveStorageImpl extends ReplicationSlaveStorageImpl
@@ -13,7 +14,7 @@ public class ReplicationDynamicSlaveStorageImpl extends ReplicationSlaveStorageI
         this.port = port;
     }
 
-    public void open(IFile file, int pagePoolSize) {
+    public void open(IFile file, long pagePoolSize) {
         initialized = false;
         prevIndex = -1;
         outOfSync = true;

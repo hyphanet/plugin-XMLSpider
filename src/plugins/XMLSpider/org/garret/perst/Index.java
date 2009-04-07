@@ -1,6 +1,5 @@
 package plugins.XMLSpider.org.garret.perst;
 
-import java.util.*;
 
 /**
  * Interface of object index.
@@ -11,7 +10,7 @@ import java.util.*;
  * (each boundary can be specified or unspecified and can be inclusive or exclusive)
  * Key should be of scalar, String, java.util.Date or peristent object type.
  */
-public interface Index<T extends IPersistent> extends GenericIndex<T> 
+public interface Index<T> extends GenericIndex<T> 
 {
     /**
      * Put new object in the index. 

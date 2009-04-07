@@ -1,9 +1,15 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import plugins.XMLSpider.org.garret.perst.*;
+import java.util.ConcurrentModificationException;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 
-import  java.util.*;
+import plugins.XMLSpider.org.garret.perst.Assert;
+import plugins.XMLSpider.org.garret.perst.BitIndex;
+import plugins.XMLSpider.org.garret.perst.IterableIterator;
+import plugins.XMLSpider.org.garret.perst.PersistentIterator;
+import plugins.XMLSpider.org.garret.perst.StorageError;
 
-class BitIndexImpl<T extends IPersistent> extends Btree<T> implements BitIndex<T> 
+class BitIndexImpl<T> extends Btree<T> implements BitIndex<T> 
 { 
     BitIndexImpl() {
         super(ClassDescriptor.tpInt, true);
@@ -25,7 +31,7 @@ class BitIndexImpl<T extends IPersistent> extends Btree<T> implements BitIndex<T
         if (root == 0) { 
             throw new StorageError(StorageError.KEY_NOT_FOUND);
         } 
-        return BitIndexPage.find(db, root, obj.getOid(), height);
+        return BitIndexPage.find(db, root, db.getOid(obj), height);
     }
  
     public void put(T obj, int mask) 
@@ -34,10 +40,7 @@ class BitIndexImpl<T extends IPersistent> extends Btree<T> implements BitIndex<T
         if (db == null) {             
             throw new StorageError(StorageError.DELETED_OBJECT);
         }
-        if (!obj.isPersistent()) { 
-            db.makePersistent(obj);
-        }
-        Key ins = new Key(mask, obj.getOid());
+        Key ins = new Key(mask, db.makePersistent(obj));
         if (root == 0) { 
             root = BitIndexPage.allocate(db, 0, ins);
             height = 1;
@@ -53,18 +56,18 @@ class BitIndexImpl<T extends IPersistent> extends Btree<T> implements BitIndex<T
         modify();
     }
 
-    public void remove(T obj) 
+    public boolean remove(Object obj) 
     {
         StorageImpl db = (StorageImpl)getStorage();
         if (db == null) {             
             throw new StorageError(StorageError.DELETED_OBJECT);
         }
         if (root == 0) {
-            throw new StorageError(StorageError.KEY_NOT_FOUND);
+            return false;
         }
-        int result = BitIndexPage.remove(db, root, obj.getOid(), height);
+        int result = BitIndexPage.remove(db, root, db.getOid(obj), height);
         if (result == op_not_found) { 
-            throw new StorageError(StorageError.KEY_NOT_FOUND);
+            return false;
         }
         nElems -= 1;
         if (result == op_underflow) { 
@@ -82,6 +85,7 @@ class BitIndexImpl<T extends IPersistent> extends Btree<T> implements BitIndex<T
         }
         updateCounter += 1;
         modify();
+        return true;
     }
         
     class BitIndexIterator<E> extends IterableIterator<E> implements PersistentIterator 
@@ -128,13 +132,17 @@ class BitIndexImpl<T extends IPersistent> extends Btree<T> implements BitIndex<T
 
         public E next() 
         {
-            return (E)((StorageImpl)getStorage()).lookupObject(nextOid(), null);
+            int oid = nextOid();
+            if (oid == 0) { 
+                throw new NoSuchElementException();
+            }
+            return (E)((StorageImpl)getStorage()).lookupObject(oid, null);
         }
 
         public int nextOid() 
         {
             if (!hasNext()) { 
-                throw new NoSuchElementException();
+                return 0;
             }
             StorageImpl db = (StorageImpl)getStorage();
             int pos = posStack[sp-1];   

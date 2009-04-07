@@ -1,10 +1,31 @@
 package plugins.XMLSpider.org.garret.perst.impl;
 
-import java.io.*;
-import java.util.*;
+import java.io.IOException;
+import java.io.Reader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.Map;
 
-import plugins.XMLSpider.org.garret.perst.*;
-import plugins.XMLSpider.org.garret.perst.fulltext.*;
+import plugins.XMLSpider.org.garret.perst.Assert;
+import plugins.XMLSpider.org.garret.perst.Index;
+import plugins.XMLSpider.org.garret.perst.Key;
+import plugins.XMLSpider.org.garret.perst.Link;
+import plugins.XMLSpider.org.garret.perst.Persistent;
+import plugins.XMLSpider.org.garret.perst.PersistentResource;
+import plugins.XMLSpider.org.garret.perst.Storage;
+import plugins.XMLSpider.org.garret.perst.StorageError;
+import plugins.XMLSpider.org.garret.perst.fulltext.FullTextIndex;
+import plugins.XMLSpider.org.garret.perst.fulltext.FullTextQuery;
+import plugins.XMLSpider.org.garret.perst.fulltext.FullTextQueryBinaryOp;
+import plugins.XMLSpider.org.garret.perst.fulltext.FullTextQueryMatchOp;
+import plugins.XMLSpider.org.garret.perst.fulltext.FullTextQueryUnaryOp;
+import plugins.XMLSpider.org.garret.perst.fulltext.FullTextQueryVisitor;
+import plugins.XMLSpider.org.garret.perst.fulltext.FullTextSearchHelper;
+import plugins.XMLSpider.org.garret.perst.fulltext.FullTextSearchHit;
+import plugins.XMLSpider.org.garret.perst.fulltext.FullTextSearchResult;
+import plugins.XMLSpider.org.garret.perst.fulltext.FullTextSearchable;
+import plugins.XMLSpider.org.garret.perst.fulltext.Occurrence;
 
 public class FullTextIndexImpl extends PersistentResource implements FullTextIndex
 {
@@ -12,19 +33,63 @@ public class FullTextIndexImpl extends PersistentResource implements FullTextInd
     protected Index documents;
     protected FullTextSearchHelper helper;
 
+    static final int OCC_KIND_OFFSET = 24;
+    static final int OCC_POSITION_MASK = (1 << OCC_KIND_OFFSET) - 1;
+    static final int COMPRESSION_OVERHEAD = 8;
+    
     static class DocumentOccurrences extends Persistent {
         InverseList list;
         int nWordsInDocument;
-        int[] occurrences;
+        byte[] occurrences;
+
+        final void setOccurrences(int[] occ) { 
+            int i = 0;
+            int prevOcc = -1;
+            int len = occ.length;
+            Compressor compressor = new Compressor(new byte[len*4 + COMPRESSION_OVERHEAD]);
+            compressor.encodeStart();
+            compressor.encode(len);
+            do { 
+                int kind = occ[i] >>> OCC_KIND_OFFSET;
+                int j = i; 
+                while (++j < len && (occ[j] >>> OCC_KIND_OFFSET) == kind);
+                compressor.encode(j-i);
+                compressor.encode(kind + 1);
+                do { 
+                    int currOcc = occ[i++] & OCC_POSITION_MASK;
+                    compressor.encode(currOcc - prevOcc);
+                    prevOcc = currOcc;
+                } while (i != j);
+            } while (i != len);
+            occurrences = compressor.encodeStop();
+        }
+
+        final int[] getOccurrences() { 
+            Compressor compressor = new Compressor(occurrences);
+            int i = 0;
+            compressor.decodeStart();
+            int len = compressor.decode();
+            int[] buf = new int[len];
+            int pos = -1;
+            do { 
+                int n = compressor.decode();
+                int kind = (compressor.decode() - 1) << OCC_KIND_OFFSET;
+                do { 
+                    pos += compressor.decode();
+                    buf[i++] = kind | pos;
+                } while (--n != 0);
+            } while (i != len);
+            return buf;
+        }
     }
 
     static class Document extends Persistent { 
-        IPersistent obj;
+        Object obj;
         Link occurrences;
 
         Document() {}
 
-        Document(Storage storage, IPersistent obj) { 
+        Document(Storage storage, Object obj) { 
             super(storage);
             this.obj = obj;
             occurrences = storage.createLink();
@@ -138,6 +203,8 @@ public class FullTextIndexImpl extends PersistentResource implements FullTextInd
                 os[r] = oid;
                 System.arraycopy(oids, r, os, r+1, n-r);
                 docs.insert(r, doc);
+                oids = os;
+                modify();
             }
         }
 
@@ -158,6 +225,7 @@ public class FullTextIndexImpl extends PersistentResource implements FullTextInd
                 oids = new int[n-1];
                 System.arraycopy(os, 0, oids, 0, r);
                 System.arraycopy(os, r+1, oids, r, n-r-1);
+                modify();
             } else { 
                 super.remove(new Key(oid));
             }
@@ -168,7 +236,7 @@ public class FullTextIndexImpl extends PersistentResource implements FullTextInd
         add(obj, obj.getText(), obj.getLanguage());
     }
     
-    public void add(IPersistent obj, Reader text, String language) { 
+    public void add(Object obj, Reader text, String language) { 
         Occurrence[] occurrences;
         try { 
             occurrences = helper.parseText(text);
@@ -194,18 +262,16 @@ public class FullTextIndexImpl extends PersistentResource implements FullTextInd
         }
     }
      
-    static final int OCC_KIND_OFFSET = 24;
-    static final int OCC_POSITION_MASK = (1 << OCC_KIND_OFFSET) - 1;
-
     private final void addReference(Document doc, String word, Occurrence[] occurrences, int from, int till)
     {
         DocumentOccurrences d = new DocumentOccurrences();
-        d.occurrences = new int[till - from];
+        int[] occ = new int[till - from];
         d.nWordsInDocument = occurrences.length;
         for (int i = from; i < till; i++) { 
-            d.occurrences[i - from] = occurrences[i].position | (occurrences[i].kind << OCC_KIND_OFFSET);
+            occ[i - from] = occurrences[i].position | (occurrences[i].kind << OCC_KIND_OFFSET);
         }
-        int oid = doc.obj.getOid();
+        d.setOccurrences(occ);
+        int oid = getStorage().getOid(doc.obj);
         InverseList list = (InverseList)inverseIndex.get(word);
         if (list == null) { 
             list = new InverseList(getStorage(), oid, d);
@@ -214,6 +280,7 @@ public class FullTextIndexImpl extends PersistentResource implements FullTextInd
             list.add(oid, d);
         }
         d.list = list;
+        d.modify();
         doc.occurrences.add(d);
     }
             
@@ -232,13 +299,13 @@ public class FullTextIndexImpl extends PersistentResource implements FullTextInd
         }
     }
 
-    public void delete(IPersistent obj) { 
+    public void delete(Object obj) { 
         Key key = new Key(obj);
         Document doc = (Document)documents.get(key);
         if (doc != null) { 
             for (int i = 0, n = doc.occurrences.size(); i < n; i++) { 
                 DocumentOccurrences d = (DocumentOccurrences)doc.occurrences.get(i);
-                d.list.remove(obj.getOid());
+                d.list.remove(getStorage().getOid(obj));
                 d.deallocate();
             }
             documents.remove(key);
@@ -246,6 +313,16 @@ public class FullTextIndexImpl extends PersistentResource implements FullTextInd
         }
     }
     
+    public void deallocate() { 
+        clear();
+        super.deallocate();
+    }
+
+    public void clear() { 
+        inverseIndex.deallocateMembers();
+        documents.deallocateMembers();
+    }
+
     public int getNumberOfWords() { 
         return inverseIndex.size();
     }
@@ -557,7 +634,7 @@ public class FullTextIndexImpl extends PersistentResource implements FullTextInd
                         return -1;
                     }                    
                     DocumentOccurrences d = (DocumentOccurrences)kwd.currEntry.getValue();
-                    int[] occ = d.occurrences;
+                    int[] occ = d.getOccurrences();
                     kwd.occ = occ;
                     int frequency = occ.length;
                     if (query.op == FullTextQuery.STRICT_MATCH) { 
@@ -765,7 +842,7 @@ public class FullTextIndexImpl extends PersistentResource implements FullTextInd
         super(storage);
         this.helper = helper;
         inverseIndex = storage.createIndex(String.class, true);
-        documents = storage.createIndex(IPersistent.class, true);
+        documents = storage.createIndex(Object.class, true);
     }
     
     private  FullTextIndexImpl() {}

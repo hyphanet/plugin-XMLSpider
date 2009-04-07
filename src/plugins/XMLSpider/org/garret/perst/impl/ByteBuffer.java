@@ -1,7 +1,10 @@
 package plugins.XMLSpider.org.garret.perst.impl;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 
+import plugins.XMLSpider.org.garret.perst.PerstOutputStream;
 import plugins.XMLSpider.org.garret.perst.StorageError;
 
 public class ByteBuffer {
@@ -21,8 +24,13 @@ public class ByteBuffer {
         return result;
     }
 
+    int packI4(int dst, int value) { 
+        extend(dst + 4);
+        Bytes.pack4(arr, dst, value);
+        return dst + 4;
+    }
 
-    int packString(int dst, String value, String encoding) { 
+    int packString(int dst, String value) { 
         if (value == null) { 
             extend(dst + 4);
             Bytes.pack4(arr, dst, -1);
@@ -64,20 +72,52 @@ public class ByteBuffer {
         }
     }
 
-    public OutputStream getOutputStream() { 
-        return new ByteBufferOutputStream();
+    class ByteBufferObjectOutputStream extends PerstOutputStream { 
+        ByteBufferObjectOutputStream() { 
+            super(new ByteBufferOutputStream());
+        }
+
+        public void writeObject(Object obj) throws IOException {                
+            try { 
+                flush();
+                db.swizzle(ByteBuffer.this, used, obj);
+            } catch(Exception x) { 
+                throw new StorageError(StorageError.ACCESS_VIOLATION, x);
+            } 
+        }
+        
+        public void writeString(String str) throws IOException {      
+            flush();
+            packString(used, str);
+        }
+    }
+
+    public PerstOutputStream getOutputStream() { 
+        return new ByteBufferObjectOutputStream();
     }
 
     public int size() { 
         return used;
     }
 
-    ByteBuffer() { 
+    ByteBuffer(StorageImpl db, Object parent, boolean finalized) { 
+        this();
+        this.db = db;
+        encoding = db.encoding;
+        this.parent = parent;
+        this.finalized = finalized;
+    }
+
+    ByteBuffer() {
         arr = new byte[64];
     }
 
-    public byte[] arr;
-    public int    used;
+    public byte[]      arr;
+    public int         used;
+    public String      encoding;
+    public Object      parent;
+    public boolean     finalized; 
+    public StorageImpl db;
 }
 
 
