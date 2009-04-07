@@ -3,7 +3,7 @@ package plugins.XMLSpider.org.garret.perst;
 /**
  * Interface of all persistent capable objects
  */
-public interface IPersistent extends java.io.Externalizable {
+public interface IPersistent extends ILoadable, IStoreable, java.io.Externalizable {
     /**
      * Load object from the database (if needed)
      */
@@ -84,20 +84,6 @@ public interface IPersistent extends java.io.Externalizable {
      * @return storage containing this object (null if object is not persistent yet)
      */
     public Storage getStorage();
-
-    /**
-     * Method called by the database after loading of the object.
-     * It can be used to initialize transient fields of the object. 
-     * Default implementation of this method do nothing
-     */
-    public void onLoad();
-
-   /**
-     * Method called by the database before storing of the object.
-     * It can be used to save or close transient fields of the object. 
-     * Default implementation of this method do nothing
-     */
-    public void onStore();
 
     /**
      * Invalidate object. Invalidated object has to be explicitly

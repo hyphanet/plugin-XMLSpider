@@ -7,17 +7,17 @@ package plugins.XMLSpider.org.garret.perst;
  * work properly. This interface is needed mostly if you are going to provide you own implementation of embedded
  * links.
  */
-public interface EmbeddedLink<T extends IPersistent> extends Link<T> 
+public interface EmbeddedLink<T> extends Link<T> 
 {
     /**
      * Set container object for this embedded link
      * @param obj container object
      */
-    void setOwner(IPersistent obj);    
+    void setOwner(Object obj);    
 
     /**
      * Get container object for this embedded link
      * @return container object
      */
-    IPersistent getOwner();
+    Object getOwner();
 }

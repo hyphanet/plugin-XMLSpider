@@ -2,7 +2,8 @@ package plugins.XMLSpider.org.garret.perst;
 
 import java.util.Iterator;
 
-import plugins.XMLSpider.org.garret.perst.fulltext.*;
+import plugins.XMLSpider.org.garret.perst.fulltext.FullTextIndex;
+import plugins.XMLSpider.org.garret.perst.fulltext.FullTextSearchHelper;
 import plugins.XMLSpider.org.garret.perst.impl.ThreadTransactionContext;
 
 /**
@@ -30,7 +31,7 @@ public interface Storage {
      * database, when storage is created with NullFile.
      * 
      */
-    public void open(String filePath, int pagePoolSize);
+    public void open(String filePath, long pagePoolSize);
 
     /**
      * Open the storage
@@ -40,7 +41,7 @@ public interface Storage {
      * But larger page pool ussually leads to better performance (unless it could not fit
      * in memory and cause swapping).
      */
-    public void open(IFile file, int pagePoolSize);
+    public void open(IFile file, long pagePoolSize);
 
     /**
      * Open the storage with default page pool size
@@ -63,7 +64,7 @@ public interface Storage {
      * in memory and cause swapping).
      * @param cipherKey cipher key
      */
-    public void open(String filePath, int pagePoolSize, String cipherKey);
+    public void open(String filePath, long pagePoolSize, String cipherKey);
 
     /**
      * Check if database is opened
@@ -78,7 +79,7 @@ public interface Storage {
      * in many other OODBMSes), you should create index and use it as root object.
      * @return root object or <code>null</code> if root is not specified (storage is not yet initialized)
      */
-    public IPersistent getRoot();
+    public Object getRoot();
     
     /**
      * Set new storage root object.
@@ -86,7 +87,7 @@ public interface Storage {
      * @param root object to become new storage root. If it is not persistent yet, it is made
      * persistent and stored in the storage
      */
-    public void setRoot(IPersistent root);
+    public void setRoot(Object root);
 
     
 
@@ -217,7 +218,7 @@ public interface Storage {
      * handle large number of objects but in case of very small list memory overhead is too high.
      * @return persistent object implementing list
      */
-    public <T extends IPersistent> IPersistentList<T> createList();
+    public <T> IPersistentList<T> createList();
 
     /**
      * Create new scalable list of persistent objects.
@@ -227,7 +228,7 @@ public interface Storage {
      * is used instead.
      * @return scalable set implementation
      */
-    public <T extends IPersistent> IPersistentList<T> createScalableList();
+    public <T> IPersistentList<T> createScalableList();
 
     /**
      * Create new scalable list of persistent objects.
@@ -238,7 +239,7 @@ public interface Storage {
      * @param initialSize initial allocated size of the list
      * @return scalable set implementation
      */
-    public <T extends IPersistent> IPersistentList<T> createScalableList(int initialSize);
+    public <T> IPersistentList<T> createScalableList(int initialSize);
 
     /**
      * Create scalable persistent map.
@@ -247,7 +248,7 @@ public interface Storage {
      * @param keyType map key type
      * @return scalable set implementation
      */
-    public <K extends Comparable, V extends IPersistent> IPersistentMap<K,V> createMap(Class keyType);
+    public <K extends Comparable, V> IPersistentMap<K,V> createMap(Class keyType);
 
     /**
      * Create scalable persistent map.
@@ -257,14 +258,14 @@ public interface Storage {
      * @param initialSize initial allocated size of the list
      * @return scalable set implementation
      */
-    public <K extends Comparable, V extends IPersistent> IPersistentMap<K,V> createMap(Class keyType, int initialSize);
+    public <K extends Comparable, V> IPersistentMap<K,V> createMap(Class keyType, int initialSize);
 
     /**
      * Create new peristent set. Implementation of this set is based on B-Tree so it can efficiently
      * handle large number of objects but in case of very small set memory overhead is too high.
      * @return persistent object implementing set
      */
-    public <T extends IPersistent> IPersistentSet<T> createSet();
+    public <T> IPersistentSet<T> createSet();
 
     /**
      * Create new scalable set references to persistent objects.
@@ -274,7 +275,7 @@ public interface Storage {
      * is used instead.
      * @return scalable set implementation
      */
-    public <T extends IPersistent> IPersistentSet<T> createScalableSet();
+    public <T> IPersistentSet<T> createScalableSet();
 
     /**
      * Create new scalable set references to persistent objects.
@@ -285,7 +286,7 @@ public interface Storage {
      * @param initialSize initial size of the set
      * @return scalable set implementation
      */
-    public <T extends IPersistent> IPersistentSet<T> createScalableSet(int initialSize);
+    public <T> IPersistentSet<T> createScalableSet(int initialSize);
 
     /**
      * Create new index
@@ -296,7 +297,7 @@ public interface Storage {
      * @exception StorageError(StorageError.UNSUPPORTED_INDEX_TYPE) exception if 
      * specified key type is not supported by implementation.
      */
-    public <T extends IPersistent> Index<T> createIndex(Class type, boolean unique);
+    public <T> Index<T> createIndex(Class type, boolean unique);
 
     /**
      * Create new compound index
@@ -306,14 +307,14 @@ public interface Storage {
      * @exception StorageError(StorageError.UNSUPPORTED_INDEX_TYPE) exception if 
      * specified key type is not supported by implementation.
      */
-    public <T extends IPersistent> Index<T> createIndex(Class[] types, boolean unique);
+    public <T> Index<T> createIndex(Class[] types, boolean unique);
 
     /**
      * Create new multidimensional index
      * @param comparator multidimensinal comparator
      * @return multidimensional index
      */
-    public <T extends IPersistent> MultidimensionalIndex<T> createMultidimensionalIndex(MultidimensionalComparator<T> comparator);
+    public <T> MultidimensionalIndex<T> createMultidimensionalIndex(MultidimensionalComparator<T> comparator);
 
     /**
      * Create new multidimensional index for specified fields of the class 
@@ -324,7 +325,7 @@ public interface Storage {
      * that condition is not defined for this field
      * @return multidimensional index
      */
-    public <T extends IPersistent> MultidimensionalIndex<T> createMultidimensionalIndex(Class type, String[] fieldNames, boolean treateZeroAsUndefinedValue);
+    public <T> MultidimensionalIndex<T> createMultidimensionalIndex(Class type, String[] fieldNames, boolean treateZeroAsUndefinedValue);
 
     /**
      * Create new think index (index with large number of duplicated keys)
@@ -334,14 +335,14 @@ public interface Storage {
      * @exception StorageError(StorageError.UNSUPPORTED_INDEX_TYPE) exception if 
      * specified key type is not supported by implementation.
      */
-    public <T extends IPersistent> Index<T> createThickIndex(Class type);
+    public <T> Index<T> createThickIndex(Class type);
 
     /**
      * Create new bit index. Bit index is used to select object 
      * with specified set of (boolean) properties.
      * @return persistent object implementing bit index
      */
-    public <T extends IPersistent> BitIndex<T> createBitIndex();
+    public <T> BitIndex<T> createBitIndex();
 
     /**
      * Create new field index
@@ -352,7 +353,7 @@ public interface Storage {
      * @exception StorageError(StorageError.INDEXED_FIELD_NOT_FOUND) if there is no such field in specified class,<BR> 
      * StorageError(StorageError.UNSUPPORTED_INDEX_TYPE) exception if type of specified field is not supported by implementation
      */
-    public <T extends IPersistent> FieldIndex<T> createFieldIndex(Class type, String fieldName, boolean unique);
+    public <T> FieldIndex<T> createFieldIndex(Class type, String fieldName, boolean unique);
 
     /**
      * Create new field index
@@ -363,7 +364,7 @@ public interface Storage {
      * @exception StorageError(StorageError.INDEXED_FIELD_NOT_FOUND) if there is no such field in specified class,<BR> 
      * StorageError(StorageError.UNSUPPORTED_INDEX_TYPE) exception if type of specified field is not supported by implementation
      */
-    public <T extends IPersistent> FieldIndex<T> createFieldIndex(Class type, String fieldName, boolean unique, boolean caseInsensitive);
+    public <T> FieldIndex<T> createFieldIndex(Class type, String fieldName, boolean unique, boolean caseInsensitive);
 
     /**
      * Create new mutlifield index
@@ -374,7 +375,7 @@ public interface Storage {
      * @exception StorageError(StorageError.INDEXED_FIELD_NOT_FOUND) if there is no such field in specified class,<BR> 
      * StorageError(StorageError.UNSUPPORTED_INDEX_TYPE) exception if type of specified field is not supported by implementation
      */
-    public <T extends IPersistent> FieldIndex<T> createFieldIndex(Class type, String[] fieldNames, boolean unique);
+    public <T> FieldIndex<T> createFieldIndex(Class type, String[] fieldNames, boolean unique);
 
     /**
      * Create new mutlifield index
@@ -386,7 +387,7 @@ public interface Storage {
      * @exception StorageError(StorageError.INDEXED_FIELD_NOT_FOUND) if there is no such field in specified class,<BR> 
      * StorageError(StorageError.UNSUPPORTED_INDEX_TYPE) exception if type of specified field is not supported by implementation
      */
-    public <T extends IPersistent> FieldIndex<T> createFieldIndex(Class type, String[] fieldNames, boolean unique, boolean caseInsensitive);
+    public <T> FieldIndex<T> createFieldIndex(Class type, String[] fieldNames, boolean unique, boolean caseInsensitive);
 
     /**
      * Create new index optimized for access by element position.
@@ -397,7 +398,7 @@ public interface Storage {
      * @exception StorageError(StorageError.UNSUPPORTED_INDEX_TYPE) exception if 
      * specified key type is not supported by implementation.
      */
-    public <T extends IPersistent> Index<T> createRandomAccessIndex(Class type, boolean unique);
+    public <T> Index<T> createRandomAccessIndex(Class type, boolean unique);
 
     /**
      * Create new compound index optimized for access by element position.
@@ -407,7 +408,7 @@ public interface Storage {
      * @exception StorageError(StorageError.UNSUPPORTED_INDEX_TYPE) exception if 
      * specified key type is not supported by implementation.
      */
-    public <T extends IPersistent> Index<T> createRandomAccessIndex(Class[] types, boolean unique);
+    public <T> Index<T> createRandomAccessIndex(Class[] types, boolean unique);
 
     /**
      * Create new field index optimized for access by element position.
@@ -418,7 +419,7 @@ public interface Storage {
      * @exception StorageError(StorageError.INDEXED_FIELD_NOT_FOUND) if there is no such field in specified class,<BR> 
      * StorageError(StorageError.UNSUPPORTED_INDEX_TYPE) exception if type of specified field is not supported by implementation
      */
-    public <T extends IPersistent> FieldIndex<T> createRandomAccessFieldIndex(Class type, String fieldName, boolean unique);
+    public <T> FieldIndex<T> createRandomAccessFieldIndex(Class type, String fieldName, boolean unique);
 
     /**
      * Create new field index optimized for access by element position.
@@ -430,7 +431,7 @@ public interface Storage {
      * @exception StorageError(StorageError.INDEXED_FIELD_NOT_FOUND) if there is no such field in specified class,<BR> 
      * StorageError(StorageError.UNSUPPORTED_INDEX_TYPE) exception if type of specified field is not supported by implementation
      */
-    public <T extends IPersistent> FieldIndex<T> createRandomAccessFieldIndex(Class type, String fieldName, boolean unique, boolean caseInsensitive);
+    public <T> FieldIndex<T> createRandomAccessFieldIndex(Class type, String fieldName, boolean unique, boolean caseInsensitive);
 
     /**
      * Create new mutlifield index optimized for access by element position.
@@ -441,7 +442,7 @@ public interface Storage {
      * @exception StorageError(StorageError.INDEXED_FIELD_NOT_FOUND) if there is no such field in specified class,<BR> 
      * StorageError(StorageError.UNSUPPORTED_INDEX_TYPE) exception if type of specified field is not supported by implementation
      */
-    public <T extends IPersistent> FieldIndex<T> createRandomAccessFieldIndex(Class type, String[] fieldNames, boolean unique);
+    public <T> FieldIndex<T> createRandomAccessFieldIndex(Class type, String[] fieldNames, boolean unique);
 
     /**
      * Create new mutlifield index optimized for access by element position.
@@ -453,19 +454,19 @@ public interface Storage {
      * @exception StorageError(StorageError.INDEXED_FIELD_NOT_FOUND) if there is no such field in specified class,<BR> 
      * StorageError(StorageError.UNSUPPORTED_INDEX_TYPE) exception if type of specified field is not supported by implementation
      */
-    public <T extends IPersistent> FieldIndex<T> createRandomAccessFieldIndex(Class type, String[] fieldNames, boolean unique, boolean caseInsensitive);
+    public <T> FieldIndex<T> createRandomAccessFieldIndex(Class type, String[] fieldNames, boolean unique, boolean caseInsensitive);
 
      /**
      * Create new spatial index with integer coordinates
      * @return persistent object implementing spatial index
      */
-    public <T extends IPersistent> SpatialIndex<T> createSpatialIndex();
+    public <T> SpatialIndex<T> createSpatialIndex();
 
     /**
      * Create new R2 spatial index 
      * @return persistent object implementing spatial index
      */
-    public<T extends IPersistent>  SpatialIndexR2<T> createSpatialIndexR2();
+    public<T>  SpatialIndexR2<T> createSpatialIndexR2();
 
     /**
      * Create new sorted collection
@@ -473,20 +474,20 @@ public interface Storage {
      * @param unique whether index is collection (members with the same key value are not allowed)
      * @return persistent object implementing sorted collection
      */
-    public <T extends IPersistent> SortedCollection<T> createSortedCollection(PersistentComparator<T> comparator, boolean unique);
+    public <T> SortedCollection<T> createSortedCollection(PersistentComparator<T> comparator, boolean unique);
 
     /**
      * Create one-to-many link.
      * @return new empty link, new members can be added to the link later.
      */
-    public <T extends IPersistent> Link<T> createLink();
+    public <T> Link<T> createLink();
     
     /**
      * Create one-to-many link with specified initialy alloced size.
      * @param initialSize initial size of array
      * @return new empty link, new members can be added to the link later.
      */
-    public <T extends IPersistent> Link<T> createLink(int initialSize);
+    public <T> Link<T> createLink(int initialSize);
     
     /**
      * Create relation object. Unlike link which represent embedded relation and stored
@@ -496,7 +497,7 @@ public interface Storage {
      * @return object representing empty relation (relation with specified owner and no members), 
      * new members can be added to the link later.
      */
-    public <M extends IPersistent, O extends IPersistent> Relation<M,O> createRelation(O owner);
+    public <M, O> Relation<M,O> createRelation(O owner);
 
 
     /**
@@ -542,7 +543,7 @@ public interface Storage {
      * to other structures such as hashtables when memory space is of concern.
      * @return created PATRICIA trie
      */
-    public <T extends IPersistent> PatriciaTrie<T> createPatriciaTrie();
+    public <T> PatriciaTrie<T> createPatriciaTrie();
 
     /**
      * Create full text search index
@@ -599,7 +600,7 @@ public interface Storage {
      * @param oid object oid
      * @return reference to the object with specified OID
      */
-    public IPersistent getObjectByOID(int oid);
+    public Object getObjectByOID(int oid);
 
     /**
      * Explicitely make object peristent. Usually objects are made persistent
@@ -609,7 +610,7 @@ public interface Storage {
      * @param obj object to be made persistent
      * @return OID assigned to the object  
      */
-    public int makePersistent(IPersistent obj);
+    public int makePersistent(Object obj);
 
     /**
      * Set database property. This method should be invoked before opening database. 
@@ -640,7 +641,7 @@ public interface Storage {
      * <TD>Kind of object cache. The following values are supported:
      * "strong", "weak", "soft",  "pinned", "lru". <B>Strong</B> cache uses strong (normal) 
      * references to refer persistent objects. Thus none of loaded persistent objects
-     * can be deallocated by GC. <B>Weak</B> cache use weak references and
+     * can be deallocated by GC. <B>Weak</B> cache usea weak references and
      * soft cache - <B>soft</B> references. The main difference between soft and weak references is
      * that garbage collector is not required to remove soft referenced objects immediately
      * when object is detected to be <i>soft referenced</i>, so it may improve caching of objects. 
@@ -929,21 +930,52 @@ public interface Storage {
      */
     public int getDatabaseFormatVersion();
 
+
+    /**
+     * Store object in storage
+     * @param obj stored object
+     */
+    public void store(Object obj);
+
+    /**
+     * Mark object as been modified     
+     * @param obj modified object
+     */
+    public void modify(Object obj);
+
+    /**
+     * Load raw object
+     * @param obj loaded object
+     */
+    public void load(Object obj);
+
+    /**
+     * Deallocaste object
+     * @param obj deallocated object
+     */
+    public void deallocate(Object obj);
+
+    /**
+     * Get object identifier
+     * @param obj inspected object
+     */
+    public int getOid(Object obj);
+
     // Internal methods
 
-    public void deallocateObject(IPersistent obj);
+    public void deallocateObject(Object obj);
 
-    public void storeObject(IPersistent obj);
+    public void storeObject(Object obj);
 
-    public void storeFinalizedObject(IPersistent obj);
+    public void storeFinalizedObject(Object obj);
 
-    public void modifyObject(IPersistent obj);
+    public void modifyObject(Object obj);
 
-    public void loadObject(IPersistent obj);
+    public void loadObject(Object obj);
 
-    public boolean lockObject(IPersistent obj);
+    public boolean lockObject(Object obj);
 
-    public void throwObject(IPersistent obj);
+    public void throwObject(Object obj);
 }
 
 

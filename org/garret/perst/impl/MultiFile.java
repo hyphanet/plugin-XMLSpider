@@ -1,7 +1,12 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import plugins.XMLSpider.org.garret.perst.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.StreamTokenizer;
 
-import java.io.*;
+import plugins.XMLSpider.org.garret.perst.IFile;
+import plugins.XMLSpider.org.garret.perst.StorageError;
 
 public class MultiFile implements IFile 
 { 

@@ -1,12 +1,12 @@
 package plugins.XMLSpider.org.garret.perst.impl.sun14;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.util.HashMap;
 
 import plugins.XMLSpider.org.garret.perst.impl.ReflectionProvider;
-
-import java.util.*;
-import sun.reflect.*;
 import sun.misc.Unsafe;
+import sun.reflect.ReflectionFactory;
 
 
 public class Sun14ReflectionProvider implements ReflectionProvider { 

@@ -110,7 +110,7 @@ public class Key {
      * Constructor of key of user defined type (boundary is inclusive)
      * @param v user defined value
      */
-    public Key(Comparable v) { 
+    public Key(IValue v) { 
         this(v, true);
     }  
   
@@ -138,6 +138,13 @@ public class Key {
     public Key(Object v1, Object v2) { 
         this(new Object[]{v1, v2}, true);
     }    
+
+    /**
+     * Constructor of key with persistent object reference (boundary is inclusive)
+     */
+    public Key(Object v) { 
+        this(v, true);
+    }
 
     /**
      * Constructor of key with persistent object reference (boundary is inclusive)
@@ -264,6 +271,25 @@ public class Key {
     }
 
     /**
+     * Constructor of key with persistent object reference
+     * @param v key value
+     * @param inclusive whether boundary is inclusive or exclusive
+     */
+    public Key(Object v, boolean inclusive) { 
+        this(ClassDescriptor.tpObject, 0, 0.0, v, inclusive);
+    }
+
+    /**
+     * Constructor of key with persistent object reference
+     * @param v key value
+     * @param oid object identifier
+     * @param inclusive whether boundary is inclusive or exclusive
+     */
+    public Key(Object v, int oid, boolean inclusive) { 
+        this(ClassDescriptor.tpObject, oid, 0.0, v, inclusive);
+    }
+
+    /**
      * Constructor of compound key
      * @param v array of key values
      * @param inclusive whether boundary is inclusive or exclusive
@@ -277,8 +303,8 @@ public class Key {
      * @param v user defined value
      * @param inclusive whether boundary is inclusive or exclusive
      */
-    public Key(Comparable v, boolean inclusive) { 
-        this(ClassDescriptor.tpRaw, 0, 0.0, v, inclusive);        
+    public Key(IValue v, boolean inclusive) { 
+        this(ClassDescriptor.tpValue, 0, 0.0, v, inclusive);        
     }    
 
     /**

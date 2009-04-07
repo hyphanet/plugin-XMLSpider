@@ -1,9 +1,12 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import plugins.XMLSpider.org.garret.perst.*;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Set;
 
-import  java.util.*;
+import plugins.XMLSpider.org.garret.perst.IPersistentSet;
+import plugins.XMLSpider.org.garret.perst.Key;
 
-class AltPersistentSet<T extends IPersistent> extends AltBtree<T> implements IPersistentSet<T> { 
+class AltPersistentSet<T> extends AltBtree<T> implements IPersistentSet<T> { 
     AltPersistentSet() { 
         type = ClassDescriptor.tpObject;
         unique = true;
@@ -14,18 +17,11 @@ class AltPersistentSet<T extends IPersistent> extends AltBtree<T> implements IPe
     }
 
     public boolean contains(Object o) {
-        if (o instanceof IPersistent) { 
-            Key key = new Key((IPersistent)o);
-            Iterator i = iterator(key, key, ASCENT_ORDER);
-            return i.hasNext();
-        }
-        return false;
+        Key key = new Key(o);
+        Iterator i = iterator(key, key, ASCENT_ORDER);
+        return i.hasNext();
     }
     
-    public Object[] toArray() { 
-        return toPersistentArray();
-    }
-
     public <E> E[] toArray(E[] arr) { 
         return (E[])super.toArray((T[])arr);
     }
@@ -57,7 +53,7 @@ class AltPersistentSet<T extends IPersistent> extends AltBtree<T> implements IPe
         int h = 0;
         Iterator i = iterator();
         while (i.hasNext()) {
-            h += ((IPersistent)i.next()).getOid();
+            h += getStorage().getOid(i.next());
         }
         return h;
     }

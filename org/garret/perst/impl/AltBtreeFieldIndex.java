@@ -1,10 +1,18 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import plugins.XMLSpider.org.garret.perst.*;
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Date;
 
-import java.lang.reflect.*;
-import java.util.*;
+import plugins.XMLSpider.org.garret.perst.Assert;
+import plugins.XMLSpider.org.garret.perst.FieldIndex;
+import plugins.XMLSpider.org.garret.perst.IValue;
+import plugins.XMLSpider.org.garret.perst.IterableIterator;
+import plugins.XMLSpider.org.garret.perst.Key;
+import plugins.XMLSpider.org.garret.perst.Query;
+import plugins.XMLSpider.org.garret.perst.StorageError;
 
-class AltBtreeFieldIndex<T extends IPersistent> extends AltBtree<T> implements FieldIndex<T> { 
+class AltBtreeFieldIndex<T> extends AltBtree<T> implements FieldIndex<T> { 
     String className;
     String fieldName;
     long   autoincCount;
@@ -44,7 +52,7 @@ class AltBtreeFieldIndex<T extends IPersistent> extends AltBtree<T> implements F
         type = checkType(fld.getType());
     }
 
-    private Key extractKey(IPersistent obj) { 
+    private Key extractKey(Object obj) { 
         try { 
             Field f = fld;
             Key key = null;
@@ -66,12 +74,8 @@ class AltBtreeFieldIndex<T extends IPersistent> extends AltBtree<T> implements F
                 break;            
               case ClassDescriptor.tpObject:
                 {
-                    IPersistent ptr = (IPersistent)f.get(obj);
-                    if (ptr != null && !ptr.isPersistent())
-                    {
-                        getStorage().makePersistent(ptr);
-                    }
-                    key = new Key(ptr);
+                    Object val = f.get(obj);
+                    key = new Key(val, getStorage().makePersistent(val), true);
                     break;
                 }
               case ClassDescriptor.tpLong:
@@ -92,8 +96,8 @@ class AltBtreeFieldIndex<T extends IPersistent> extends AltBtree<T> implements F
               case ClassDescriptor.tpString:
                 key = new Key((String)f.get(obj));
                 break;
-              case ClassDescriptor.tpRaw:
-                key = new Key((Comparable)f.get(obj));
+              case ClassDescriptor.tpValue:
+                key = new Key((IValue)f.get(obj));
                 break;
               default:
                 Assert.failed("Invalid type");
@@ -113,8 +117,8 @@ class AltBtreeFieldIndex<T extends IPersistent> extends AltBtree<T> implements F
         return super.set(extractKey(obj), obj);
     }
 
-    public void  remove(T obj) {
-        super.remove(extractKey(obj), obj);
+    public boolean remove(Object obj) {
+        return super.removeIfExists(extractKey(obj), obj);
     }
 
     public boolean containsObject(T obj) {
@@ -122,7 +126,7 @@ class AltBtreeFieldIndex<T extends IPersistent> extends AltBtree<T> implements F
         if (unique) { 
             return super.get(key) != null;
         } else { 
-            IPersistent[] mbrs = get(key, key);
+            Object[] mbrs = get(key, key);
             for (int i = 0; i < mbrs.length; i++) { 
                 if (mbrs[i] == obj) { 
                     return true;
@@ -132,12 +136,12 @@ class AltBtreeFieldIndex<T extends IPersistent> extends AltBtree<T> implements F
         }
     }
 
-    public boolean contains(T obj) {
+    public boolean contains(Object obj) {
         Key key = extractKey(obj);
         if (unique) { 
             return super.get(key) != null;
         } else { 
-            IPersistent[] mbrs = get(key, key);
+            Object[] mbrs = get(key, key);
             for (int i = 0; i < mbrs.length; i++) { 
                 if (mbrs[i].equals(obj)) { 
                     return true;
@@ -166,7 +170,7 @@ class AltBtreeFieldIndex<T extends IPersistent> extends AltBtree<T> implements F
             throw new StorageError(StorageError.ACCESS_VIOLATION, x);
         }
         autoincCount += 1;
-        obj.modify();
+        getStorage().modify(obj);
         super.insert(key, obj, false);
     }
 
@@ -188,7 +192,7 @@ class AltBtreeFieldIndex<T extends IPersistent> extends AltBtree<T> implements F
         return (T[])list.toArray((T[])Array.newInstance(cls, list.size()));
     }
 
-    public T[] toPersistentArray() {
+    public T[] toArray() {
         T[] arr = (T[])Array.newInstance(cls, nElems);
         if (root != null) { 
             root.traverseForward(height, arr, 0);
@@ -211,7 +215,7 @@ class AltBtreeFieldIndex<T extends IPersistent> extends AltBtree<T> implements F
     }
 }
 
-class AltBtreeCaseInsensitiveFieldIndex<T extends IPersistent> extends AltBtreeFieldIndex<T> {    
+class AltBtreeCaseInsensitiveFieldIndex<T> extends AltBtreeFieldIndex<T> {    
     AltBtreeCaseInsensitiveFieldIndex() {}
 
     AltBtreeCaseInsensitiveFieldIndex(Class cls, String fieldName, boolean unique) {

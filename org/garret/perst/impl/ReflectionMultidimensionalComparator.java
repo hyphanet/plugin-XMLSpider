@@ -1,8 +1,10 @@
 package plugins.XMLSpider.org.garret.perst.impl;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Field;
 
-import plugins.XMLSpider.org.garret.perst.*;
+import plugins.XMLSpider.org.garret.perst.MultidimensionalComparator;
+import plugins.XMLSpider.org.garret.perst.Storage;
+import plugins.XMLSpider.org.garret.perst.StorageError;
 
 /**
  * Implementation of multidimensional reflection comparator using reflection

@@ -1,8 +1,22 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import plugins.XMLSpider.org.garret.perst.*;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Date;
 
-import  java.lang.reflect.*;
-import  java.util.*;
+import plugins.XMLSpider.org.garret.perst.CustomAllocator;
+import plugins.XMLSpider.org.garret.perst.CustomSerializable;
+import plugins.XMLSpider.org.garret.perst.INamedClassLoader;
+import plugins.XMLSpider.org.garret.perst.IPersistent;
+import plugins.XMLSpider.org.garret.perst.IValue;
+import plugins.XMLSpider.org.garret.perst.Link;
+import plugins.XMLSpider.org.garret.perst.Persistent;
+import plugins.XMLSpider.org.garret.perst.Storage;
+import plugins.XMLSpider.org.garret.perst.StorageError;
 
 public final class ClassDescriptor extends Persistent { 
     ClassDescriptor   next;
@@ -34,8 +48,10 @@ public final class ClassDescriptor extends Persistent {
     transient Constructor loadConstructor;
     transient LoadFactory factory;
     transient Object[]    constructorParams;
+    transient boolean     customSerializable;
     transient boolean     hasSubclasses;
     transient boolean     resolved;
+    transient boolean     isCollection;
     
     static ReflectionProvider reflectionProvider; 
 
@@ -72,6 +88,9 @@ public final class ClassDescriptor extends Persistent {
     public static final int tpArrayOfRaw       = 32;
     public static final int tpArrayOfLink      = 33; // not supported
     public static final int tpArrayOfEnum      = 34;
+    public static final int tpBitSet           = 35;
+
+    public static final int tpValueTypeBias    = 100;
 
     static final String signature[] = {
         "boolean", 
@@ -110,7 +129,8 @@ public final class ClassDescriptor extends Persistent {
         "ArrayOfValue",
         "ArrayOfRaw",
         "ArrayOfLink",
-        "ArrayOfEnum"
+        "ArrayOfEnum",
+        "BitSet"
     };
         
 
@@ -138,7 +158,7 @@ public final class ClassDescriptor extends Persistent {
         if (reflectionProvider == null) { 
             try {
                 Class.forName("sun.misc.Unsafe");
-                String cls = "plugins.XMLSpider.org.garret.perst.impl.sun14.Sun14ReflectionProvider";
+                String cls = "org.garret.perst.impl.sun14.Sun14ReflectionProvider";
                 reflectionProvider = (ReflectionProvider)Class.forName(cls).newInstance();
             } catch (Throwable x) { 
                 reflectionProvider = new StandardReflectionProvider();
@@ -231,6 +251,15 @@ public final class ClassDescriptor extends Persistent {
         }
     }
 
+    public static boolean isEmbedded(Object obj)
+    {
+        if (obj != null) { 
+            Class cls = obj.getClass();
+            return obj instanceof IValue || obj instanceof Number || cls.isArray() || cls == Character.class || cls == Boolean.class || cls == Date.class || cls == String.class;
+        }
+        return false;
+    }
+
     public static int getTypeCode(Class c) { 
         int type;
         if (c.equals(byte.class)) { 
@@ -255,8 +284,6 @@ public final class ClassDescriptor extends Persistent {
             type = tpEnum;
         } else if (c.equals(java.util.Date.class)) {
             type = tpDate;
-        } else if (IPersistent.class.isAssignableFrom(c)) {
-            type = tpObject;
         } else if (IValue.class.isAssignableFrom(c)) {
             type = tpValue;
         } else if (c.equals(Link.class)) {
@@ -269,8 +296,8 @@ public final class ClassDescriptor extends Persistent {
             type += tpArrayOfBoolean;
         } else if (CustomSerializable.class.isAssignableFrom(c)) {
             type = tpCustom;            
-        } else if (c.equals(Object.class) || Comparable.class.isAssignableFrom(c)) {
-            type = tpRaw;
+        } else if (IPersistent.class.isAssignableFrom(c)) {
+            type = tpObject;
         } else if (serializeNonPersistentObjects) {
             type = tpRaw;            
         } else if (treateAnyNonPersistentObjectAsValue) {
@@ -278,8 +305,8 @@ public final class ClassDescriptor extends Persistent {
                 throw new StorageError(StorageError.EMPTY_VALUE);
             }
             type = tpValue;            
-        } else { 
-            throw new StorageError(StorageError.UNSUPPORTED_TYPE, c);
+        } else {
+            type = tpObject;
         }
         return type;
     }
@@ -294,7 +321,7 @@ public final class ClassDescriptor extends Persistent {
         if (loader != null) { 
             return loader.loadClass(name);
         } else { 
-            return  Class.forName(name);
+            return Class.forName(name);
         }
     }
 
@@ -322,6 +349,8 @@ public final class ClassDescriptor extends Persistent {
 
     ClassDescriptor(StorageImpl storage, Class cls) { 
         this.cls = cls;
+        customSerializable = storage.serializer != null && storage.serializer.isApplicable(cls);
+        isCollection = Collection.class.isAssignableFrom(cls);
         name = getClassName(cls);
         ArrayList list = new ArrayList();
         buildFieldList(storage, cls, list);
@@ -330,7 +359,7 @@ public final class ClassDescriptor extends Persistent {
         resolved = true;
     }
 
-    protected static Field locateField(Class scope, String name) { 
+    public static Field locateField(Class scope, String name) { 
         try { 
             do { 
                 try { 
@@ -384,7 +413,10 @@ public final class ClassDescriptor extends Persistent {
     }
 
     public void onLoad() {         
-        cls = loadClass(getStorage(), name);
+        StorageImpl s = (StorageImpl)getStorage();
+        cls = loadClass(s, name);
+        customSerializable = s.serializer != null && s.serializer.isApplicable(cls);
+        isCollection = Collection.class.isAssignableFrom(cls);
         Class scope = cls;
         int n = allFields.length;
         for (int i = n; --i >= 0;) { 
@@ -435,7 +467,6 @@ public final class ClassDescriptor extends Persistent {
             }
         }
         locateConstructor();
-        StorageImpl s = (StorageImpl)getStorage();
         if (s.classDescMap.get(cls) == null) { 
             s.classDescMap.put(cls, this);
         }

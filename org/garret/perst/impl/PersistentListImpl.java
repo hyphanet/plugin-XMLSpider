@@ -1,10 +1,22 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import plugins.XMLSpider.org.garret.perst.*;
+import java.lang.reflect.Array;
+import java.util.AbstractList;
+import java.util.Collection;
+import java.util.ConcurrentModificationException;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.NoSuchElementException;
 
-import  java.util.*;
-import  java.lang.reflect.Array;
+import plugins.XMLSpider.org.garret.perst.Assert;
+import plugins.XMLSpider.org.garret.perst.IPersistentList;
+import plugins.XMLSpider.org.garret.perst.Link;
+import plugins.XMLSpider.org.garret.perst.Persistent;
+import plugins.XMLSpider.org.garret.perst.PersistentCollection;
+import plugins.XMLSpider.org.garret.perst.PersistentIterator;
+import plugins.XMLSpider.org.garret.perst.Storage;
 
-class PersistentListImpl<E extends IPersistent> extends PersistentCollection<E> implements IPersistentList<E>
+class PersistentListImpl<E> extends PersistentCollection<E> implements IPersistentList<E>
 {
     int      nElems;
     ListPage root;
@@ -35,20 +47,20 @@ class PersistentListImpl<E extends IPersistent> extends PersistentCollection<E> 
             return items.get(i);
         }
 
-        IPersistent getPosition(TreePosition pos, int i) { 
+        Object getPosition(TreePosition pos, int i) { 
             pos.page = this;
             pos.index -= i;
             return items.get(i);
         }
 
-        IPersistent getRawPosition(TreePosition pos, int i) { 
+        Object getRawPosition(TreePosition pos, int i) { 
             pos.page = this;
             pos.index -= i;
             return items.getRaw(i);
         }
 
         Object set(int i, Object obj) { 
-            return items.set(i, (IPersistent)obj);
+            return items.set(i, obj);
         }
 
         void clear(int i, int len) { 
@@ -69,7 +81,7 @@ class PersistentListImpl<E extends IPersistent> extends PersistentCollection<E> 
             return nLeafPageItems;
         }
 
-        void setItem(int i, IPersistent obj) {
+        void setItem(int i, Object obj) {
             items.setObject(i, obj);
         }
 
@@ -90,8 +102,8 @@ class PersistentListImpl<E extends IPersistent> extends PersistentCollection<E> 
             items.setSize(max);
         }
 
-        IPersistent remove(int i) {
-            IPersistent obj = items.get(i);
+        Object remove(int i) {
+            Object obj = items.get(i);
             nItems -= 1;
             copy(i, this, i+1, nItems-i);
             items.setObject(nItems, null);
@@ -103,7 +115,7 @@ class PersistentListImpl<E extends IPersistent> extends PersistentCollection<E> 
             return nItems < getMaxItems()/2;
         }
 
-        ListPage add(int i, IPersistent obj) {
+        ListPage add(int i, Object obj) {
             int max = getMaxItems();
             modify();
             if (nItems < max) {
@@ -136,7 +148,7 @@ class PersistentListImpl<E extends IPersistent> extends PersistentCollection<E> 
     static class ListIntermediatePage extends ListPage {
         int[] nChildren;
 
-        IPersistent getPosition(TreePosition pos, int i) { 
+        Object getPosition(TreePosition pos, int i) { 
             int j;
             for (j = 0; i >= nChildren[j]; j++) {
                 i -= nChildren[j];
@@ -144,7 +156,7 @@ class PersistentListImpl<E extends IPersistent> extends PersistentCollection<E> 
             return ((ListPage)items.get(j)).getPosition(pos, i);
         }
             
-        IPersistent getRawPosition(TreePosition pos, int i) { 
+        Object getRawPosition(TreePosition pos, int i) { 
             int j;
             for (j = 0; i >= nChildren[j]; j++) {
                 i -= nChildren[j];
@@ -168,7 +180,7 @@ class PersistentListImpl<E extends IPersistent> extends PersistentCollection<E> 
             return ((ListPage)items.get(j)).set(i, obj);
         }
 
-        ListPage add(int i, IPersistent obj) {
+        ListPage add(int i, Object obj) {
             int j;
             for (j = 0; i >= nChildren[j]; j++) {
                 i -= nChildren[j];
@@ -187,13 +199,13 @@ class PersistentListImpl<E extends IPersistent> extends PersistentCollection<E> 
             return overflow;
         }
 
-        IPersistent remove(int i) {
+        Object remove(int i) {
             int j;
             for (j = 0; i >= nChildren[j]; j++) {
                 i -= nChildren[j];
             }
             ListPage pg = (ListPage)items.get(j);
-            IPersistent obj = pg.remove(i);
+            Object obj = pg.remove(i);
             modify();
             if (pg.underflow()) { 
                 handlePageUnderflow(pg, j);
@@ -282,7 +294,7 @@ class PersistentListImpl<E extends IPersistent> extends PersistentCollection<E> 
             return nIntermediatePageItems;
         }
 
-        void setItem(int i, IPersistent obj) {
+        void setItem(int i, Object obj) {
             super.setItem(i, obj);
             nChildren[i] = ((ListPage)obj).size();
         }
@@ -329,7 +341,7 @@ class PersistentListImpl<E extends IPersistent> extends PersistentCollection<E> 
         return (E)root.getPosition(pos, i);
     }
 
-    IPersistent getRawPosition(TreePosition pos, int i) { 
+    Object getRawPosition(TreePosition pos, int i) { 
         if (i < 0 || i >= nElems) { 
             throw new IndexOutOfBoundsException("index=" + i + ", size=" + nElems);
         }
@@ -400,11 +412,10 @@ class PersistentListImpl<E extends IPersistent> extends PersistentCollection<E> 
         return true;
     }
 
-    public void add(int i, E o) {
+    public void add(int i, E obj) {
         if (i < 0 || i > nElems) { 
             throw new IndexOutOfBoundsException("index=" + i + ", size=" + nElems);
         }
-        IPersistent obj = (IPersistent)o;
         ListPage overflow = root.add(i, obj);
         if (overflow != null) { 
             ListIntermediatePage pg = new ListIntermediatePage(getStorage());
@@ -522,14 +533,12 @@ class PersistentListImpl<E extends IPersistent> extends PersistentCollection<E> 
 
         public int nextOid() {
             checkForComodification();
-	    try {
-		int oid = getRawPosition(this, cursor).getOid();
-		lastRet = cursor++;
-		return oid;
-	    } catch(IndexOutOfBoundsException e) {
-		checkForComodification();
-		throw new NoSuchElementException();
-	    }
+            if (!hasNext()) { 
+                return 0;
+            }
+            int oid = getStorage().getOid(getRawPosition(this, cursor));
+            lastRet = cursor++;
+            return oid;
         }
 
 	public E next() {
@@ -647,7 +656,7 @@ class PersistentListImpl<E extends IPersistent> extends PersistentCollection<E> 
     }
 }
         
-class SubList<E extends IPersistent> extends AbstractList<E> {
+class SubList<E> extends AbstractList<E> {
     private PersistentListImpl<E> l;
     private int offset;
     private int size;

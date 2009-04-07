@@ -1,16 +1,22 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import plugins.XMLSpider.org.garret.perst.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Map;
 
-import java.util.*;
+import plugins.XMLSpider.org.garret.perst.IValue;
+import plugins.XMLSpider.org.garret.perst.Index;
+import plugins.XMLSpider.org.garret.perst.IterableIterator;
+import plugins.XMLSpider.org.garret.perst.Key;
+import plugins.XMLSpider.org.garret.perst.StorageError;
 
-class AltBtreeCompoundIndex<T extends IPersistent> extends AltBtree<T> implements Index<T> { 
+class AltBtreeCompoundIndex<T> extends AltBtree<T> implements Index<T> { 
     int[]    types;
 
     AltBtreeCompoundIndex() {}
     
     AltBtreeCompoundIndex(Class[] keyTypes, boolean unique) {
         this.unique = unique;
-        type = ClassDescriptor.tpRaw;        
+        type = ClassDescriptor.tpValue;        
         types = new int[keyTypes.length];
         for (int i = 0; i < keyTypes.length; i++) {
             types[i] = getCompoundKeyComponentType(keyTypes[i]);
@@ -38,12 +44,8 @@ class AltBtreeCompoundIndex<T extends IPersistent> extends AltBtree<T> implement
             return ClassDescriptor.tpString;
         } else if (c.equals(Date.class)) { 
             return ClassDescriptor.tpDate;
-        } else if (IPersistent.class.isAssignableFrom(c)) {
+        } else {
             return ClassDescriptor.tpObject;
-        } else if (Comparable.class.isAssignableFrom(c)) { 
-            return ClassDescriptor.tpRaw;
-        } else { 
-            throw new StorageError(StorageError.UNSUPPORTED_INDEX_TYPE, c);
         }
     }
 
@@ -55,7 +57,7 @@ class AltBtreeCompoundIndex<T extends IPersistent> extends AltBtree<T> implement
         return keyTypes;
     }
 
-    static class CompoundKey implements Comparable {
+    static class CompoundKey implements Comparable, IValue {
         Object[] keys;
 
         public int compareTo(Object o) { 
@@ -97,7 +99,7 @@ class AltBtreeCompoundIndex<T extends IPersistent> extends AltBtree<T> implement
                     isCopy = true;
                 }
                 keyComponents[i] = (type == ClassDescriptor.tpObject)
-                    ? (Object)new Integer(keyComponents[i] == null ? 0 : ((IPersistent)keyComponents[i]).getOid())
+                    ? (Object)new Integer(keyComponents[i] == null ? 0 : getStorage().getOid(keyComponents[i]))
                     : (Object)new Byte((byte)(((Boolean)keyComponents[i]).booleanValue() ? 1 : 0));
                 
             }

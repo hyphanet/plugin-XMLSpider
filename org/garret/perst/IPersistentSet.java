@@ -5,5 +5,5 @@ import java.util.Set;
 /**
  * Interface of persistent set. 
  */
-public interface IPersistentSet<T extends IPersistent> extends IPersistent, IResource, Set<T>, ITable<T> {}
+public interface IPersistentSet<T> extends IPersistent, IResource, Set<T>, ITable<T> {}
 

@@ -1,5 +1,4 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import plugins.XMLSpider.org.garret.perst.*;
 
 public class StrongHashTable implements OidHashTable { 
     Entry table[];
@@ -7,17 +6,19 @@ public class StrongHashTable implements OidHashTable {
     int count;
     int threshold;
     boolean flushing;
+    StorageImpl db;
 
     static final int MODIFIED_BUFFER_SIZE = 1024;
-    IPersistent[] modified;
+    Object[] modified;
     int nModified;
 
-    public StrongHashTable(int initialCapacity) {
+    public StrongHashTable(StorageImpl db, int initialCapacity) {
+        this.db = db;
         threshold = (int)(initialCapacity * loadFactor);
         if (initialCapacity != 0) { 
             table = new Entry[initialCapacity];
         }
-        modified = new IPersistent[MODIFIED_BUFFER_SIZE];
+        modified = new Object[MODIFIED_BUFFER_SIZE];
     }
 
     public synchronized boolean remove(int oid) {
@@ -38,7 +39,7 @@ public class StrongHashTable implements OidHashTable {
         return false;
     }
 
-    public synchronized void put(int oid, IPersistent obj) { 
+    public synchronized void put(int oid, Object obj) { 
         Entry tab[] = table;
         int index = (oid & 0x7FFFFFFF) % tab.length;
         for (Entry e = tab[index]; e != null; e = e.next) {
@@ -59,7 +60,7 @@ public class StrongHashTable implements OidHashTable {
         count++;
     }
 
-    public synchronized IPersistent get(int oid) {
+    public synchronized Object get(int oid) {
         Entry tab[] = table;
         int index = (oid & 0x7FFFFFFF) % tab.length;
         for (Entry e = tab[index] ; e != null ; e = e.next) {
@@ -95,11 +96,11 @@ public class StrongHashTable implements OidHashTable {
 
     public synchronized void flush() {
         if (nModified < MODIFIED_BUFFER_SIZE) { 
-            IPersistent[] mod = modified;
+            Object[] mod = modified;
             for (int i = nModified; --i >= 0;) { 
-                IPersistent obj = mod[i];
-                if (obj.isModified()) { 
-                    obj.store();
+                Object obj = mod[i];
+                if (db.isModified(obj)) { 
+                    db.store(obj);
                 }
             }
         } else { 
@@ -107,8 +108,8 @@ public class StrongHashTable implements OidHashTable {
             flushing = true;
             for (int i = 0; i < tab.length; i++) { 
                 for (Entry e = tab[i]; e != null; e = e.next) { 
-                    if (e.obj.isModified()) { 
-                        e.obj.store();
+                    if (db.isModified(e.obj)) { 
+                        db.store(e.obj);
                     }
                 }
             }
@@ -133,8 +134,8 @@ public class StrongHashTable implements OidHashTable {
     public synchronized void invalidate() {
         for (int i = 0; i < table.length; i++) { 
             for (Entry e = table[i]; e != null; e = e.next) { 
-                if (e.obj.isModified()) { 
-                    e.obj.invalidate();
+                if (db.isModified(e.obj)) { 
+                    db.invalidate(e.obj);
                 }
             }
             table[i] = null;
@@ -143,13 +144,13 @@ public class StrongHashTable implements OidHashTable {
         nModified = 0;
     }
 
-    public synchronized void setDirty(IPersistent obj) {
+    public synchronized void setDirty(Object obj) {
         if (nModified < MODIFIED_BUFFER_SIZE) { 
             modified[nModified++] = obj;
         }
     } 
 
-    public void clearDirty(IPersistent obj) {
+    public void clearDirty(Object obj) {
     }
 
     public int size() { 
@@ -159,11 +160,11 @@ public class StrongHashTable implements OidHashTable {
     public void preprocess() {}
 
     static class Entry { 
-        Entry         next;
-        IPersistent   obj;
-        int           oid;
+        Entry  next;
+        Object obj;
+        int    oid;
         
-        Entry(int oid, IPersistent obj, Entry chain) { 
+        Entry(int oid, Object obj, Entry chain) { 
             next = chain;
             this.oid = oid;
             this.obj = obj;

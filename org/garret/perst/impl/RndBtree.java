@@ -1,10 +1,25 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import plugins.XMLSpider.org.garret.perst.*;
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.ConcurrentModificationException;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.NoSuchElementException;
 
-import  java.util.*;
-import  java.lang.reflect.Array;
+import plugins.XMLSpider.org.garret.perst.Assert;
+import plugins.XMLSpider.org.garret.perst.IValue;
+import plugins.XMLSpider.org.garret.perst.Index;
+import plugins.XMLSpider.org.garret.perst.IterableIterator;
+import plugins.XMLSpider.org.garret.perst.Key;
+import plugins.XMLSpider.org.garret.perst.Link;
+import plugins.XMLSpider.org.garret.perst.Persistent;
+import plugins.XMLSpider.org.garret.perst.PersistentCollection;
+import plugins.XMLSpider.org.garret.perst.PersistentIterator;
+import plugins.XMLSpider.org.garret.perst.Storage;
+import plugins.XMLSpider.org.garret.perst.StorageError;
 
-class RndBtree<T extends IPersistent> extends PersistentCollection<T> implements Index<T> { 
+class RndBtree<T> extends PersistentCollection<T> implements Index<T> { 
     int       height;
     int       type;
     int       nElems;
@@ -16,11 +31,11 @@ class RndBtree<T extends IPersistent> extends PersistentCollection<T> implements
     RndBtree() {}
 
     static class BtreeKey { 
-        Key         key;
-        IPersistent node;
-        IPersistent oldNode;
+        Key    key;
+        Object node;
+        Object oldNode;
 
-        BtreeKey(Key key, IPersistent node) { 
+        BtreeKey(Key key, Object node) { 
             this.key = key;
             this.node = node;
         }
@@ -54,6 +69,31 @@ class RndBtree<T extends IPersistent> extends PersistentCollection<T> implements
             }
         }
         
+        int indexOf(Key key, int height) { 
+            int l = 0, n = nItems, r = n;
+            height -= 1;
+            while (l < r)  {
+                int i = (l+r) >> 1;
+                if (compare(key, i) > 0) {
+                    l = i+1;
+                } else {
+                    r = i;
+                }
+            }
+            Assert.that(r == l);
+            if (height == 0) {
+                return (r < n && compare(key, r) == 0) ? r : -1;
+            } else { 
+                int pos = ((BtreePage)items.get(r)).indexOf(key, height);
+                if (pos >= 0) { 
+                    while (--r >= 0) { 
+                        pos += nChildren[r];
+                    }
+                }
+                return pos;
+            }
+        }            
+
         boolean find(Key firstKey, Key lastKey, int height, ArrayList result)
         {
             int l = 0, n = nItems, r = n;
@@ -329,7 +369,7 @@ class RndBtree<T extends IPersistent> extends PersistentCollection<T> implements
                 }
             }
             if (--height == 0) {
-                IPersistent node = rem.node;
+                Object node = rem.node;
                 while (r < n) {
                     if (compare(rem.key, r) == 0) {
                         if (node == null || items.containsElement(r, node)) {
@@ -372,7 +412,7 @@ class RndBtree<T extends IPersistent> extends PersistentCollection<T> implements
             super.deallocate();
         }
 
-        int traverseForward(int height, IPersistent[] result, int pos)
+        int traverseForward(int height, Object[] result, int pos)
         {
             int i, n = nItems;
             if (--height != 0) {
@@ -471,7 +511,7 @@ class RndBtree<T extends IPersistent> extends PersistentCollection<T> implements
         }
 
         Object getKeyValue(int i) { 
-            return Short.valueOf(data[i]);
+            return new Short(data[i]);
         }
 
         BtreePage clonePage() { 
@@ -708,14 +748,14 @@ class RndBtree<T extends IPersistent> extends PersistentCollection<T> implements
         }
 
         int compare(Key key, int i) {
-            IPersistent obj = data.getRaw(i);
-            int oid = obj == null ? 0 : obj.getOid();
+            Object obj = data.getRaw(i);
+            int oid = getStorage().getOid(obj);
             return key.ival - oid;
         }
 
         void insert(BtreeKey key, int i) { 
             items.setObject(i, key.node);
-            data.setObject(i, (IPersistent)key.key.oval);
+            data.setObject(i, key.key.oval);
         }
 
         BtreePageOfObject(Storage s) {
@@ -813,8 +853,8 @@ class RndBtree<T extends IPersistent> extends PersistentCollection<T> implements
         BtreePageOfString() {}
     }
 
-    static class BtreePageOfRaw extends BtreePage { 
-        Object data; 
+    static class BtreePageOfValue extends BtreePage { 
+        Object[] data; 
 
         static final int MAX_ITEMS = 100;
             
@@ -823,36 +863,36 @@ class RndBtree<T extends IPersistent> extends PersistentCollection<T> implements
         }
 
         Key getKey(int i) { 
-            return new Key((Comparable)((Object[])data)[i]);
+            return new Key((IValue)data[i]);
         }
 
         Object getKeyValue(int i) { 
-            return ((Object[])data)[i];
+            return data[i];
         }
 
         void clearKeyValue(int i) {
-            ((Object[])data)[i] = null;
+            data[i] = null;
         }
         
         BtreePage clonePage() { 
-            return new BtreePageOfRaw(getStorage());
+            return new BtreePageOfValue(getStorage());
         }
 
         int compare(Key key, int i) {
-            return ((Comparable)key.oval).compareTo(((Object[])data)[i]);
+            return ((Comparable)key.oval).compareTo(data[i]);
         }
 
         void insert(BtreeKey key, int i) { 
             items.setObject(i, key.node);
-            ((Object[])data)[i] = key.key.oval;
+            data[i] = key.key.oval;
         }
 
-        BtreePageOfRaw(Storage s) {
+        BtreePageOfValue(Storage s) {
             super(s, MAX_ITEMS);
             data = new Object[MAX_ITEMS];
         }
 
-        BtreePageOfRaw() {}
+        BtreePageOfValue() {}
     }
 
 
@@ -860,7 +900,7 @@ class RndBtree<T extends IPersistent> extends PersistentCollection<T> implements
     static int checkType(Class c) { 
         int elemType = ClassDescriptor.getTypeCode(c);
         if (elemType > ClassDescriptor.tpObject 
-            && elemType != ClassDescriptor.tpRaw
+            && elemType != ClassDescriptor.tpValue
             && elemType != ClassDescriptor.tpEnum) 
         { 
             throw new StorageError(StorageError.UNSUPPORTED_INDEX_TYPE, c);
@@ -916,9 +956,9 @@ class RndBtree<T extends IPersistent> extends PersistentCollection<T> implements
         case ClassDescriptor.tpDate:
             return Date.class;
         case ClassDescriptor.tpObject:
-            return IPersistent.class;
-        case ClassDescriptor.tpRaw:
-            return Comparable.class;
+            return Object.class;
+        case ClassDescriptor.tpValue:
+            return IValue.class;
         case ClassDescriptor.tpEnum:
             return Enum.class;
        default:
@@ -932,9 +972,8 @@ class RndBtree<T extends IPersistent> extends PersistentCollection<T> implements
                 throw new StorageError(StorageError.INCOMPATIBLE_KEY_TYPE);
             }
             if (type == ClassDescriptor.tpObject && key.ival == 0 && key.oval != null) { 
-                IPersistent obj = (IPersistent)key.oval;
-                getStorage().makePersistent(obj);
-                key = new Key(obj, key.inclusion != 0);
+                Object obj = key.oval;
+                key = new Key(obj, getStorage().makePersistent(obj), key.inclusion != 0);
             }
             if (key.oval instanceof char[]) { 
                 key = new Key(new String((char[])key.oval), key.inclusion != 0);
@@ -970,9 +1009,9 @@ class RndBtree<T extends IPersistent> extends PersistentCollection<T> implements
         return list;
     }
 
-    public IPersistent[] prefixSearch(String key) {
+    public Object[] prefixSearch(String key) {
         ArrayList<T> list = prefixSearchList(key);
-        return (IPersistent[])list.toArray(new IPersistent[list.size()]);
+        return list.toArray();
     }
 
     public ArrayList<T> getList(Key from, Key till) {
@@ -987,12 +1026,12 @@ class RndBtree<T extends IPersistent> extends PersistentCollection<T> implements
         return getList(Btree.getKeyFromObject(from), Btree.getKeyFromObject(till));
     }
 
-    public IPersistent[] get(Key from, Key till) {
+    public Object[] get(Key from, Key till) {
         ArrayList<T> list = getList(from, till);
-        return (IPersistent[])list.toArray(new IPersistent[list.size()]);
+        return list.toArray();
     }
 
-    public IPersistent[] get(Object from, Object till) {
+    public Object[] get(Object from, Object till) {
         return get(Btree.getKeyFromObject(from), Btree.getKeyFromObject(till));
     }
 
@@ -1039,8 +1078,8 @@ class RndBtree<T extends IPersistent> extends PersistentCollection<T> implements
         case ClassDescriptor.tpString:
             newRoot = new BtreePageOfString(s);
             break;
-        case ClassDescriptor.tpRaw:
-            newRoot = new BtreePageOfRaw(s);
+        case ClassDescriptor.tpValue:
+            newRoot = new BtreePageOfValue(s);
             break;
         default:
             Assert.failed("Invalid type");
@@ -1077,6 +1116,11 @@ class RndBtree<T extends IPersistent> extends PersistentCollection<T> implements
     public void remove(Key key, T obj) 
     {
         remove(new BtreeKey(checkKey(key), obj));
+    }
+    
+    boolean removeIfExists(Key key, Object obj) 
+    {
+        return removeIfExists(new BtreeKey(checkKey(key), obj));
     }
 
     void remove(BtreeKey rem) 
@@ -1130,7 +1174,7 @@ class RndBtree<T extends IPersistent> extends PersistentCollection<T> implements
         return getList(new Key(prefix, true), new Key(prefix + Character.MAX_VALUE, false));
     }
 
-    public IPersistent[] getPrefix(String prefix) { 
+    public Object[] getPrefix(String prefix) { 
         return get(new Key(prefix, true), new Key(prefix + Character.MAX_VALUE, false));
     }
 
@@ -1169,16 +1213,12 @@ class RndBtree<T extends IPersistent> extends PersistentCollection<T> implements
         }
     }
         
-    public IPersistent[] toPersistentArray() {
-        IPersistent[] arr = new IPersistent[nElems];
+    public Object[] toArray() {
+        Object[] arr = new Object[nElems];
         if (root != null) { 
             root.traverseForward(height, arr, 0);
         }
         return arr;
-    }
-
-    public Object[] toArray() {
-        return toPersistentArray();
     }
 
     public <E> E[] toArray(E[] arr) {
@@ -1186,7 +1226,7 @@ class RndBtree<T extends IPersistent> extends PersistentCollection<T> implements
             arr = (E[])Array.newInstance(arr.getClass().getComponentType(), nElems);
         }
         if (root != null) { 
-            root.traverseForward(height, (IPersistent[])arr, 0);
+            root.traverseForward(height, arr, 0);
         }
         if (arr.length > nElems) { 
             arr[nElems] = null;
@@ -1416,14 +1456,14 @@ class RndBtree<T extends IPersistent> extends PersistentCollection<T> implements
 
         public int nextOid() {
             if (!hasNext()) { 
-                throw new NoSuchElementException();
+                return 0;
             }
             int pos = posStack[sp-1];   
             BtreePage pg = pageStack[sp-1];
             currPos = pos;
             currPage = pg;
-            IPersistent obj = pg.items.getRaw(pos);
-            int oid = obj == null ? 0 : obj.getOid();
+            Object obj = pg.items.getRaw(pos);
+            int oid = getStorage().getOid(obj);
             if (((StorageImpl)getStorage()).concurrentIterator) { 
                 currKey = new BtreeKey(pg.getKey(pos), pg.items.getRaw(pos));
             }
@@ -1499,7 +1539,7 @@ class RndBtree<T extends IPersistent> extends PersistentCollection<T> implements
                     } else { 
                         till = nextKey;
                     }
-                    IPersistent next = nextObj;
+                    Object next = nextObj;
                     reset();
                     while (true) { 
                         int pos = posStack[sp-1];   
@@ -1549,7 +1589,7 @@ class RndBtree<T extends IPersistent> extends PersistentCollection<T> implements
         int         counter;
         BtreeKey    currKey;
         Key         nextKey;
-        IPersistent nextObj;
+        Object      nextObj;
     }
 
     class BtreeSelectionEntryIterator extends BtreeSelectionIterator<Map.Entry<Object,T>> { 
@@ -1633,6 +1673,11 @@ class RndBtree<T extends IPersistent> extends PersistentCollection<T> implements
         }            
         return (T)root.getAt(i, height);
     }
+
+    public int indexOf(Key key) { 
+        return root != null ? root.indexOf(key, height) : -1;
+    }
+
 
     public IterableIterator<Map.Entry<Object,T>> entryIterator(int start, int order) {
         return new BtreeEntryStartFromIterator(start, order);

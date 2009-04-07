@@ -1,9 +1,11 @@
 package plugins.XMLSpider.org.garret.perst.impl;
 
-import java.io.*;
-import java.net.*;
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
 
-import plugins.XMLSpider.org.garret.perst.*;
+import plugins.XMLSpider.org.garret.perst.IFile;
+import plugins.XMLSpider.org.garret.perst.StorageError;
 
 
 public class ReplicationStaticSlaveStorageImpl extends ReplicationSlaveStorageImpl
@@ -12,7 +14,7 @@ public class ReplicationStaticSlaveStorageImpl extends ReplicationSlaveStorageIm
         this.port = port;
     }
 
-    public void open(IFile file, int pagePoolSize) {
+    public void open(IFile file, long pagePoolSize) {
         try { 
             acceptor = new ServerSocket(port);
         } catch (IOException x) {

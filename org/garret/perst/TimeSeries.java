@@ -1,6 +1,8 @@
 package plugins.XMLSpider.org.garret.perst;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Iterator;
 
 /**
  * <p>
@@ -118,12 +120,6 @@ public interface TimeSeries<T extends TimeSeries.Tick> extends IPersistent, IRes
      * @return time of time series end
      */
     Date getLastTime();
-
-    /**
-     * Get number of elements in time series
-     * @return number of elements in time series
-     */
-    int size();
 
     /**
      * Get number of elements in time series

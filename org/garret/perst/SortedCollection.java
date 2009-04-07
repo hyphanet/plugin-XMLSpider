@@ -1,6 +1,7 @@
 package plugins.XMLSpider.org.garret.perst;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
 
 /**
  * Interface of sorted collection.
@@ -11,7 +12,7 @@ import java.util.*;
  * can cause trashing and so very bad performance. Unlike other index structures SortedCollection
  * doesn't store values of keys and so search in the collection requires fetching of its members.
  */
-public interface SortedCollection<T extends IPersistent> extends IPersistent, IResource, ITable<T> { 
+public interface SortedCollection<T> extends IPersistent, IResource, ITable<T> { 
     /**
      * Get member with specified key.
      * @param key specified key. It should match with type of the index and should be inclusive.
@@ -30,7 +31,7 @@ public interface SortedCollection<T extends IPersistent> extends IPersistent, IR
      * High boundary can be inclusive or exclusive. 
      * @return array of objects which keys belongs to the specified interval, ordered by key value
      */
-    public IPersistent[] get(Object from, Object till);
+    public Object[] get(Object from, Object till);
 
     /**
      * Get members which key value belongs to the specified range.
@@ -42,7 +43,7 @@ public interface SortedCollection<T extends IPersistent> extends IPersistent, IR
      * @param tillInclusive specifies whether till boundary is inclusive or exclusive
      * @return array of objects which keys belongs to the specified interval, ordered by key value
      */
-    public IPersistent[] get(Object from, boolean fromInclusive, Object till, boolean tillInclusive);
+    public Object[] get(Object from, boolean fromInclusive, Object till, boolean tillInclusive);
 
     /**
      * Get members which key value belongs to the specified range.
@@ -83,44 +84,11 @@ public interface SortedCollection<T extends IPersistent> extends IPersistent, IR
     public boolean containsObject(T obj);
 
     /**
-     * Check if collections contains member equals to specified object
-     * More formally, returns <tt>true</tt> if and only if this
-     * collection contains at least one element <tt>e</tt> such that
-     * <tt>(obj==null ? e==null : obj.equals(e))</tt>.<p>
-     * @param obj object to be searched in the collection
-     * @return <code>true</code> if collection contains object equals to the specified
-     */
-    public boolean contains(T obj);
-
-    /**
      * Check if collections contains object with specified key
      * @param key searched key
      * @return <code>true</code> if collection contains object with specified key
      */
     public boolean containsKey(Object key);
-
-    /**
-     * Remove member from collection
-     * @param obj member to be removed
-     * @exception StorageError(StorageError.KEY_NOT_FOUND) exception if there is no such key in the collection
-     */
-    public void remove(T obj);
-
-    /**
-     * Get number of objects in the collection
-     * @return number of objects in the collection
-     */
-    public int size();
-    
-    /**
-     * Remove all objects from the collection
-     */
-    public void clear();
-    /**
-     * Get all objects in the index as array ordered by index key.
-     * @return array of objects in the index ordered by key value
-     */
-    public IPersistent[] toPersistentArray();
 
     /**
      * Get iterator for traversing all collection members.

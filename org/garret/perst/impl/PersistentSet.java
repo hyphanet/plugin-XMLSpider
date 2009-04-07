@@ -1,9 +1,12 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import plugins.XMLSpider.org.garret.perst.*;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Set;
 
-import  java.util.*;
+import plugins.XMLSpider.org.garret.perst.IPersistentSet;
+import plugins.XMLSpider.org.garret.perst.Key;
 
-class PersistentSet<T extends IPersistent> extends Btree<T> implements IPersistentSet<T> { 
+class PersistentSet<T> extends Btree<T> implements IPersistentSet<T> { 
     PersistentSet() { 
         type = ClassDescriptor.tpObject;
         unique = true;
@@ -14,18 +17,11 @@ class PersistentSet<T extends IPersistent> extends Btree<T> implements IPersiste
     }
 
     public boolean contains(Object o) {
-        if (o instanceof IPersistent) { 
-            Key key = new Key((IPersistent)o);
-            Iterator i = iterator(key, key, ASCENT_ORDER);
-            return i.hasNext();
-        }
-        return false;
+        Key key = new Key(o);
+        Iterator i = iterator(key, key, ASCENT_ORDER);
+        return i.hasNext();
     }
     
-    public Object[] toArray() { 
-        return toPersistentArray();
-    }
-
     public <E> E[] toArray(E[] arr) { 
         return (E[])super.toArray((T[])arr);
     }
@@ -36,7 +32,7 @@ class PersistentSet<T extends IPersistent> extends Btree<T> implements IPersiste
 
     public boolean remove(Object o) { 
         T obj = (T)o;
-        return removeIfExists(new BtreeKey(checkKey(new Key(obj)), obj.getOid()));
+        return removeIfExists(new BtreeKey(checkKey(new Key(obj)), getStorage().getOid(obj)));
     }
 
     public boolean equals(Object o) {
@@ -57,7 +53,7 @@ class PersistentSet<T extends IPersistent> extends Btree<T> implements IPersiste
         int h = 0;
         Iterator i = iterator();
         while (i.hasNext()) {
-            h += ((IPersistent)i.next()).getOid();
+            h += getStorage().getOid(i.next());
         }
         return h;
     }

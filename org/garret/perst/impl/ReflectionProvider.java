@@ -1,6 +1,7 @@
 package plugins.XMLSpider.org.garret.perst.impl;
 
-import  java.lang.reflect.*;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 
 public interface ReflectionProvider { 
     Constructor getDefaultConstructor(Class cls) throws Exception;

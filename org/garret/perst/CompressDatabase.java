@@ -1,8 +1,10 @@
 package plugins.XMLSpider.org.garret.perst;
 
-import java.io.*;
-import java.util.*;
-import java.util.zip.*;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 /**
  * Utility used to compress database file. You should create database using normal file (OSFile).
@@ -16,7 +18,7 @@ public class CompressDatabase {
      */
     public static void main(String[] args) throws IOException { 
         if (args.length == 0 || args.length > 2) { 
-            System.err.println("Usage: java plugins.XMLSpider.org.garret.perst.CompressDatabase DATABASE_FILE_PATH [COMPRESSION-LEVEL]");
+            System.err.println("Usage: java org.garret.perst.CompressDatabase DATABASE_FILE_PATH [COMPRESSION-LEVEL]");
             return;
         }
         String path = args[0];

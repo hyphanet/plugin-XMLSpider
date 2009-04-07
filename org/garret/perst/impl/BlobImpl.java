@@ -1,5 +1,9 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import plugins.XMLSpider.org.garret.perst.*;
+import plugins.XMLSpider.org.garret.perst.Blob;
+import plugins.XMLSpider.org.garret.perst.PersistentResource;
+import plugins.XMLSpider.org.garret.perst.RandomAccessInputStream;
+import plugins.XMLSpider.org.garret.perst.RandomAccessOutputStream;
+import plugins.XMLSpider.org.garret.perst.Storage;
 
 public class BlobImpl extends PersistentResource implements Blob { 
     int           size;

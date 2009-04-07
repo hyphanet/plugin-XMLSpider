@@ -1,16 +1,22 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import plugins.XMLSpider.org.garret.perst.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Map;
 
-import java.util.*;
+import plugins.XMLSpider.org.garret.perst.IValue;
+import plugins.XMLSpider.org.garret.perst.Index;
+import plugins.XMLSpider.org.garret.perst.IterableIterator;
+import plugins.XMLSpider.org.garret.perst.Key;
+import plugins.XMLSpider.org.garret.perst.StorageError;
 
-class RndBtreeCompoundIndex<T extends IPersistent> extends RndBtree<T> implements Index<T> { 
+class RndBtreeCompoundIndex<T> extends RndBtree<T> implements Index<T> { 
     int[]    types;
 
     RndBtreeCompoundIndex() {}
     
     RndBtreeCompoundIndex(Class[] keyTypes, boolean unique) {
         this.unique = unique;
-        type = ClassDescriptor.tpRaw;        
+        type = ClassDescriptor.tpValue;        
         types = new int[keyTypes.length];
         for (int i = 0; i < keyTypes.length; i++) {
             types[i] = getCompoundKeyComponentType(keyTypes[i]);
@@ -38,12 +44,10 @@ class RndBtreeCompoundIndex<T extends IPersistent> extends RndBtree<T> implement
             return ClassDescriptor.tpString;
         } else if (c.equals(Date.class)) { 
             return ClassDescriptor.tpDate;
-        } else if (IPersistent.class.isAssignableFrom(c)) {
-            return ClassDescriptor.tpObject;
-        } else if (Comparable.class.isAssignableFrom(c)) { 
-            return ClassDescriptor.tpRaw;
+        } else if (IValue.class.isAssignableFrom(c)) {
+            return ClassDescriptor.tpValue;
         } else { 
-            throw new StorageError(StorageError.UNSUPPORTED_INDEX_TYPE, c);
+            return ClassDescriptor.tpObject;
         }
     }
 
@@ -55,7 +59,7 @@ class RndBtreeCompoundIndex<T extends IPersistent> extends RndBtree<T> implement
         return keyTypes;
     }
 
-    static class CompoundKey implements Comparable {
+    static class CompoundKey implements Comparable, IValue {
         Object[] keys;
 
         public int compareTo(Object o) { 
@@ -115,6 +119,10 @@ class RndBtreeCompoundIndex<T extends IPersistent> extends RndBtree<T> implement
 
     public IterableIterator<Map.Entry<Object,T>> entryIterator(Key from, Key till, int order) {
         return super.entryIterator(convertKey(from), convertKey(till), order);
+    }
+    
+    public int indexOf(Key key) { 
+        return super.indexOf(convertKey(key));
     }
 }
 

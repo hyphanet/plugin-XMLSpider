@@ -1,17 +1,26 @@
 package plugins.XMLSpider.org.garret.perst;
 
-import java.util.*;
 import java.io.StringReader;
-import java.lang.reflect.*;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.Map;
 
-import plugins.XMLSpider.org.garret.perst.fulltext.*;
+import plugins.XMLSpider.org.garret.perst.fulltext.FullTextIndex;
+import plugins.XMLSpider.org.garret.perst.fulltext.FullTextIndexable;
+import plugins.XMLSpider.org.garret.perst.fulltext.FullTextQuery;
+import plugins.XMLSpider.org.garret.perst.fulltext.FullTextSearchHelper;
+import plugins.XMLSpider.org.garret.perst.fulltext.FullTextSearchResult;
+import plugins.XMLSpider.org.garret.perst.fulltext.FullTextSearchable;
 import plugins.XMLSpider.org.garret.perst.impl.ClassDescriptor;
 
 /**
  * This class emulates relational database on top of Perst storage
  * It maintain class extends, associated indices, prepare queries.
  */
-public class Database { 
+public class Database implements IndexProvider { 
     /** 
      * Constructor of database. This method initialize database if it not initialized yet.
      * Starting from 2.72 version of Perst.Net, it supports automatic
@@ -50,7 +59,7 @@ public class Database {
         if (multithreaded) { 
             storage.setProperty("perst.alternative.btree", Boolean.TRUE);
         }
-        IPersistent root = storage.getRoot();
+        Object root = storage.getRoot();
         boolean schemaUpdated = false;
         if (root instanceof Index) { // backward compatibility
             beginTransaction();
@@ -171,8 +180,16 @@ public class Database {
         if (multithreaded) { 
             metadata.exclusiveLock();
         }
-        if (tables.remove(table) != null) { 
+        Table t = tables.remove(table);
+        if (t != null) { 
+            for (Object obj : t.extent) { 
+                if (obj instanceof FullTextSearchable || t.fullTextIndexableFields.size() != 0) { 
+                    metadata.fullTextIndex.delete(obj);
+                }
+                storage.deallocate(obj);
+            }
             metadata.metaclasses.remove(table.getName());
+            t.deallocate();
             return true;
         }
         return false;
@@ -181,7 +198,7 @@ public class Database {
     /**
      * Add new record to the table. Record is inserted in table corresponding to the class of the object.
      * Record will be automatically added to all indices existed for this table.
-     * If there is not table associated with class of this object, then 
+     * If there is no table associated with class of this object, then 
      * database will search for table associated with superclass and so on...
      * @param record object to be inserted in the table
      * @return <code>true</code> if record was successfully added to the table, <code>false</code>
@@ -190,7 +207,7 @@ public class Database {
      * @exception StorageError(CLASS_NOT_FOUND) exception is thrown if there is no table corresponding to 
      * record class
      */
-    public <T extends IPersistent> boolean addRecord(T record) { 
+    public <T> boolean addRecord(T record) { 
         return addRecord(record.getClass(), record);        
     }
 
@@ -243,7 +260,7 @@ public class Database {
      * Update full text index for modified record
      * @param record updated record
      */
-    public <T extends IPersistent> void updateFullTextIndex(T record) 
+    public <T> void updateFullTextIndex(T record) 
     { 
         if (multithreaded) { 
             metadata.fullTextIndex.exclusiveLock();
@@ -284,7 +301,7 @@ public class Database {
      * @exception StorageError(CLASS_NOT_FOUND) exception is thrown if there is no table corresponding to 
      * record class
      */
-    public <T extends IPersistent> boolean addRecord(Class table, T record) { 
+    public <T> boolean addRecord(Class table, T record) { 
         boolean added = false;
         boolean found = false;
         registerTable(table);
@@ -352,7 +369,7 @@ public class Database {
     /** 
      * Delete record from the table. Record is removed from the table corresponding to the class 
      * of the object. Record will be automatically added to all indices existed for this table.
-     * If there is not table associated with class of this object, then 
+     * If there is no table associated with class of this object, then 
      * database will search for table associated with superclass and so on...
      * Object represented the record will be also deleted from the storage.
      * @param record object to be deleted from the table
@@ -361,7 +378,7 @@ public class Database {
      * @exception StorageError(CLASS_NOT_FOUND) exception is thrown if there is no table corresponding to 
      * record class
      */
-    public <T extends IPersistent> boolean deleteRecord(T record) { 
+    public <T> boolean deleteRecord(T record) { 
         return deleteRecord(record.getClass(), record);
     }
 
@@ -376,7 +393,7 @@ public class Database {
      * @exception StorageError(CLASS_NOT_FOUND) exception is thrown if there is no table corresponding to 
      * specified class
      */
-    public <T extends IPersistent> boolean deleteRecord(Class table, T record) { 
+    public <T> boolean deleteRecord(Class table, T record) { 
         boolean removed = false;
         if (multithreaded) { 
             metadata.sharedLock();
@@ -408,7 +425,7 @@ public class Database {
                 }
                 metadata.fullTextIndex.delete(record);
             }
-            record.deallocate();
+            storage.deallocate(record);
         }
         return removed;
     }
@@ -480,6 +497,18 @@ public class Database {
     }
 
     /**
+     * Get index for the specified field of the class
+     * @param table class where index is located
+     * @param key field of the class
+     * @return Index for this field or null if index doesn't exist
+     */
+    public GenericIndex getIndex(Class table, String key)
+    {
+        Table t = locateTable(table, false, false);
+        return t != null ? (GenericIndex)t.indicesMap.get(key) : null;
+    }
+
+    /**
      * Get indices for the specified table
      * @param table class corresponding to the table
      * @return map of table indices
@@ -491,11 +520,67 @@ public class Database {
     }
 
     /**
+     * Exclude record from all indices. This method is needed to perform update of indexed
+     * field (key). Before updating the record, it is necessary to exclude it from indices
+     * which keys are affected. After updating the field, record should be reinserted in these indices
+     * using includeInIndex method. If your know which fields will be updated and which indices
+     * exist for this table, it is more efficient to use excludeFromIndex method to exclude
+     * object only from affected indices.<P>
+     * @param record object to be excluded from the specified index
+     * @exception StorageError(CLASS_NOT_FOUND) exception is thrown if there is no table corresponding to 
+     * record class
+     */
+    public void excludeFromAllIndices(Object record) {
+        excludeFromAllIndices(record.getClass(), record);
+    }
+
+    /**
+     * Exclude record from all indices. This method is needed to perform update of indexed
+     * field (key). Before updating the record, it is necessary to exclude it from indices
+     * which keys are affected. After updating the field, record should be reinserted in these indices
+     * using includeInIndex method. If your know which fields will be updated and which indices
+     * exist for this table, it is more efficient to use excludeFromIndex method to exclude
+     * object only from affected indices.<P>
+     * @param table class corresponding to the table
+     * @param record object to be excluded from the specified index
+     * @exception StorageError(CLASS_NOT_FOUND) exception is thrown if there is no table corresponding to 
+     * record class
+     */
+    public void excludeFromAllIndices(Class table, Object record) {
+        if (multithreaded) { 
+            metadata.sharedLock();
+        }
+        boolean fullTextIndexed = false;
+        for (Class c = table; c != null; c = c.getSuperclass()) { 
+            Table t = tables.get(c);
+            if (t != null) { 
+                if (multithreaded) { 
+                    t.extent.exclusiveLock();
+                }
+                Iterator iterator = t.indicesMap.values().iterator();
+                while (iterator.hasNext()) { 
+                    FieldIndex index = (FieldIndex)iterator.next();
+                    index.remove(record);
+                }
+                if (t.fullTextIndexableFields.size() != 0) { 
+                    fullTextIndexed = true;
+                }
+            }
+        }
+        if (record instanceof FullTextSearchable || fullTextIndexed) {
+            if (multithreaded) { 
+                metadata.fullTextIndex.exclusiveLock();
+            }
+            metadata.fullTextIndex.delete(record);
+        }
+    }
+
+    /**
      * Exclude record from specified index. This method is needed to perform update of indexed
      * field (key). Before updating the record, it is necessary to exclude it from indices
      * which keys are affected. After updating the field, record should be reinserted in these indices
      * using includeInIndex method.<P>
-     * If there is not table associated with class of this object, then 
+     * If there is no table associated with class of this object, then 
      * database will search for table associated with superclass and so on...<P>
      * This method does nothing if there is no index for the specified field.
      * @param record object to be excluded from the specified index
@@ -505,7 +590,7 @@ public class Database {
      * @return <code>true</code> if record is excluded from index, <code>false</code> if 
      * there is no such index
      */
-    public boolean excludeFromIndex(IPersistent record, String key) {
+    public boolean excludeFromIndex(Object record, String key) {
         return excludeFromIndex(record.getClass(), record, key);
     }
 
@@ -514,7 +599,7 @@ public class Database {
      * field (key). Before updating the record, it is necessary to exclude it from indices
      * which keys are affected. After updating the field, record should be reinserted in these indices
      * using includeInIndex method.<P>
-     * If there is not table associated with class of this object, then 
+     * If there is no table associated with class of this object, then 
      * database will search for table associated with superclass and so on...<P>
      * This method does nothing if there is no index for the specified field.
      * @param table class corresponding to the table
@@ -525,7 +610,7 @@ public class Database {
      * @return <code>true</code> if record is excluded from index, <code>false</code> if 
      * there is no such index
      */
-    public boolean excludeFromIndex(Class table, IPersistent record, String key) {
+    public boolean excludeFromIndex(Class table, Object record, String key) {
         Table t = locateTable(table, true);
         FieldIndex index = (FieldIndex)t.indicesMap.get(key);
         if (index != null) { 
@@ -537,11 +622,99 @@ public class Database {
 
 
     /**
+     * Include record in all indices. This method is needed to perform update of indexed
+     * fields (keys). Before updating the record, it is necessary to exclude it from indices
+     * which keys are affected using excludeFromIndices method. After updating the field, record should be 
+     * reinserted in these indices using this method. If your know which fields will be updated and which indices
+     * exist for this table, it is more efficient to use excludeFromIndex/includeInIndex methods to touch
+     * only affected indices.
+     * @param record object to be excluded from the specified index
+     * @exception StorageError(CLASS_NOT_FOUND) exception is thrown if there is no table corresponding to 
+     * the specified class
+     * @return <code>true</code> if record is included in indices, <code>false</code> if 
+     * there is no such index or unique constraint is violated
+     */
+    public boolean includeInAllIndices(Object record) { 
+        return includeInAllIndices(record.getClass(), record);
+    }
+
+    /**
+     * Include record in all indices. This method is needed to perform update of indexed
+     * fields (keys). Before updating the record, it is necessary to exclude it from indices
+     * which keys are affected using excludeFromIndices method. After updating the field, record should be 
+     * reinserted in these indices using this method. If your know which fields will be updated and which indices
+     * exist for this table, it is more efficient to use excludeFromIndex/includeInIndex methods to touch
+     * only affected indices.
+     * @param table class corresponding to the table
+     * @param record object to be excluded from the specified index
+     * @return <code>true</code> if record is included in index, <code>false</code> if 
+     * there is no such index or unique constraint is violated
+     * @exception StorageError(CLASS_NOT_FOUND) exception is thrown if there is no table corresponding to 
+     * the specified class
+     * @return <code>true</code> if record is included in index, <code>false</code> if 
+     * there is no such index or unique constraint is violated
+     */
+    public boolean includeInAllIndices(Class table, Object record) { 
+        ArrayList wasInsertedIn = new ArrayList();
+        StringBuffer fullText = new StringBuffer();
+        for (Class c = table; c != null; c = c.getSuperclass()) { 
+            Table t = tables.get(c);
+            if (t != null) { 
+                if (multithreaded) { 
+                    t.extent.exclusiveLock();
+                }
+                Iterator iterator = t.indicesMap.values().iterator();
+                while (iterator.hasNext()) { 
+                    FieldIndex index = (FieldIndex)iterator.next();
+                    if (index.put(record)) {
+                        wasInsertedIn.add(index);
+                    } else { 
+                        iterator = wasInsertedIn.iterator();
+                        while (iterator.hasNext()) { 
+                            Object idx = iterator.next();
+                            if (idx instanceof IPersistentSet) {
+                                ((IPersistentSet)idx).remove(record);
+                            } else { 
+                                ((FieldIndex)idx).remove(record);
+                            }
+                        }
+                        return false;
+                    }
+                }
+                for (Field f : t.fullTextIndexableFields) { 
+                    Object text;
+                    try { 
+                        text = f.get(record);
+                    } catch (IllegalAccessException x) { 
+                        throw new IllegalAccessError();            
+                    }
+                    if (text != null) { 
+                        fullText.append(' ');
+                        fullText.append(text.toString());
+                    }
+                }
+            }
+        }
+        if (record instanceof FullTextSearchable || fullText.length() != 0) { 
+            if (multithreaded) { 
+                metadata.fullTextIndex.exclusiveLock();
+            }
+            if (record instanceof FullTextSearchable) { 
+                metadata.fullTextIndex.add((FullTextSearchable)record);
+            } else { 
+                metadata.fullTextIndex.add(record, new StringReader(fullText.toString()), null);
+            }
+        }
+        return true;
+    }
+
+
+    /**
      * Include record in the specified index. This method is needed to perform update of indexed
      * field (key). Before updating the record, it is necessary to exclude it from indices
      * which keys are affected using excludeFromIndex method. After updating the field, record should be 
      * reinserted in these indices using this method.<P>
-     * If there is not table associated with class of this object, then 
+     * If there is no table associated with class of this object, then 
      * database will search for table associated with superclass and so on...<P>
      * This method does nothing if there is no index for the specified field.
      * @param record object to be excluded from the specified index
@@ -549,9 +722,9 @@ public class Database {
      * @exception StorageError(CLASS_NOT_FOUND) exception is thrown if there is no table corresponding to 
      * the specified class
      * @return <code>true</code> if record is included in index, <code>false</code> if 
-     * there is no such index
+     * there is no such index or unique constraint is violated
      */
-    public boolean includeInIndex(IPersistent record, String key) { 
+    public boolean includeInIndex(Object record, String key) { 
         return includeInIndex(record.getClass(), record, key);
     }
 
@@ -560,7 +733,7 @@ public class Database {
      * field (key). Before updating the record, it is necessary to exclude it from indices
      * which keys are affected using excludeFromIndex method. After updating the field, record should be 
      * reinserted in these indices using this method.<P>
-     * If there is not table associated with class of this object, then 
+     * If there is no table associated with class of this object, then 
      * database will search for table associated with superclass and so on...<P>
      * This method does nothing if there is no index for the specified field.
      * @param table class corresponding to the table
@@ -569,17 +742,66 @@ public class Database {
      * @exception StorageError(CLASS_NOT_FOUND) exception is thrown if there is no table corresponding to 
      * the specified class
      * @return <code>true</code> if record is included in index, <code>false</code> if 
-     * there is no such index
+     * there is no such index or unique constraint is violated
      */
-    public boolean includeInIndex(Class table, IPersistent record, String key) { 
+    public boolean includeInIndex(Class table, Object record, String key) { 
         Table t = locateTable(table, true);
         FieldIndex index = (FieldIndex)t.indicesMap.get(key);
         if (index != null) { 
-            index.put(record);
-            return true;
+            return index.put(record);
         }
         return false;
     }
+
+    /**
+     * This method can be used to update a key field. It is responsibility of programmer in Perst
+     * to maintain consistency of indices: before updating key field it is necessary to exclude 
+     * the object from the index and after assigning new value to the key field - reinsert it in the index.
+     * It can be done using excludeFromIndex/includeInIndex methods, but updateKey combines all this steps:
+     * exclude from index, update, mark object as been modified and reinsert in index.
+     * It is safe to call updateKey method for fields which are actually not used in any index - 
+     * in this case excludeFromIndex/includeInIndex do nothing.
+     * @param record updated object
+     * @param key name of the indexed field
+     * @param value new value of indexed field
+     * @exception StorageError(INDEXED_FIELD_NOT_FOUND) exception is thrown if specified field is not found in 
+     * @exception StorageError(ACCESS_VIOLATION) exception is thrown if it is not possible to change field value
+     */ 
+    public void updateKey(Object record, String key, Object value) {
+        updateKey(record.getClass(), record, key, value);
+    }
+            
+
+    /**
+     * This method can be used to update a key field. It is responsibility of programmer in Perst
+     * to maintain consistency of indices: before updating key field it is necessary to exclude 
+     * the object from the index and after assigning new value to the key field - reinsert it in the index.
+     * It can be done using excludeFromIndex/includeInIndex methods, but updateKey combines all this steps:
+     * exclude from index, update, mark object as been modified and reinsert in index.
+     * It is safe to call updateKey method for fields which are actually not used in any index - 
+     * in this case excludeFromIndex/includeInIndex do nothing.
+     * @param table class corresponding to the table
+     * @param record updated object
+     * @param key name of the indexed field
+     * @param value new value of indexed field
+     * @exception StorageError(INDEXED_FIELD_NOT_FOUND) exception is thrown if specified field is not found in the class
+     * @exception StorageError(ACCESS_VIOLATION) exception is thrown if it is not possible to change field value
+     */ 
+    public void updateKey(Class table, Object record, String key, Object value) {
+        excludeFromIndex(table, record, key);
+        Field f = ClassDescriptor.locateField(table, key);
+        if (f == null) { 
+            throw new StorageError(StorageError.INDEXED_FIELD_NOT_FOUND, table.getName());
+        } 
+        try { 
+            f.set(record, value);
+        } catch (Exception x) { 
+            throw new StorageError(StorageError.ACCESS_VIOLATION, x);
+        }
+        storage.modify(record);
+        includeInIndex(table, record, key);
+    }
+            
 
 
     /**
@@ -592,7 +814,7 @@ public class Database {
      * @exception CompileError exception is thrown if predicate is not valid JSQL exception
      * @exception JSQLRuntimeException exception is thrown if there is runtime error during query execution
      */
-    public <T extends IPersistent> IterableIterator<T> select(Class table, String predicate) { 
+    public <T> IterableIterator<T> select(Class table, String predicate) { 
         return select(table, predicate, false);
     }
 
@@ -608,7 +830,7 @@ public class Database {
      * @exception CompileError exception is thrown if predicate is not valid JSQL exception
      * @exception JSQLRuntimeException exception is thrown if there is runtime error during query execution
      */
-    public <T extends IPersistent> IterableIterator<T> select(Class table, String predicate, boolean forUpdate) { 
+    public <T> IterableIterator<T> select(Class table, String predicate, boolean forUpdate) { 
         Query q = prepare(table, predicate, forUpdate);
         return q.execute(getRecords(table));
     }
@@ -623,8 +845,9 @@ public class Database {
      * @exception StorageError(CLASS_NOT_FOUND) exception is thrown if there is no table corresponding to 
      * the specified class
      * @exception CompileError exception is thrown if predicate is not valid JSQL exception
+     * @return prepared query
      */
-    public <T extends IPersistent> Query<T> prepare(Class table, String predicate) { 
+    public <T> Query<T> prepare(Class table, String predicate) { 
         return prepare(table, predicate, false);
     }
 
@@ -632,7 +855,8 @@ public class Database {
      * Prepare JSQL query. Prepare is needed for queries with parameters. Also
      * preparing query can improve speed if query will be executed multiple times
      * (using prepare, it is compiled only once).<P>
-     * To execute prepared query, you should use Query.execute(db.getRecords(XYZ.class)) method
+     * To execute prepared query, you should use Query.execute() or 
+     * Query.execute(db.getRecords(XYZ.class)) method
      * @param table class corresponding to the table
      * @param predicate search predicate
      * @param forUpdate <code>true</code> if records are selected for update - in this case exclusive lock is set 
@@ -640,12 +864,44 @@ public class Database {
      * @exception StorageError(CLASS_NOT_FOUND) exception is thrown if there is no table corresponding to 
      * the specified class
      * @exception CompileError exception is thrown if predicate is not valid JSQL exception
+     * @return prepared query
      */
-    public <T extends IPersistent> Query<T> prepare(Class table, String predicate, boolean forUpdate) { 
+    public <T> Query<T> prepare(Class table, String predicate, boolean forUpdate) { 
+        Query<T> q = createQuery(table, forUpdate);
+        q.prepare(table, predicate);      
+        return q;
+    }
+        
+    /**
+     * Create query for the specified class. You can use Query.getCodeGenerator method to generate 
+     * query code.
+     * @param table class corresponding to the table
+     * @exception StorageError(CLASS_NOT_FOUND) exception is thrown if there is no table corresponding to 
+     * the specified class
+     * @return query without predicate
+     */
+    public <T> Query<T> createQuery(Class table)
+    {
+        return createQuery(table, false);
+    }
+
+    /**
+     * Create query for the specified class. You can use Query.getCodeGenerator method to generate 
+     * query code.
+     * @param table class corresponding to the table
+     * @param forUpdate <code>true</code> if records are selected for update - in this case exclusive lock is set 
+     * for the table to avoid deadlock.
+     * @exception StorageError(CLASS_NOT_FOUND) exception is thrown if there is no table corresponding to 
+     * the specified class
+     * @return query without predicate
+     */
+    public <T> Query<T> createQuery(Class table, boolean forUpdate) { 
         Table t = locateTable(table, forUpdate, false);
         Query q = storage.createQuery();
-        q.prepare(table, predicate);            
+        q.setIndexProvider(this);
+        q.setClass(table);
         while (t != null) { 
+            q.setClassExtent(t.extent, multithreaded ? forUpdate ? Query.ClassExtentLockType.Exclusive : Query.ClassExtentLockType.Shared : Query.ClassExtentLockType.None);
             Iterator iterator = t.indicesMap.entrySet().iterator();
             while (iterator.hasNext()) { 
                 Map.Entry entry = (Map.Entry)iterator.next();
@@ -657,7 +913,7 @@ public class Database {
         }
         return q;
     }
-        
+
     /** 
      * Get iterator through all table records
      * @param table class corresponding to the table
@@ -665,7 +921,7 @@ public class Database {
      * @exception StorageError(CLASS_NOT_FOUND) exception is thrown if there is no table corresponding to 
      * the specified class
      */
-    public <T extends IPersistent> IterableIterator<T> getRecords(Class table) { 
+    public <T> IterableIterator<T> getRecords(Class table) { 
         return getRecords(table, false);
     }
 
@@ -678,7 +934,7 @@ public class Database {
      * @exception StorageError(CLASS_NOT_FOUND) exception is thrown if there is no table corresponding to 
      * the specified class
      */
-    public <T extends IPersistent> IterableIterator<T> getRecords(Class table, boolean forUpdate) { 
+    public <T> IterableIterator<T> getRecords(Class table, boolean forUpdate) { 
         Table t = locateTable(table, forUpdate, false);
         return new IteratorWrapper<T>(t == null ? new LinkedList<T>().iterator() : t.extent.iterator());
     }
@@ -694,10 +950,10 @@ public class Database {
     /**
      * Parse and execute full text search query
      * @param query text of the query
-     * @oaram language language if the query
+     * @param language language if the query
      * @param maxResults maximal amount of selected documents
      * @param timeLimit limit for query execution time
-     * @erturn result of query execution ordered by rank or null in case of empty or incorrect query
+     * @return result of query execution ordered by rank or null in case of empty or incorrect query
      */
     public FullTextSearchResult search(String query, String language, int maxResults, int timeLimit) {
         if (multithreaded) { 
@@ -711,7 +967,7 @@ public class Database {
      * @param query prepared query
      * @param maxResults maximal amount of selected documents
      * @param timeLimit limit for query execution time
-     * @erturn result of query execution ordered by rank or null in case of empty or incorrect query
+     * @return result of query execution ordered by rank or null in case of empty or incorrect query
      */    
     public FullTextSearchResult search(FullTextQuery query, int maxResults, int timeLimit) {
         if (multithreaded) { 
@@ -772,6 +1028,14 @@ public class Database {
                 indicesMap.put(index.getKeyFields()[0].getName(), index);
             }
             
+        }
+
+        public void deallocate() {
+            extent.deallocate();
+            for (Object index : indicesMap.values()) { 
+                ((FieldIndex)index).deallocate();
+            }
+            super.deallocate();
         }
     }                        
 

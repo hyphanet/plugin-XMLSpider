@@ -1,11 +1,12 @@
 package plugins.XMLSpider.org.garret.perst;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.SortedMap;
 
 /**
  * Interface of persistent map
  */
-public interface IPersistentMap<K extends Comparable, V extends IPersistent> extends SortedMap<K,V>, IPersistent, IResource
+public interface IPersistentMap<K extends Comparable,V> extends SortedMap<K,V>, IPersistent, IResource
 {
     /**
      * Get entry for the specified key. 
