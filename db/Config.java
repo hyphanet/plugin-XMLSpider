@@ -8,6 +8,8 @@ import plugins.XMLSpider.org.garret.perst.Storage;
 import freenet.node.RequestStarter;
 import freenet.support.Logger;
 
+import java.util.Calendar;
+
 public class Config extends Persistent implements Cloneable {
 	/**
 	 * Directory where the generated indices are stored
@@ -21,7 +23,10 @@ public class Config extends Persistent implements Cloneable {
 	private String indexOwnerEmail;
 
 	private int maxShownURIs;
-	private int maxParallelRequests;
+	private int maxParallelRequestsWorking;
+	private int maxParallelRequestsNonWorking;
+	private int beginWorkingPeriod; // Between 0 and 23
+	private int endWorkingPeriod; // Between 0 and 23
 	private String[] badlistedExtensions;
 	private short requestPriority;
 
@@ -41,7 +46,10 @@ public class Config extends Persistent implements Cloneable {
 
 		maxShownURIs = 15;
 
-		maxParallelRequests = 100;
+		maxParallelRequestsWorking = 100;
+		maxParallelRequestsNonWorking = 100;
+		beginWorkingPeriod = 23;
+		endWorkingPeriod = 7;
 
 		badlistedExtensions = new String[] { //
 				".ico", ".bmp", ".png", ".jpg", ".jpeg", ".gif", // image
@@ -132,13 +140,63 @@ public class Config extends Persistent implements Cloneable {
 		return indexOwnerEmail;
 	}
 
-	public synchronized void setMaxParallelRequests(int maxParallelRequests) {
+	public synchronized void setMaxParallelRequestsWorking(int maxParallelRequests) {
 		assert !isPersistent();
-		this.maxParallelRequests = maxParallelRequests;
+		this.maxParallelRequestsWorking = maxParallelRequests;
+	}
+
+	public synchronized int getMaxParallelRequestsWorking() {
+		return maxParallelRequestsWorking;
+	}
+
+	public synchronized void setMaxParallelRequestsNonWorking(int maxParallelRequests) {
+		assert !isPersistent();
+		this.maxParallelRequestsNonWorking = maxParallelRequests;
+	}
+
+	public synchronized int getMaxParallelRequestsNonWorking() {
+		return maxParallelRequestsNonWorking;
 	}
 
 	public synchronized int getMaxParallelRequests() {
-		return maxParallelRequests;
+		int actualHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+		Boolean isWorking = true;
+
+		if(this.getBeginWorkingPeriod() < this.getEndWorkingPeriod()) {
+			// Midnight isn't in the interval.
+			//        m            M
+			// 0 -----|############|----- 24
+			isWorking = (actualHour > this.getBeginWorkingPeriod() && actualHour < this.getEndWorkingPeriod());
+		} else {
+			// Midnight is in the interval.
+			//        M            m
+			// 0 #####|------------|##### 24
+			isWorking = (actualHour > this.getBeginWorkingPeriod() || actualHour < this.getEndWorkingPeriod());
+		}
+
+		if(isWorking) {
+			return this.getMaxParallelRequestsWorking();
+		} else {
+			return this.getMaxParallelRequestsNonWorking();
+		}
+	}
+
+	public synchronized void setBeginWorkingPeriod(int beginWorkingPeriod) {
+		assert !isPersistent();
+		this.beginWorkingPeriod = beginWorkingPeriod;
+	}
+
+	public synchronized int getBeginWorkingPeriod() {
+		return beginWorkingPeriod;
+	}
+
+	public synchronized void setEndWorkingPeriod(int endWorkingPeriod) {
+		assert !isPersistent();
+		this.endWorkingPeriod = endWorkingPeriod;
+	}
+
+	public synchronized int getEndWorkingPeriod() {
+		return endWorkingPeriod;
 	}
 
 	public synchronized void setBadlistedExtensions(String[] badlistedExtensions) {
