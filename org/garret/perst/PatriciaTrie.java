@@ -1,6 +1,6 @@
 package plugins.XMLSpider.org.garret.perst;
 
-import java.util.ArrayList;
+import java.util.*;
 
 /** 
  * PATRICIA trie (Practical Algorithm To Retrieve Information Coded In Alphanumeric).
@@ -12,7 +12,7 @@ import java.util.ArrayList;
  * This structure has it's main use in IP routing software, but can provide an interesting alternative 
  * to other structures such as hashtables when memory space is of concern.
  */
-public interface PatriciaTrie<T> extends IPersistent, IResource, ITable<T> { 
+public interface PatriciaTrie<T extends IPersistent> extends IPersistent, IResource, ITable<T> { 
     /** 
      * Add new key to the trie
      * @param key bit vector
@@ -42,6 +42,11 @@ public interface PatriciaTrie<T> extends IPersistent, IResource, ITable<T> {
      * @return object associated with removed key or <code>null</code> if such key is not found
      */
     T remove(PatriciaTrieKey key);
+
+    /**
+     * Clear the trie: remove all elements from trie
+     */
+    void clear();
 
     /**
      * Get list of all elements in the Trie

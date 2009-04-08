@@ -1,7 +1,6 @@
 package plugins.XMLSpider.org.garret.perst.impl;
 
-import java.util.ArrayList;
-import java.util.IdentityHashMap;
+import java.util.*;
 
 /**
  * This class store transaction context associated with thread.

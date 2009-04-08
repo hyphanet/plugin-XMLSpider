@@ -1,6 +1,5 @@
 package plugins.XMLSpider.org.garret.perst;
 
-import java.util.Collection;
 import java.util.Iterator;
 
 /**
@@ -13,8 +12,7 @@ import java.util.Iterator;
  * JSQL can use arbitrary Perst <code>GenericIndex</code> to perform fast selection if object
  * instead of sequeial search. And user provided <i>resolver</i> allows to substitute SQL joins.
  */
-public interface Query<T> extends Iterable<T> 
-{
+public interface Query<T> {
     /**
      * Execute query
      * @param cls class of inspected objects
@@ -88,13 +86,6 @@ public interface Query<T> extends Iterable<T>
     public IterableIterator<T> execute(Iterator<T> iterator);
             
     /**
-     * Execute prepared query using iterator obtained from index registered by Query.setClassExtent method
-     * @return iterator through selected objects. This iterator doesn't support remove() 
-     * method.
-     */
-    public IterableIterator<T> execute();
-            
-    /**
      * Enable or disable reporting of runtime errors on console.
      * Runtime errors during JSQL query are reported in two ways:
      * <OL>
@@ -121,44 +112,4 @@ public interface Query<T> extends Iterable<T>
      * @param index implementation of index
      */
     public void addIndex(String key, GenericIndex<T> index);
-
-    /**
-     * Set index provider for this query.
-     * Available indices should be either registered using addIndex method, either 
-     * should be accessible through index provider
-     * @param indexProvider index provider
-     */
-    public void setIndexProvider(IndexProvider indexProvider);
-
-    /**
-     * Set class for which this query will be executed
-     * @param cls queried class
-     */
-    public void setClass(Class cls);
-
-    enum ClassExtentLockType { 
-        None,
-        Shared,
-        Exclusive
-    };
-    
-    /**
-     * Set class extent used to obtain iterator through all instances of this class
-     * @param set class extent
-     * @param lock type of the lock which should be obtained for the set before query execution
-     */
-    public void setClassExtent(Collection<T> set, ClassExtentLockType lock);
-
-    /**
-     * Get query code generator for the specified class
-     * @param cls class for which query is constructed
-     * @return code generator for the specified class
-     */
-    public CodeGenerator getCodeGenerator(Class cls);
-
-    /**
-     * Get query code generator for class associated with the query by Query.setClass method
-     * @return code generator for class associated with the query
-     */
-    public CodeGenerator getCodeGenerator();
 }

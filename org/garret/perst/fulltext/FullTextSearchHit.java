@@ -1,6 +1,6 @@
 package plugins.XMLSpider.org.garret.perst.fulltext;
 
-import plugins.XMLSpider.org.garret.perst.Storage;
+import plugins.XMLSpider.org.garret.perst.*;
 
 /**
  * Class representing full text search result hit (document + rank)
@@ -9,7 +9,7 @@ public class FullTextSearchHit implements Comparable {
     /**
      * Get document matching full text query 
      */
-    public Object getDocument() { 
+    public IPersistent getDocument() { 
         return storage.getObjectByOID(oid);
     }
 

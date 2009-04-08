@@ -1,16 +1,9 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Map;
+import plugins.XMLSpider.org.garret.perst.*;
 
-import plugins.XMLSpider.org.garret.perst.Assert;
-import plugins.XMLSpider.org.garret.perst.IValue;
-import plugins.XMLSpider.org.garret.perst.Index;
-import plugins.XMLSpider.org.garret.perst.IterableIterator;
-import plugins.XMLSpider.org.garret.perst.Key;
-import plugins.XMLSpider.org.garret.perst.StorageError;
+import java.util.*;
 
-class BtreeCompoundIndex<T> extends Btree<T> implements Index<T> { 
+class BtreeCompoundIndex<T extends IPersistent> extends Btree<T> implements Index<T> { 
     int[]    types;
 
     BtreeCompoundIndex() {}
@@ -52,10 +45,10 @@ class BtreeCompoundIndex<T> extends Btree<T> implements Index<T> {
             return ClassDescriptor.tpDate;
         } else if (c.equals(byte[].class)) { 
             return ClassDescriptor.tpArrayOfByte;
-        } else if (IValue.class.isAssignableFrom(c)) {
-            return ClassDescriptor.tpValue;
-        } else { 
+        } else if (IPersistent.class.isAssignableFrom(c)) {
             return ClassDescriptor.tpObject;
+        } else { 
+            throw new StorageError(StorageError.UNSUPPORTED_INDEX_TYPE, c);
         }
     }
 
@@ -187,7 +180,7 @@ class BtreeCompoundIndex<T> extends Btree<T> implements Index<T> {
                 v = new Byte(data[offs++]);
                 break;
               case ClassDescriptor.tpShort:
-                v = new Short(Bytes.unpack2(data, offs));
+                v = Short.valueOf(Bytes.unpack2(data, offs));
                 offs += 2;
                 break;
               case ClassDescriptor.tpChar:
@@ -292,7 +285,7 @@ class BtreeCompoundIndex<T> extends Btree<T> implements Index<T> {
                 break;
               case ClassDescriptor.tpObject:
                 buf.extend(dst+4);
-                Bytes.pack4(buf.arr, dst, v == null ? 0 : getStorage().getOid(v));
+                Bytes.pack4(buf.arr, dst, v == null ? 0 : ((IPersistent)v).getOid());
                 dst += 4;
                 break;
               case ClassDescriptor.tpLong:

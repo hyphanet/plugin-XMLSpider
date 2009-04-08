@@ -1,13 +1,8 @@
 package plugins.XMLSpider.org.garret.perst.impl;
 
-import java.util.TreeMap;
+import plugins.XMLSpider.org.garret.perst.*;
 
-import plugins.XMLSpider.org.garret.perst.Assert;
-import plugins.XMLSpider.org.garret.perst.CustomAllocator;
-import plugins.XMLSpider.org.garret.perst.Link;
-import plugins.XMLSpider.org.garret.perst.Persistent;
-import plugins.XMLSpider.org.garret.perst.Storage;
-import plugins.XMLSpider.org.garret.perst.StorageError;
+import java.util.*;
 
 public class BitmapCustomAllocator extends Persistent implements CustomAllocator { 
     protected int  quantum;

@@ -1,15 +1,9 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
+import plugins.XMLSpider.org.garret.perst.*;
 
-import plugins.XMLSpider.org.garret.perst.IterableIterator;
-import plugins.XMLSpider.org.garret.perst.Link;
-import plugins.XMLSpider.org.garret.perst.Query;
-import plugins.XMLSpider.org.garret.perst.Relation;
+import  java.util.*;
 
-public class RelationImpl<M, O> extends Relation<M,O> {
+public class RelationImpl<M extends IPersistent, O extends IPersistent> extends Relation<M,O> {
     public int size() {
         return link.size();
     }
@@ -30,7 +24,7 @@ public class RelationImpl<M, O> extends Relation<M,O> {
         return link.get(i);
     }
 
-    public Object getRaw(int i) {
+    public IPersistent getRaw(int i) {
         return link.getRaw(i);
     }
 
@@ -74,12 +68,16 @@ public class RelationImpl<M, O> extends Relation<M,O> {
         return link.addAll(anotherLink); 
     }
 
-    public Object[] toArray() {
-        return link.toArray();
+    public IPersistent[] toPersistentArray() {
+        return link.toPersistentArray();
     }
 
-    public Object[] toRawArray() {
+    public IPersistent[] toRawArray() {
         return link.toRawArray();
+    }
+
+    public Object[] toArray() {
+        return link.toArray();
     }
 
     public <T> T[] toArray(T[] arr) {
@@ -112,10 +110,6 @@ public class RelationImpl<M, O> extends Relation<M,O> {
       
     public void clear() {
         link.clear();
-    }
-
-    public void deallocateMembers() {
-        link.deallocateMembers();
     }
 
     public Iterator<M> iterator() {
@@ -174,9 +168,9 @@ public class RelationImpl<M, O> extends Relation<M,O> {
 
     RelationImpl() {}
 
-    RelationImpl(StorageImpl db, O owner) { 
+    RelationImpl(O owner) { 
         super(owner);
-        link = new LinkImpl<M>(db, 8);
+        link = new LinkImpl<M>(8);
     }
 
     Link<M> link;

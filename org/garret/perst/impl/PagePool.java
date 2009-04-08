@@ -1,6 +1,5 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import plugins.XMLSpider.org.garret.perst.Assert;
-import plugins.XMLSpider.org.garret.perst.IFile;
+import plugins.XMLSpider.org.garret.perst.*;
 
 class PagePool { 
     LRU     lru;

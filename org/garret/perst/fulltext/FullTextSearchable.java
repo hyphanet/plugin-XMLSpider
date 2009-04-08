@@ -1,8 +1,8 @@
 package plugins.XMLSpider.org.garret.perst.fulltext;
 
-import java.io.Reader;
-
 import plugins.XMLSpider.org.garret.perst.IPersistent;
+
+import java.io.Reader;
 
 /**
  * Interface for classes which are able to extract text and its language themselves.

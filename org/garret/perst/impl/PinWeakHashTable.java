@@ -1,6 +1,7 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import java.lang.ref.Reference;
-import java.lang.ref.WeakReference;
+import plugins.XMLSpider.org.garret.perst.*;
+
+import  java.lang.ref.*;
 
 public class PinWeakHashTable implements OidHashTable { 
     Entry table[];
@@ -8,10 +9,8 @@ public class PinWeakHashTable implements OidHashTable {
     int count;
     int threshold;
     boolean flushing;
-    StorageImpl db;
 
-    public PinWeakHashTable(StorageImpl db, int initialCapacity) {
-        this.db = db;
+    public PinWeakHashTable(int initialCapacity) {
         threshold = (int)(initialCapacity * loadFactor);
         table = new Entry[initialCapacity];
     }
@@ -38,7 +37,7 @@ public class PinWeakHashTable implements OidHashTable {
         return new WeakReference(obj);
     }
 
-    public synchronized void put(int oid, Object obj) { 
+    public synchronized void put(int oid, IPersistent obj) { 
         Reference ref = createReference(obj);
         Entry tab[] = table;
         int index = (oid & 0x7FFFFFFF) % tab.length;
@@ -60,7 +59,7 @@ public class PinWeakHashTable implements OidHashTable {
         count += 1;
     }
     
-    public synchronized Object get(int oid) {
+    public synchronized IPersistent get(int oid) {
         Entry tab[] = table;
         int index = (oid & 0x7FFFFFFF) % tab.length;
         for (Entry e = tab[index]; e != null; e = e.next) {
@@ -68,7 +67,7 @@ public class PinWeakHashTable implements OidHashTable {
                 if (e.pin != null) { 
                     return e.pin;
                 }
-                return e.ref.get();
+                return (IPersistent)e.ref.get();
             }
         }
         return null;
@@ -78,9 +77,9 @@ public class PinWeakHashTable implements OidHashTable {
         flushing = true;
         for (int i = 0; i < table.length; i++) { 
             for (Entry e = table[i]; e != null; e = e.next) { 
-                Object obj = e.pin;
+                IPersistent obj = e.pin;
                 if (obj != null) {  
-                    db.store(obj);
+                    obj.store();
                     e.pin = null;
                 }
             }
@@ -96,10 +95,10 @@ public class PinWeakHashTable implements OidHashTable {
     public synchronized void invalidate() {
         for (int i = 0; i < table.length; i++) { 
             for (Entry e = table[i]; e != null; e = e.next) { 
-                Object obj = e.pin;
+                IPersistent obj = e.pin;
                 if (obj != null) { 
                     e.pin = null;
-                    db.invalidate(obj);
+                    obj.invalidate();
                 }
             }
             table[i] = null;
@@ -124,8 +123,8 @@ public class PinWeakHashTable implements OidHashTable {
             Entry e, next, prev;
             for (prev = null, e = oldMap[i]; e != null; e = next) { 
                 next = e.next;
-                Object obj = e.ref.get();
-                if ((obj == null || db.isDeleted(obj)) && e.pin == null) { 
+                IPersistent obj = (IPersistent)e.ref.get();
+                if ((obj == null || obj.isDeleted()) && e.pin == null) { 
                     count -= 1;
                     e.clear();
                     if (prev == null) { 
@@ -159,8 +158,8 @@ public class PinWeakHashTable implements OidHashTable {
         }
     }
 
-    public synchronized void setDirty(Object obj) {
-        int oid = db.getOid(obj);
+    public synchronized void setDirty(IPersistent obj) {
+        int oid = obj.getOid();
         Entry tab[] = table;
         int index = (oid & 0x7FFFFFFF) % tab.length;
         for (Entry e = tab[index]; e != null ; e = e.next) {
@@ -171,8 +170,8 @@ public class PinWeakHashTable implements OidHashTable {
         }
     }
 
-    public synchronized void clearDirty(Object obj) {
-        int oid = db.getOid(obj);
+    public synchronized void clearDirty(IPersistent obj) {
+        int oid = obj.getOid();
         Entry tab[] = table;
         int index = (oid & 0x7FFFFFFF) % tab.length;
         for (Entry e = tab[index]; e != null ; e = e.next) {
@@ -191,7 +190,7 @@ public class PinWeakHashTable implements OidHashTable {
         Entry       next;
         Reference   ref;
         int         oid;
-        Object      pin;
+        IPersistent pin;
         
         void clear() { 
             ref.clear();

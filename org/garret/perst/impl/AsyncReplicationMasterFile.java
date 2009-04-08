@@ -1,8 +1,9 @@
 package plugins.XMLSpider.org.garret.perst.impl;
 
-import java.io.IOException;
+import java.io.*;
+import java.net.*;
 
-import plugins.XMLSpider.org.garret.perst.IFile;
+import plugins.XMLSpider.org.garret.perst.*;
 
 /**
  * File performing asynchronous replication of changed pages to specified slave nodes.
@@ -65,10 +66,11 @@ public class AsyncReplicationMasterFile extends ReplicationMasterFile {
                 p.data = data;
                 p.pos = pos;
                 p.host = i;
+
                 try { 
                     synchronized(async) { 
                         buffered += data.length;
-                        while (buffered > asyncBufSize && buffered != data.length) { 
+                        while (buffered > asyncBufSize) { 
                             async.wait();
                         }
                     }

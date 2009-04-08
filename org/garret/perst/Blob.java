@@ -1,5 +1,6 @@
 package plugins.XMLSpider.org.garret.perst;
 
+import java.io.*;
 
 /**
  * Interface to store/fetch large binary objects

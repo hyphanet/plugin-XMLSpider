@@ -1,16 +1,7 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import java.util.Iterator;
-import java.util.Map;
+import plugins.XMLSpider.org.garret.perst.*;
 
-import plugins.XMLSpider.org.garret.perst.Assert;
-import plugins.XMLSpider.org.garret.perst.Blob;
-import plugins.XMLSpider.org.garret.perst.Index;
-import plugins.XMLSpider.org.garret.perst.Key;
-import plugins.XMLSpider.org.garret.perst.Persistent;
-import plugins.XMLSpider.org.garret.perst.PersistentResource;
-import plugins.XMLSpider.org.garret.perst.RandomAccessInputStream;
-import plugins.XMLSpider.org.garret.perst.RandomAccessOutputStream;
-import plugins.XMLSpider.org.garret.perst.Storage;
+import  java.util.*;
 
 
 public class RandomAccessBlobImpl extends PersistentResource implements Blob { 

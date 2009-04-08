@@ -1,8 +1,8 @@
 package plugins.XMLSpider.org.garret.perst.impl;
 
-import plugins.XMLSpider.org.garret.perst.PersistentComparator;
+import plugins.XMLSpider.org.garret.perst.*;
 
-public class DefaultPersistentComparator<T extends Comparable> extends PersistentComparator<T> { 
+public class DefaultPersistentComparator<T extends IPersistent&Comparable> extends PersistentComparator<T> { 
     public int compareMembers(T m1, T m2) {
         return m1.compareTo(m2);
     }

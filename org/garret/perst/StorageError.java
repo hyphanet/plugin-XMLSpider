@@ -35,7 +35,6 @@ public class StorageError extends RuntimeException {
     public static final int CONNECTION_FAILURE     = 29;
     public static final int TOO_MUCH_OBJECTS       = 30;
     public static final int FULL_TEXT_INDEX_ERROR  = 31;
-    public static final int INVALID_OPERATION      = 32;
 
     private static final String[] messageText = {
         "",
@@ -69,8 +68,7 @@ public class StorageError extends RuntimeException {
         "Invalid replication node port",
         "Connection failure",
         "Too much objects",
-        "Failed to insert document in full text index",
-        "Invalid operation"
+        "Failed to insert document in full text index"
     };
 
     /**

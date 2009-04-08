@@ -54,18 +54,10 @@ public abstract class StorageListener {
     public void JSQLRuntimeError(JSQLRuntimeException x) { 
     }
 
-    /**
-     * Sequential search is performed for query execution
-     * @param query executed query
+    /** Sequential search is performed for query execution
+     * @param query execfuted query
      */
     public void sequentialSearchPerformed(String query) {
-    }        
-
-    /** 
-     * Sort of the selected result set is performed for query execution
-     * @param query executed query
-     */
-    public void sortResultSetPerformed(String query) {
     }        
 
     /**

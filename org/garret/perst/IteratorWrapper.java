@@ -1,6 +1,6 @@
 package plugins.XMLSpider.org.garret.perst;
 
-import java.util.Iterator;
+import java.util.*;
 
 public class IteratorWrapper<T> extends IterableIterator<T> 
 { 

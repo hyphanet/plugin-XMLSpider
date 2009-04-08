@@ -1,13 +1,9 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.Set;
+import plugins.XMLSpider.org.garret.perst.*;
 
-import plugins.XMLSpider.org.garret.perst.IPersistentSet;
-import plugins.XMLSpider.org.garret.perst.Link;
-import plugins.XMLSpider.org.garret.perst.PersistentCollection;
+import java.util.*;
 
-class ScalableSet<T> extends PersistentCollection<T> implements IPersistentSet<T> { 
+class ScalableSet<T extends IPersistent> extends PersistentCollection<T> implements IPersistentSet<T> { 
     Link<T>           link;
     IPersistentSet<T> set;
 
@@ -42,7 +38,11 @@ class ScalableSet<T> extends PersistentCollection<T> implements IPersistentSet<T
     }
 
     public boolean contains(Object o) {
-        return link != null ? link.contains(o) : set.contains(o);
+        if (o instanceof IPersistent) { 
+            IPersistent p = (IPersistent)o;
+            return link != null ? link.contains(p) : set.contains(p);
+        }
+        return false;
     }
     
     public Object[] toArray() { 
@@ -80,7 +80,7 @@ class ScalableSet<T> extends PersistentCollection<T> implements IPersistentSet<T
         }
     }
 
-    public boolean remove(Object o) { 
+    public boolean remove(T o) { 
         if (link != null) {
             if (link.remove(o)) { 
                 modify();
@@ -96,7 +96,7 @@ class ScalableSet<T> extends PersistentCollection<T> implements IPersistentSet<T
         int h = 0;
         Iterator<T> i = iterator();
         while (i.hasNext()) {
-            h += getStorage().getOid(i.next());
+            h += i.next().getOid();
         }
         return h;
     }

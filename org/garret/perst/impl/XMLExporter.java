@@ -1,11 +1,10 @@
 package plugins.XMLSpider.org.garret.perst.impl;
 
-import java.io.IOException;
-import java.io.Writer;
+import java.io.*;
 import java.util.Date;
+import java.lang.reflect.Field;
 
-import plugins.XMLSpider.org.garret.perst.Assert;
-import plugins.XMLSpider.org.garret.perst.StorageError;
+import plugins.XMLSpider.org.garret.perst.*;
 
 public class XMLExporter { 
     public XMLExporter(StorageImpl storage, Writer writer) { 
@@ -40,19 +39,19 @@ public class XMLExporter {
                                 int typeOid = ObjectHeader.getType(obj, 0);                
                                 ClassDescriptor desc = storage.findClassDescriptor(typeOid);
                                 if (desc.cls == Btree.class) { 
-                                    exportIndex(oid, obj, "org.garret.perst.impl.Btree");
+                                    exportIndex(oid, obj, "plugins.XMLSpider.org.garret.perst.impl.Btree");
                                 } else if (desc.cls == BitIndexImpl.class) { 
-                                    exportIndex(oid, obj, "org.garret.perst.impl.BitIndexImpl");
+                                    exportIndex(oid, obj, "plugins.XMLSpider.org.garret.perst.impl.BitIndexImpl");
                                 } else if (desc.cls == PersistentSet.class) { 
                                     exportSet(oid, obj);
                                 } else if (desc.cls == BtreeFieldIndex.class) { 
-                                    exportFieldIndex(oid, obj, "org.garret.perst.impl.BtreeFieldIndex");
+                                    exportFieldIndex(oid, obj, "plugins.XMLSpider.org.garret.perst.impl.BtreeFieldIndex");
                                 } else if (desc.cls == BtreeCaseInsensitiveFieldIndex.class) { 
-                                    exportFieldIndex(oid, obj, "org.garret.perst.impl.BtreeCaseInsensitiveFieldIndex");
+                                    exportFieldIndex(oid, obj, "plugins.XMLSpider.org.garret.perst.impl.BtreeCaseInsensitiveFieldIndex");
                                 } else if (desc.cls == BtreeMultiFieldIndex.class) { 
-                                    exportMultiFieldIndex(oid, obj, "org.garret.perst.impl.BtreeMultiFieldIndex");
+                                    exportMultiFieldIndex(oid, obj, "plugins.XMLSpider.org.garret.perst.impl.BtreeMultiFieldIndex");
                                 } else if (desc.cls == BtreeCaseInsensitiveMultiFieldIndex.class) { 
-                                    exportMultiFieldIndex(oid, obj, "org.garret.perst.impl.BtreeCaseInsensitiveMultiFieldIndex");
+                                    exportMultiFieldIndex(oid, obj, "plugins.XMLSpider.org.garret.perst.impl.BtreeCaseInsensitiveMultiFieldIndex");
                                 } else if (desc.cls == BtreeCompoundIndex.class) { 
                                     exportCompoundIndex(oid, obj);
                                 } else { 
@@ -85,16 +84,16 @@ public class XMLExporter {
     final void exportSet(int oid,  byte[] data) throws IOException 
     { 
         Btree btree = new Btree(data, ObjectHeader.sizeof);
-        storage.assignOid(btree, oid, false);
-        writer.write(" <org.garret.perst.impl.PersistentSet id=\"" + oid + "\">\n");
+        storage.assignOid(btree, oid);
+        writer.write(" <plugins.XMLSpider.org.garret.perst.impl.PersistentSet id=\"" + oid + "\">\n");
         btree.export(this);
-        writer.write(" </org.garret.perst.impl.PersistentSet>\n");
+        writer.write(" </plugins.XMLSpider.org.garret.perst.impl.PersistentSet>\n");
     }
 
     final void exportIndex(int oid, byte[] data, String name) throws IOException 
     { 
         Btree btree = new Btree(data, ObjectHeader.sizeof);
-        storage.assignOid(btree, oid, false);
+        storage.assignOid(btree, oid);
         writer.write(" <" + name + " id=\"" + oid + "\" unique=\"" + (btree.unique ? '1' : '0') 
                      + "\" type=\"" + ClassDescriptor.signature[btree.type] + "\">\n");
         btree.export(this);
@@ -104,7 +103,7 @@ public class XMLExporter {
     final void exportFieldIndex(int oid,  byte[] data, String name) throws IOException
     { 
         Btree btree = new Btree(data, ObjectHeader.sizeof);
-        storage.assignOid(btree, oid, false);
+        storage.assignOid(btree, oid);
         writer.write(" <" + name + " id=\"" + oid + "\" unique=\"" + (btree.unique ? '1' : '0') + "\"");
         int offs = Btree.sizeof;
         writer.write(" autoinc=\"" + Bytes.unpack8(data, offs) + "\"");
@@ -121,7 +120,7 @@ public class XMLExporter {
     final void exportMultiFieldIndex(int oid,  byte[] data, String name) throws IOException
     { 
         Btree btree = new Btree(data, ObjectHeader.sizeof);
-        storage.assignOid(btree, oid, false);
+        storage.assignOid(btree, oid);
         writer.write(" <" + name + " id=\"" + oid + "\" unique=\"" + (btree.unique ? '1' : '0') + "\" class=");
         int offs = exportString(data, Btree.sizeof);
         int nFields = Bytes.unpack4(data, offs);
@@ -146,8 +145,8 @@ public class XMLExporter {
     final void exportCompoundIndex(int oid,  byte[] data) throws IOException
     { 
         Btree btree = new Btree(data, ObjectHeader.sizeof);
-        storage.assignOid(btree, oid, false);
-        writer.write(" <org.garret.perst.impl.BtreeCompoundIndex id=\"" + oid + "\" unique=\"" + (btree.unique ? '1' : '0') + "\"");
+        storage.assignOid(btree, oid);
+        writer.write(" <plugins.XMLSpider.org.garret.perst.impl.BtreeCompoundIndex id=\"" + oid + "\" unique=\"" + (btree.unique ? '1' : '0') + "\"");
         int offs = Btree.sizeof;
         int nTypes = Bytes.unpack4(data, offs);
         offs += 4;
@@ -162,7 +161,7 @@ public class XMLExporter {
         writer.write(">\n");
         btree.export(this); 
         compoundKeyTypes = null;
-        writer.write(" </org.garret.perst.impl.BtreeCompoundIndex>\n");
+        writer.write(" </plugins.XMLSpider.org.garret.perst.impl.BtreeCompoundIndex>\n");
     }
 
     final int exportKey(byte[] body, int offs, int size, int type) throws IOException
@@ -283,9 +282,6 @@ public class XMLExporter {
           case '"':
             writer.write("&quot;");
             break;
-          case '\'':
-            writer.write("&apos;");
-            break;
           default:
             writer.write(ch);
         }
@@ -328,7 +324,22 @@ public class XMLExporter {
         int len = Bytes.unpack4(body, offs);
         offs += 4;
         if (len < 0) { 
-            writer.write("null");
+            if (len == -2-ClassDescriptor.tpObject) { 
+                exportRef(Bytes.unpack4(body, offs));
+                offs += 4;
+            } else if (len < -1) { 
+                writer.write("\"#");
+                writer.write(hexDigit[-2-len]);
+                len = ClassDescriptor.sizeof[-2-len];
+                while (--len >= 0) {
+                    byte b = body[offs++];
+                    writer.write(hexDigit[(b >>> 4) & 0xF]);
+                    writer.write(hexDigit[b & 0xF]);
+                }
+                writer.write('\"');
+            } else { 
+                writer.write("null");
+            }
         } else {
             writer.write('\"');
             while (--len >= 0) {
@@ -341,90 +352,11 @@ public class XMLExporter {
         return offs;
     }
     
-    final int exportRef(byte[] body, int offs, int indent) throws IOException { 
-        int oid = Bytes.unpack4(body, offs);
-        offs += 4;
-        if (oid < 0) {
-            int tid = -1-oid;
-            switch (tid) {
-            case ClassDescriptor.tpString:
-                offs = exportString(body, offs);
-                break;
-            case ClassDescriptor.tpBoolean:
-            case ClassDescriptor.tpByte:
-            case ClassDescriptor.tpChar:
-            case ClassDescriptor.tpShort:
-            case ClassDescriptor.tpInt:
-            case ClassDescriptor.tpLong:
-            case ClassDescriptor.tpFloat:
-            case ClassDescriptor.tpDouble:
-            case ClassDescriptor.tpDate:
-            case ClassDescriptor.tpEnum:
-                {
-                    int len = ClassDescriptor.sizeof[tid];
-                    writer.write("<scalar type=\"" + tid + "\" value=\"");
-                    while (--len >= 0) {
-                        byte b = body[offs++];
-                        writer.write(hexDigit[(b >> 4) & 0xF]);
-                        writer.write(hexDigit[b & 0xF]);
-                    }
-                    writer.write("\"/>");
-                    break;
-                }
-            case ClassDescriptor.tpCustom:
-            {
-                StorageImpl.ByteArrayObjectInputStream in = storage.new ByteArrayObjectInputStream(body, offs, null, true, false);
-                Object obj = storage.serializer.unpack(in);
-                offs = in.getPosition();  
-                writer.write("<scalar type=\"" + tid + "\" value=\"");
-                String s = storage.serializer.print(obj);
-                for (int i = 0; i < s.length(); i++) { 
-                    exportChar(s.charAt(i));
-                }
-                writer.write("\"/>");
-                break;
-            }
-            default:
-                if (tid >= ClassDescriptor.tpValueTypeBias) { 
-                    int typeOid = - ClassDescriptor.tpValueTypeBias - oid;
-                    ClassDescriptor desc = storage.findClassDescriptor(typeOid);
-                    if (desc.isCollection) { 
-                        int len = Bytes.unpack4(body, offs);   
-                        offs += 4;
-                        String className = exportIdentifier(desc.name);
-                        writer.write("\n");
-                        indentation(indent + 1);
-                        writer.write("<" + className + ">\n");
-                        for (int i = 0; i < len; i++) { 
-                            indentation(indent + 2);
-                            writer.write("<element>");
-                            offs = exportRef(body, offs, indent + 2);
-                            writer.write("</element>");
-                        }                            
-                        indentation(indent + 1);
-                        writer.write("</" + className + ">\n");
-                        indentation(indent);
-                    } else {
-                        String className = exportIdentifier(desc.name);
-                        writer.write("\n");
-                        indentation(indent + 1);
-                        writer.write("<" + className + ">\n");
-                        offs = exportObject(desc, body, offs, indent + 2);
-                        indentation(indent + 1);
-                        writer.write("</" + className + ">\n");
-                        indentation(indent);
-                    }
-                } else { 
-                    throw new StorageError(StorageError.UNSUPPORTED_TYPE);
-                }
-            }       
-        } else {
-            writer.write("<ref id=\"" + oid + "\"/>");
-            if (oid != 0 && (exportedBitmap[oid >> 5] & (1 << (oid & 31))) == 0) { 
-                markedBitmap[oid >> 5] |= 1 << (oid & 31);
-            }
+    final void exportRef(int oid) throws IOException { 
+        writer.write("<ref id=\"" + oid + "\"/>");
+        if (oid != 0 && (exportedBitmap[oid >> 5] & (1 << (oid & 31))) == 0) { 
+            markedBitmap[oid >> 5] |= 1 << (oid & 31);
         }
-        return offs;
     }
 
     final int exportObject(ClassDescriptor desc, byte[] body, int offs, int indent) throws IOException {
@@ -492,7 +424,8 @@ public class XMLExporter {
                     break;
                 }
                 case ClassDescriptor.tpObject:
-                    offs = exportRef(body, offs, indent);
+                    exportRef(Bytes.unpack4(body, offs));
+                    offs += 4;
                     break;
                 case ClassDescriptor.tpValue:
                     writer.write('\n');
@@ -505,15 +438,15 @@ public class XMLExporter {
                     break;
                 case ClassDescriptor.tpCustom:
                 {
-                    StorageImpl.ByteArrayObjectInputStream in = storage.new ByteArrayObjectInputStream(body, offs, null, true, false);
-                    Object obj = storage.serializer.unpack(in);
-                    offs = in.getPosition();  
-                    writer.write("\"");
-                    String s = storage.serializer.print(obj);
-                    for (int j = 0; j < s.length(); j++) { 
-                        exportChar(s.charAt(j));
+                    ByteArrayInputStream in = new ByteArrayInputStream(body, offs, body.length - offs);
+                    CustomSerializable obj = storage.serializer.unpack(in);
+                    String str = obj.toString();
+                    writer.write("\"");   
+                    for (int j = 0, len = str.length(); j < len; j++) { 
+                        exportChar(str.charAt(j));
                     }
-                    writer.write("\"");
+                    writer.write("\"");   
+                    offs = body.length - in.available();
                     break;
                 }
                 case ClassDescriptor.tpArrayOfBoolean:
@@ -606,7 +539,7 @@ public class XMLExporter {
                     }
                     break;
                 }
-                case ClassDescriptor.tpArrayOfLong:
+                 case ClassDescriptor.tpArrayOfLong:
                 {
                     int len = Bytes.unpack4(body, offs);
                     offs += 4;
@@ -713,9 +646,12 @@ public class XMLExporter {
                         writer.write('\n');
                         while (--len >= 0) { 
                             indentation(indent+1);
-                            writer.write("<element>");
-                            offs = exportRef(body, offs, indent+1);
-                            writer.write("</element>\n");
+                            int oid = Bytes.unpack4(body, offs);
+                            if (oid != 0 && (exportedBitmap[oid >> 5] & (1 << (oid & 31))) == 0) { 
+                                markedBitmap[oid >> 5] |= 1 << (oid & 31);
+                            }
+                            writer.write("<element><ref id=\"" + oid + "\"/></element>\n");
+                            offs += 4;
                         }
                         indentation(indent);
                     }
@@ -734,6 +670,24 @@ public class XMLExporter {
                             writer.write("<element>\n");
                             offs = exportObject(fd.valueDesc, body, offs, indent+2);
                             indentation(indent+1);
+                            writer.write("</element>\n");
+                        }
+                        indentation(indent);
+                    }
+                    break;
+                }
+                case ClassDescriptor.tpArrayOfRaw:
+                {
+                    int len = Bytes.unpack4(body, offs);
+                    offs += 4;
+                    if (len < 0) { 
+                        writer.write("null");
+                    } else {
+                        writer.write('\n');
+                        while (--len >= 0) { 
+                            indentation(indent+1);
+                            writer.write("<element>");
+                            offs = exportBinary(body, offs);
                             writer.write("</element>\n");
                         }
                         indentation(indent);

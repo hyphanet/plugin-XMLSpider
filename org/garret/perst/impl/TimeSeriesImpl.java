@@ -1,17 +1,7 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
+import plugins.XMLSpider.org.garret.perst.*;
 
-import plugins.XMLSpider.org.garret.perst.Assert;
-import plugins.XMLSpider.org.garret.perst.Index;
-import plugins.XMLSpider.org.garret.perst.IterableIterator;
-import plugins.XMLSpider.org.garret.perst.Key;
-import plugins.XMLSpider.org.garret.perst.PersistentCollection;
-import plugins.XMLSpider.org.garret.perst.Storage;
-import plugins.XMLSpider.org.garret.perst.StorageError;
-import plugins.XMLSpider.org.garret.perst.TimeSeries;
+import java.util.*;
 
 public class TimeSeriesImpl<T extends TimeSeries.Tick> extends PersistentCollection<T> implements TimeSeries<T> { 
     public ArrayList<T> elements() { 
@@ -362,10 +352,6 @@ public class TimeSeriesImpl<T extends TimeSeries.Tick> extends PersistentCollect
    
     public void onLoad() {
         blockClass = ClassDescriptor.loadClass(getStorage(), blockClassName);
-    }
-
-    public void deallocateMembers() {
-        clear();
     }
 
     public void clear() { 
