@@ -1,5 +1,7 @@
 package plugins.XMLSpider.org.garret.perst;
 
+import java.util.Iterator;
+import java.util.Map;
 import java.lang.reflect.Field;
 
 /**
@@ -11,7 +13,7 @@ import java.lang.reflect.Field;
  * (each boundary can be specified or unspecified and can be inclusive or exclusive)
  * Key should be of scalar, String, java.util.Date or peristent object type.
  */
-public interface FieldIndex<T> extends GenericIndex<T> 
+public interface FieldIndex<T extends IPersistent> extends GenericIndex<T> 
 { 
     /**
      * Put new object in the index. 
@@ -50,6 +52,13 @@ public interface FieldIndex<T> extends GenericIndex<T>
     public void append(T obj);
 
     /**
+     * Remove object from the index
+     * @param obj object removed from the index. Object should contain indexed field. 
+     * @exception StorageError(StorageError.KEY_NOT_FOUND) exception if there is no such key in the index
+     */
+    public void remove(T obj);
+
+    /**
      * Remove object with specified key from the unique index
      * @param key value of removed key
      * @return removed object
@@ -73,6 +82,16 @@ public interface FieldIndex<T> extends GenericIndex<T>
      * @return <code>true</code> if object is present in the index, <code>false</code> otherwise
      */
     public boolean containsObject(T obj);
+
+     /**
+     * Check if index contains object which is equal to the specified object.
+     * More formally, returns <tt>true</tt> if and only if this
+     * collection contains at least one element <tt>e</tt> such that
+     * <tt>(obj==null ? e==null : obj.equals(e))</tt>.<p>
+     * @param obj object to be searched in the index. Object should contain indexed field. 
+     * @return <code>true</code> if collection contains object equals to the specified
+     */
+    public boolean contains(T obj);
 
     /**
      * Locate objects with the same value of the key as specified object

@@ -1,7 +1,5 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import plugins.XMLSpider.org.garret.perst.IPersistent;
-import plugins.XMLSpider.org.garret.perst.Storage;
-import plugins.XMLSpider.org.garret.perst.StorageError;
+import plugins.XMLSpider.org.garret.perst.*;
 
 public class PersistentStub implements IPersistent { 
     public void load() {
@@ -63,7 +61,7 @@ public class PersistentStub implements IPersistent {
     }
     
     public boolean equals(Object o) { 
-        return getStorage().getOid(o) == oid;
+        return o instanceof IPersistent && ((IPersistent)o).getOid() == oid;
     }
 
     public int hashCode() {

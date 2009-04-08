@@ -1,35 +1,23 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.NoSuchElementException;
+import plugins.XMLSpider.org.garret.perst.*;
 
-import plugins.XMLSpider.org.garret.perst.IPersistent;
-import plugins.XMLSpider.org.garret.perst.IPersistentSet;
-import plugins.XMLSpider.org.garret.perst.Index;
-import plugins.XMLSpider.org.garret.perst.IterableIterator;
-import plugins.XMLSpider.org.garret.perst.Key;
-import plugins.XMLSpider.org.garret.perst.PersistentCollection;
-import plugins.XMLSpider.org.garret.perst.PersistentIterator;
-import plugins.XMLSpider.org.garret.perst.Relation;
-import plugins.XMLSpider.org.garret.perst.StorageError;
+import java.util.*;
 
-class ThickIndex<T> extends PersistentCollection<T> implements Index<T> { 
-    private Index<Object> index;
-    private int           nElems;
+class ThickIndex<T extends IPersistent> extends PersistentCollection<T> implements Index<T> { 
+    private Index<IPersistent> index;
+    private int                nElems;
 
     static final int BTREE_THRESHOLD = 128;
 
     ThickIndex(Class keyType, StorageImpl db) { 
         super(db);
-        index = db.<Object>createIndex(keyType, true);
+        index = db.<IPersistent>createIndex(keyType, true);
     }
     
     ThickIndex() {}
 
     public T get(Key key) {
-        Object s = index.get(key);
+        IPersistent s = index.get(key);
         if (s == null) { 
             return null;
         }
@@ -54,11 +42,11 @@ class ThickIndex<T> extends PersistentCollection<T> implements Index<T> {
         return extendList(index.getList(from, till));
     }
    
-    public Object[] get(Key from, Key till) {
+    public IPersistent[] get(Key from, Key till) {
         return extend(index.get(from, till));
     }
      
-    public Object[] get(Object from, Object till) {
+    public IPersistent[] get(Object from, Object till) {
         return extend(index.get(from, till));
     }
      
@@ -71,19 +59,19 @@ class ThickIndex<T> extends PersistentCollection<T> implements Index<T> {
     }
 
 
-    private Object[] extend(Object[] s) { 
+    private IPersistent[] extend( IPersistent[] s) { 
         ArrayList list = new ArrayList();
         for (int i = 0; i < s.length; i++) { 
             list.addAll((Collection)s[i]);
         }
-        return list.toArray();
+        return (IPersistent[])list.toArray(new IPersistent[list.size()]);
     }
 
     public T get(String key) {
         return get(new Key(key));
     }
                       
-    public Object[] getPrefix(String prefix) { 
+    public IPersistent[] getPrefix(String prefix) { 
         return extend(index.getPrefix(prefix));
     }
     
@@ -91,7 +79,7 @@ class ThickIndex<T> extends PersistentCollection<T> implements Index<T> {
         return extendList(index.getPrefixList(prefix));
     }
     
-    public Object[] prefixSearch(String word) { 
+    public IPersistent[] prefixSearch(String word) { 
         return extend(index.prefixSearch(word));
     }
            
@@ -104,35 +92,36 @@ class ThickIndex<T> extends PersistentCollection<T> implements Index<T> {
     }
     
     public void clear() { 
-        for (Object p : index) { 
-            ((IPersistent)p).deallocate();
+        for (IPersistent p : index) { 
+            p.deallocate();
         }
         index.clear();
         nElems = 0;
         modify();
     }
 
-    public Object[] toArray() { 
-        return extend(index.toArray());
+    public IPersistent[] toPersistentArray() { 
+        return extend(index.toPersistentArray());
     }
         
+    public Object[] toArray() {
+        return toPersistentArray();
+    }
+
     public <E> E[] toArray(E[] arr) { 
         ArrayList<E> list = new ArrayList<E>();
-        for (Object c : index) { 
+        for (IPersistent c : index) { 
             list.addAll((Collection<E>)c);
         }
         return list.toArray(arr);
     }
 
-    static class ExtendIterator<E> extends IterableIterator<E> implements PersistentIterator {  
+    static class ExtendIterator<E extends IPersistent> extends IterableIterator<E> implements PersistentIterator {  
         public boolean hasNext() { 
             return inner != null;
         }
 
         public E next() { 
-            if (inner == null) { 
-                throw new NoSuchElementException();
-            }
             E obj = inner.next();
             if (!inner.hasNext()) {                 
                 if (outer.hasNext()) {
@@ -144,10 +133,7 @@ class ThickIndex<T> extends PersistentCollection<T> implements Index<T> {
             return obj;
         }
 
-        public int nextOid() { 
-            if (inner == null) { 
-                return 0;
-            }
+       public int nextOid() { 
             int oid = ((PersistentIterator)inner).nextOid();
             if (!inner.hasNext()) {                 
                 if (outer.hasNext()) {
@@ -179,7 +165,7 @@ class ThickIndex<T> extends PersistentCollection<T> implements Index<T> {
         private Iterator<E> inner;
     }
 
-    static class ExtendEntry<E> implements Map.Entry<Object,E> {
+    static class ExtendEntry<E extends IPersistent> implements Map.Entry<Object,E> {
         public Object getKey() { 
             return key;
         }
@@ -201,7 +187,7 @@ class ThickIndex<T> extends PersistentCollection<T> implements Index<T> {
         private E      value;
     }
 
-    static class ExtendEntryIterator<E> extends IterableIterator<Map.Entry<Object,E>> {  
+    static class ExtendEntryIterator<E extends IPersistent> extends IterableIterator<Map.Entry<Object,E>> {  
         public boolean hasNext() { 
             return inner != null;
         }
@@ -285,7 +271,7 @@ class ThickIndex<T> extends PersistentCollection<T> implements Index<T> {
     }
 
     public boolean put(Key key, T obj) { 
-        Object s = index.get(key);
+        IPersistent s = index.get(key);
         if (s == null) { 
             Relation<T,ThickIndex> r = getStorage().<T,ThickIndex>createRelation(null);
             r.add(obj);
@@ -312,7 +298,7 @@ class ThickIndex<T> extends PersistentCollection<T> implements Index<T> {
     }
 
     public T set(Key key, T obj) {
-        Object s = index.get(key);
+        IPersistent s = index.get(key);
         if (s == null) { 
             Relation<T,ThickIndex> r = getStorage().<T,ThickIndex>createRelation(null);
             r.add(obj);
@@ -323,7 +309,7 @@ class ThickIndex<T> extends PersistentCollection<T> implements Index<T> {
         } else if (s instanceof Relation) { 
             Relation r = (Relation)s;
             if (r.size() == 1) {
-                Object prev = r.get(0);
+                IPersistent prev = r.get(0);
                 r.set(0, obj);
                 return (T)prev;
             } 
@@ -332,7 +318,7 @@ class ThickIndex<T> extends PersistentCollection<T> implements Index<T> {
     }
 
     public void remove(Key key, T obj) { 
-        Object s = index.get(key);
+        IPersistent s = index.get(key);
         if (s instanceof Relation) { 
             Relation r = (Relation)s;
             int i = r.indexOf(obj);
@@ -389,13 +375,6 @@ class ThickIndex<T> extends PersistentCollection<T> implements Index<T> {
         clear();
         index.deallocate();
         super.deallocate();
-    }
-
-    public int indexOf(Key key) { 
-        PersistentIterator iterator = (PersistentIterator)iterator(null, key, DESCENT_ORDER);
-        int i;
-        for (i = -1; iterator.nextOid() != 0; i++);
-        return i;
     }
 
     public T getAt(int i) {

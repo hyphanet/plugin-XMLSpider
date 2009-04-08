@@ -1,17 +1,10 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import java.lang.reflect.Array;
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Map;
+import plugins.XMLSpider.org.garret.perst.*;
 
-import plugins.XMLSpider.org.garret.perst.FieldIndex;
-import plugins.XMLSpider.org.garret.perst.IValue;
-import plugins.XMLSpider.org.garret.perst.IterableIterator;
-import plugins.XMLSpider.org.garret.perst.Key;
-import plugins.XMLSpider.org.garret.perst.Query;
-import plugins.XMLSpider.org.garret.perst.StorageError;
+import java.lang.reflect.*;
+import java.util.*;
 
-class RndBtreeMultiFieldIndex<T> extends RndBtree<T> implements FieldIndex<T> { 
+class RndBtreeMultiFieldIndex<T extends IPersistent> extends RndBtree<T> implements FieldIndex<T> { 
     String   className;
     String[] fieldName;
 
@@ -26,7 +19,7 @@ class RndBtreeMultiFieldIndex<T> extends RndBtree<T> implements FieldIndex<T> {
         this.fieldName = fieldName;        
         this.className = ClassDescriptor.getClassName(cls);
         locateFields();
-        type = ClassDescriptor.tpValue;        
+        type = ClassDescriptor.tpRaw;        
     }
 
     private final void locateFields() 
@@ -55,7 +48,7 @@ class RndBtreeMultiFieldIndex<T> extends RndBtree<T> implements FieldIndex<T> {
         locateFields();
     }
 
-    static class CompoundKey implements Comparable, IValue {
+    static class CompoundKey implements Comparable {
         Object[] keys;
 
         public int compareTo(Object o) { 
@@ -85,14 +78,16 @@ class RndBtreeMultiFieldIndex<T> extends RndBtree<T> implements FieldIndex<T> {
         return new Key(new CompoundKey((Object[])key.oval), key.inclusion != 0);
     }
             
-    private Key extractKey(Object obj) {
+    private Key extractKey(IPersistent obj) {
         Object[] keys = new Object[fld.length];
         try { 
             for (int i = 0; i < keys.length; i++) { 
-                Object val = fld[i].get(obj);
-                keys[i] = val;
-                if (!ClassDescriptor.isEmbedded(val)) { 
-                    getStorage().makePersistent(val);
+                keys[i] = fld[i].get(obj);
+                if (keys[i] instanceof IPersistent) { 
+                    IPersistent p = (IPersistent)keys[i];
+                    if (!p.isPersistent()) { 
+                        getStorage().makePersistent(p);
+                    }
                 }
             }
         } catch (Exception x) { 
@@ -109,8 +104,8 @@ class RndBtreeMultiFieldIndex<T> extends RndBtree<T> implements FieldIndex<T> {
         return super.set(extractKey(obj), obj);
     }
 
-    public boolean remove(Object obj) {
-        return super.removeIfExists(extractKey(obj), obj);
+    public void remove(T obj) {
+        super.remove(extractKey(obj), obj);
     }
 
     public T remove(Key key) {
@@ -122,7 +117,7 @@ class RndBtreeMultiFieldIndex<T> extends RndBtree<T> implements FieldIndex<T> {
         if (unique) { 
             return super.get(key) != null;
         } else { 
-            Object[] mbrs = get(key, key);
+            IPersistent[] mbrs = get(key, key);
             for (int i = 0; i < mbrs.length; i++) { 
                 if (mbrs[i] == obj) { 
                     return true;
@@ -132,12 +127,12 @@ class RndBtreeMultiFieldIndex<T> extends RndBtree<T> implements FieldIndex<T> {
         }
     }
 
-    public boolean contains(Object obj) {
+    public boolean contains(T obj) {
         Key key = extractKey(obj);
         if (unique) { 
             return super.get(key) != null;
         } else { 
-            Object[] mbrs = get(key, key);
+            IPersistent[] mbrs = get(key, key);
             for (int i = 0; i < mbrs.length; i++) { 
                 if (mbrs[i].equals(obj)) { 
                     return true;
@@ -168,7 +163,7 @@ class RndBtreeMultiFieldIndex<T> extends RndBtree<T> implements FieldIndex<T> {
         throw new StorageError(StorageError.INCOMPATIBLE_KEY_TYPE);
     }
 
-    public T[] toArray() {
+    public T[] toPersistentArray() {
         T[] arr = (T[])Array.newInstance(cls, nElems);
         if (root != null) { 
             root.traverseForward(height, arr, 0);
@@ -178,10 +173,6 @@ class RndBtreeMultiFieldIndex<T> extends RndBtree<T> implements FieldIndex<T> {
 
     public T get(Key key) {
         return super.get(convertKey(key));
-    }
-
-    public int indexOf(Key key) { 
-        return super.indexOf(convertKey(key));
     }
 
     public IterableIterator<T> iterator(Key from, Key till, int order) {
@@ -207,7 +198,7 @@ class RndBtreeMultiFieldIndex<T> extends RndBtree<T> implements FieldIndex<T> {
     }
 }
 
-class RndBtreeCaseInsensitiveMultiFieldIndex<T> extends RndBtreeMultiFieldIndex<T> {    
+class RndBtreeCaseInsensitiveMultiFieldIndex<T extends IPersistent> extends RndBtreeMultiFieldIndex<T> {    
     RndBtreeCaseInsensitiveMultiFieldIndex() {}
 
     RndBtreeCaseInsensitiveMultiFieldIndex(Class cls, String[] fieldNames, boolean unique) {

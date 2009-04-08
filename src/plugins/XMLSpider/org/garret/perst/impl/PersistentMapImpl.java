@@ -1,31 +1,9 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import java.util.AbstractCollection;
-import java.util.AbstractMap;
-import java.util.AbstractSet;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Set;
-import java.util.SortedMap;
+import plugins.XMLSpider.org.garret.perst.*;
 
-import plugins.XMLSpider.org.garret.perst.IPersistent;
-import plugins.XMLSpider.org.garret.perst.IPersistentMap;
-import plugins.XMLSpider.org.garret.perst.IValue;
-import plugins.XMLSpider.org.garret.perst.Index;
-import plugins.XMLSpider.org.garret.perst.Key;
-import plugins.XMLSpider.org.garret.perst.Link;
-import plugins.XMLSpider.org.garret.perst.Persistent;
-import plugins.XMLSpider.org.garret.perst.PersistentComparator;
-import plugins.XMLSpider.org.garret.perst.PersistentResource;
-import plugins.XMLSpider.org.garret.perst.Query;
-import plugins.XMLSpider.org.garret.perst.SortedCollection;
-import plugins.XMLSpider.org.garret.perst.Storage;
-import plugins.XMLSpider.org.garret.perst.StorageError;
+import  java.util.*;
 
-class PersistentMapImpl<K extends Comparable, V> extends PersistentResource implements IPersistentMap<K, V>
+class PersistentMapImpl<K extends Comparable, V extends IPersistent> extends PersistentResource implements IPersistentMap<K, V>
 {
     IPersistent index;
     Object      keys;
@@ -45,7 +23,7 @@ class PersistentMapImpl<K extends Comparable, V> extends PersistentResource impl
         values = storage.<V>createLink(initialSize);
     }
 
-   static class PersistentMapEntry<K extends Comparable,V> extends Persistent implements Entry<K,V> { 
+   static class PersistentMapEntry<K extends Comparable,V extends IPersistent> extends Persistent implements Entry<K,V> { 
         K key;
         V value;
 
@@ -71,7 +49,7 @@ class PersistentMapImpl<K extends Comparable, V> extends PersistentResource impl
         PersistentMapEntry() {}
     }
 
-    static class PersistentMapComparator<K extends Comparable, V> extends PersistentComparator<PersistentMapEntry<K,V>> { 
+    static class PersistentMapComparator<K extends Comparable, V extends IPersistent> extends PersistentComparator<PersistentMapEntry<K,V>> { 
         public int compareMembers(PersistentMapEntry<K,V> m1, PersistentMapEntry<K,V> m2) {
             return m1.key.compareTo(m2.key);
         }
@@ -106,10 +84,10 @@ class PersistentMapImpl<K extends Comparable, V> extends PersistentResource impl
             return ClassDescriptor.tpEnum;
         } else if (c.equals(java.util.Date.class)) {
             return ClassDescriptor.tpDate;
-        } else if (IValue.class.isAssignableFrom(c)) {
-            return ClassDescriptor.tpValue;
+        } else if (Comparable.class.isAssignableFrom(c)) {
+            return ClassDescriptor.tpRaw;
         } else { 
-            return ClassDescriptor.tpObject;
+            throw new StorageError(StorageError.UNSUPPORTED_TYPE, c);
         }
     }
 
@@ -155,7 +133,7 @@ class PersistentMapImpl<K extends Comparable, V> extends PersistentResource impl
 
     public boolean containsKey(Object key) {
         if (index != null) { 
-            if (type == ClassDescriptor.tpValue) { 
+            if (type == ClassDescriptor.tpRaw) { 
                 return ((SortedCollection)index).containsKey(key);
             } else { 
                 Key k = generateKey(key);
@@ -169,7 +147,7 @@ class PersistentMapImpl<K extends Comparable, V> extends PersistentResource impl
 
     public V get(Object key) {
         if (index != null) { 
-            if (type == ClassDescriptor.tpValue) { 
+            if (type == ClassDescriptor.tpRaw) { 
                 PersistentMapEntry<K,V> entry = ((SortedCollection<PersistentMapEntry<K,V>>)index).get(key);
                 return (entry != null) ? entry.value : null;
             } else { 
@@ -186,7 +164,7 @@ class PersistentMapImpl<K extends Comparable, V> extends PersistentResource impl
 
     public Entry<K,V> getEntry(Object key) {
         if (index != null) { 
-            if (type == ClassDescriptor.tpValue) { 
+            if (type == ClassDescriptor.tpRaw) { 
                 return ((SortedCollection<PersistentMapEntry<K,V>>)index).get(key);
             } else { 
                 V value = ((Index<V>)index).get(generateKey(key));
@@ -212,7 +190,7 @@ class PersistentMapImpl<K extends Comparable, V> extends PersistentResource impl
             } else {
                 if (size == BTREE_TRESHOLD) { 
                     Comparable[] keys = (Comparable[])this.keys;
-                    if (type == ClassDescriptor.tpValue) { 
+                    if (type == ClassDescriptor.tpRaw) { 
                         SortedCollection<PersistentMapEntry<K,V>> col 
                             = getStorage().<PersistentMapEntry<K,V>>createSortedCollection(new PersistentMapComparator<K,V>(), true);
                         index = col;
@@ -247,7 +225,7 @@ class PersistentMapImpl<K extends Comparable, V> extends PersistentResource impl
                 }
             }
         } else { 
-            if (type == ClassDescriptor.tpValue) {               
+            if (type == ClassDescriptor.tpRaw) {               
                 prev = insertInSortedCollection(key, value);
             } else { 
                 prev = ((Index<V>)index).set(generateKey(key), value);
@@ -280,7 +258,7 @@ class PersistentMapImpl<K extends Comparable, V> extends PersistentResource impl
             }
             return null;
         } else {
-            if (type == ClassDescriptor.tpValue) {               
+            if (type == ClassDescriptor.tpRaw) {               
                 SortedCollection<PersistentMapEntry<K,V>> col = (SortedCollection<PersistentMapEntry<K,V>>)index;
                 PersistentMapEntry<K,V> entry = col.get(key);
                 if (entry == null) { 
@@ -386,7 +364,7 @@ class PersistentMapImpl<K extends Comparable, V> extends PersistentResource impl
 
     protected Iterator<Entry<K,V>> entryIterator() {
         if (index != null) { 
-            if (type == ClassDescriptor.tpValue) {
+            if (type == ClassDescriptor.tpRaw) {
                 return new Iterator<Entry<K,V>>() {          
                     private Iterator<PersistentMapEntry<K,V>> i = ((SortedCollection<PersistentMapEntry<K,V>>)index).iterator();
 
@@ -622,10 +600,8 @@ class PersistentMapImpl<K extends Comparable, V> extends PersistentResource impl
             return new Key((Enum)key, inclusive);
         } else if (key instanceof java.util.Date) { 
             return new Key((java.util.Date)key, inclusive);
-        } else if (key instanceof IValue) { 
-            return new Key((IValue)key, inclusive);
         } else { 
-            return new Key(key, inclusive);
+            throw new StorageError(StorageError.UNSUPPORTED_INDEX_TYPE, key.getClass());
         }
     }
 
@@ -698,7 +674,7 @@ class PersistentMapImpl<K extends Comparable, V> extends PersistentResource impl
 
         protected Iterator<Entry<K,V>> entryIterator(final int order) {
             if (index != null) { 
-                if (type == ClassDescriptor.tpValue) {               
+                if (type == ClassDescriptor.tpRaw) {               
                     if (order == Index.ASCENT_ORDER) { 
                         return new Iterator<Entry<K,V>>() { 
                             private Iterator<PersistentMapEntry<K,V>> i = ((SortedCollection<PersistentMapEntry<K,V>>)index).iterator(fromKey, toKey);
@@ -951,7 +927,7 @@ class PersistentMapImpl<K extends Comparable, V> extends PersistentResource impl
 
     public K firstKey() {
         if (index != null) { 
-            if (type == ClassDescriptor.tpValue) {               
+            if (type == ClassDescriptor.tpRaw) {               
                 return ((SortedCollection<PersistentMapEntry<K,V>>)index).iterator().next().key;
             } else { 
                 return (K)((Index<V>)index).entryIterator().next().getKey();
@@ -967,7 +943,7 @@ class PersistentMapImpl<K extends Comparable, V> extends PersistentResource impl
 
     public K lastKey() {
         if (index != null) { 
-            if (type == ClassDescriptor.tpValue) {       
+            if (type == ClassDescriptor.tpRaw) {       
                 ArrayList<PersistentMapEntry<K,V>> entries = ((SortedCollection<PersistentMapEntry<K,V>>)index).getList(null, null);
                 return entries.get(entries.size()-1).key;
             } else { 

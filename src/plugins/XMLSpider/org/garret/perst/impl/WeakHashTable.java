@@ -1,6 +1,7 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import java.lang.ref.Reference;
-import java.lang.ref.WeakReference;
+import plugins.XMLSpider.org.garret.perst.*;
+
+import  java.lang.ref.*;
 
 public class WeakHashTable implements OidHashTable { 
     Entry table[];
@@ -8,10 +9,8 @@ public class WeakHashTable implements OidHashTable {
     int count;
     int threshold;
     boolean flushing;
-    StorageImpl db;
 
-    public WeakHashTable(StorageImpl db, int initialCapacity) {
-        this.db = db;
+    public WeakHashTable(int initialCapacity) {
         threshold = (int)(initialCapacity * loadFactor);
         table = new Entry[initialCapacity];
     }
@@ -38,7 +37,7 @@ public class WeakHashTable implements OidHashTable {
         return new WeakReference(obj);
     }
 
-    public synchronized void put(int oid, Object obj) { 
+    public synchronized void put(int oid, IPersistent obj) { 
         Reference ref = createReference(obj);
         Entry tab[] = table;
         int index = (oid & 0x7FFFFFFF) % tab.length;
@@ -60,19 +59,19 @@ public class WeakHashTable implements OidHashTable {
         count += 1;
     }
     
-    public Object get(int oid) {
+    public IPersistent get(int oid) {
         while (true) { 
             cs:synchronized(this) { 
                 Entry tab[] = table;
                 int index = (oid & 0x7FFFFFFF) % tab.length;
                 for (Entry e = tab[index]; e != null; e = e.next) {
                     if (e.oid == oid) {
-                        Object obj = e.ref.get();
+                        IPersistent obj = (IPersistent)e.ref.get();
                         if (obj == null) { 
                             if (e.dirty != 0) { 
                                 break cs;
                             }
-                        } else if (db.isDeleted(obj)) {
+                        } else if (obj.isDeleted()) {
                             e.ref.clear();
                             return null;
                         }
@@ -91,10 +90,10 @@ public class WeakHashTable implements OidHashTable {
                 flushing = true;
                 for (int i = 0; i < table.length; i++) { 
                     for (Entry e = table[i]; e != null; e = e.next) { 
-                        Object obj = e.ref.get();
+                        IPersistent obj = (IPersistent)e.ref.get();
                         if (obj != null) { 
-                            if (db.isModified(obj)) { 
-                                db.store(obj);
+                            if (obj.isModified()) { 
+                                obj.store();
                             }
                         } else if (e.dirty != 0) { 
                             break cs;
@@ -117,11 +116,11 @@ public class WeakHashTable implements OidHashTable {
             cs:synchronized(this) { 
                 for (int i = 0; i < table.length; i++) { 
                     for (Entry e = table[i]; e != null; e = e.next) { 
-                        Object obj = e.ref.get();
+                        IPersistent obj = (IPersistent)e.ref.get();
                         if (obj != null) { 
-                            if (db.isModified(obj)) { 
+                            if (obj.isModified()) { 
                                 e.dirty = 0;
-                                db.invalidate(obj);
+                                obj.invalidate();
                             }
                         } else if (e.dirty != 0) { 
                             break cs;
@@ -153,8 +152,8 @@ public class WeakHashTable implements OidHashTable {
             Entry e, next, prev;
             for (prev = null, e = oldMap[i]; e != null; e = next) { 
                 next = e.next;
-                Object obj = e.ref.get();
-                if ((obj == null || db.isDeleted(obj)) && e.dirty == 0) { 
+                IPersistent obj = (IPersistent)e.ref.get();
+                if ((obj == null || obj.isDeleted()) && e.dirty == 0) { 
                     count -= 1;
                     e.clear();
                     if (prev == null) { 
@@ -188,8 +187,8 @@ public class WeakHashTable implements OidHashTable {
         }
     }
 
-    public synchronized void setDirty(Object obj) {
-        int oid = db.getOid(obj);
+    public synchronized void setDirty(IPersistent obj) {
+        int oid = obj.getOid();
         Entry tab[] = table;
         int index = (oid & 0x7FFFFFFF) % tab.length;
         for (Entry e = tab[index]; e != null ; e = e.next) {
@@ -200,8 +199,8 @@ public class WeakHashTable implements OidHashTable {
         }
     }
 
-    public synchronized void clearDirty(Object obj) {
-        int oid = db.getOid(obj);
+    public synchronized void clearDirty(IPersistent obj) {
+        int oid = obj.getOid();
         Entry tab[] = table;
         int index = (oid & 0x7FFFFFFF) % tab.length;
         for (Entry e = tab[index]; e != null ; e = e.next) {

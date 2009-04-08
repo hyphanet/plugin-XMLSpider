@@ -1,10 +1,9 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.nio.channels.FileLock;
+import plugins.XMLSpider.org.garret.perst.*;
 
-import plugins.XMLSpider.org.garret.perst.IFile;
-import plugins.XMLSpider.org.garret.perst.StorageError;
+import java.lang.reflect.*;
+import java.nio.channels.*;
+import java.io.*;
 
 public class OSFile implements IFile { 
     public void write(long pos, byte[] buf) 

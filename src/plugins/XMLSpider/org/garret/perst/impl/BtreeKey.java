@@ -1,6 +1,5 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import plugins.XMLSpider.org.garret.perst.Assert;
-import plugins.XMLSpider.org.garret.perst.Key;
+import plugins.XMLSpider.org.garret.perst.*;
 
 class BtreeKey { 
     Key key;
@@ -58,10 +57,10 @@ class BtreeKey {
             key = new Key(Bytes.unpack8(data, offs));
             break;
           case ClassDescriptor.tpFloat:
-            key = new Key(Bytes.unpackF4(data, offs));
+            key = new Key(Float.intBitsToFloat(Bytes.unpack4(data, offs)));
             break;
           case ClassDescriptor.tpDouble:
-            key = new Key(Bytes.unpackF8(data, offs));
+            key = new Key(Double.longBitsToDouble(Bytes.unpack8(data, offs)));
             break;
           default:
             Assert.failed("Invalid type");

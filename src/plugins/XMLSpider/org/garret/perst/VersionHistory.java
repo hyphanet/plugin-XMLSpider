@@ -1,7 +1,6 @@
 package plugins.XMLSpider.org.garret.perst;
 
-import java.util.Date;
-import java.util.Iterator;
+import java.util.*;
 
 /**
  * Collection of version of versioned object.

@@ -1,25 +1,14 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import java.lang.reflect.Array;
-import java.util.AbstractList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.NoSuchElementException;
-import java.util.RandomAccess;
+import plugins.XMLSpider.org.garret.perst.*;
 
-import plugins.XMLSpider.org.garret.perst.EmbeddedLink;
-import plugins.XMLSpider.org.garret.perst.ICloneable;
-import plugins.XMLSpider.org.garret.perst.IterableIterator;
-import plugins.XMLSpider.org.garret.perst.Link;
-import plugins.XMLSpider.org.garret.perst.PersistentIterator;
-import plugins.XMLSpider.org.garret.perst.Query;
+import  java.util.*;
+import  java.lang.reflect.Array;
 
-public class LinkImpl<T> implements EmbeddedLink<T>, ICloneable 
+public class LinkImpl<T extends IPersistent> implements EmbeddedLink<T>, ICloneable 
 { 
     private final void modify() { 
         if (owner != null) { 
-            db.modify(owner);
+            owner.modify();
         }
     }
 
@@ -39,7 +28,6 @@ public class LinkImpl<T> implements EmbeddedLink<T>, ICloneable
             reserveSpace(newSize - used);            
         }
         used = newSize;
-        modify();
     }
 
     public T get(int i) {
@@ -49,7 +37,7 @@ public class LinkImpl<T> implements EmbeddedLink<T>, ICloneable
         return (T)loadElem(i);
     }
 
-    public Object getRaw(int i) {
+    public IPersistent getRaw(int i) {
         if (i < 0 || i >= used) { 
             throw new IndexOutOfBoundsException();
         }
@@ -64,9 +52,9 @@ public class LinkImpl<T> implements EmbeddedLink<T>, ICloneable
 
     public void unpin() { 
         for (int i = 0, n = used; i < n; i++) { 
-            Object elem = arr[i];
-            if (elem != null && db.isLoaded(elem)) { 
-                arr[i] = new PersistentStub(db, db.getOid(elem));
+            IPersistent elem = arr[i];
+            if (elem != null && !elem.isRaw() && elem.isPersistent()) { 
+                arr[i] = new PersistentStub(elem.getStorage(), elem.getOid());
             }
         }
     }
@@ -133,10 +121,11 @@ public class LinkImpl<T> implements EmbeddedLink<T>, ICloneable
 
     void reserveSpace(int len) { 
         if (used + len > arr.length) { 
-            Object[] newArr = new Object[used + len > arr.length*2 ? used + len : arr.length*2];
+            IPersistent[] newArr = new IPersistent[used + len > arr.length*2 ? used + len : arr.length*2];
             System.arraycopy(arr, 0, newArr, 0, used);
             arr = newArr;
         }
+        modify();
     }
 
     public void add(int i, T obj) { 
@@ -151,13 +140,11 @@ public class LinkImpl<T> implements EmbeddedLink<T>, ICloneable
         System.arraycopy(arr, i, arr, i+1, used-i);
         arr[i] = obj;
         used += 1;
-        modify();
     }
 
     public boolean add(T obj) {
         reserveSpace(1);
         arr[used++] = obj;
-        modify();
         return true;
     }
 
@@ -179,7 +166,6 @@ public class LinkImpl<T> implements EmbeddedLink<T>, ICloneable
         reserveSpace(length);
         System.arraycopy(a, from, arr, used, length);
         used += length;
-        modify();
     }
 
     public boolean addAll(Link<T> link) {        
@@ -189,16 +175,19 @@ public class LinkImpl<T> implements EmbeddedLink<T>, ICloneable
             arr[j] = link.getRaw(i);
         }
         used += n;
-        modify();
         return true;
     }
 
-    public Object[] toRawArray() {
+    public Object[] toArray() {
+        return toPersistentArray();
+    }
+
+    public IPersistent[] toRawArray() {
         return arr;
     }
 
-    public Object[] toArray() {
-        Object[] a = new Object[used];
+    public IPersistent[] toPersistentArray() {
+        IPersistent[] a = new IPersistent[used];
         for (int i = used; --i >= 0;) { 
             a[i] = loadElem(i);
         }
@@ -227,11 +216,12 @@ public class LinkImpl<T> implements EmbeddedLink<T>, ICloneable
     }
 
     public int lastIndexOfObject(Object obj) {
-        Object[] a = arr;
-        int oid = db.getOid(obj);
-        if (oid != 0) { 
+        int oid;
+        IPersistent[] a = arr;
+        if (obj instanceof IPersistent && (oid = ((IPersistent)obj).getOid()) != 0) { 
             for (int i = used; --i >= 0;) {
-                if (db.getOid(a[i]) == oid) {
+                IPersistent elem = a[i];
+                if (elem != null && elem.getOid() == oid) {
                     return i;
                 }
             }
@@ -246,11 +236,12 @@ public class LinkImpl<T> implements EmbeddedLink<T>, ICloneable
     }
     
     public int indexOfObject(Object obj) {
-        Object[] a = arr;
-        int oid = db.getOid(obj);
-        if (oid != 0) { 
+        int oid;
+        IPersistent[] a = arr;
+        if (obj instanceof IPersistent && (oid = ((IPersistent)obj).getOid()) != 0) { 
             for (int i = 0, n = used; i < n; i++) {
-                if (db.getOid(a[i]) == oid) {
+                IPersistent elem = a[i];
+                if (elem != null && elem.getOid() == oid) {
                     return i;
                 }
             }
@@ -299,17 +290,8 @@ public class LinkImpl<T> implements EmbeddedLink<T>, ICloneable
     }
     
     public boolean containsElement(int i, T obj) {
-        Object elem = arr[i];
-        return elem == obj || (elem != null && db.getOid(elem) == db.getOid(obj));
-    }
-
-    public void deallocateMembers() {
-        for (int i = used; --i >= 0;) { 
-            db.deallocate(arr[i]);
-            arr[i] = null;
-        }
-        used = 0;
-        modify();
+        IPersistent elem = arr[i];
+        return elem == obj || (elem != null && elem.getOid() != 0 && elem.getOid() == obj.getOid());
     }
 
     public void clear() { 
@@ -324,7 +306,7 @@ public class LinkImpl<T> implements EmbeddedLink<T>, ICloneable
         return new SubList<T>(this, fromIndex, toIndex);
     }
 
-    static class SubList<T> extends AbstractList<T> implements RandomAccess {
+    static class SubList<T extends IPersistent> extends AbstractList<T> implements RandomAccess {
         private LinkImpl<T> l;
         private int offset;
         private int size;
@@ -465,17 +447,19 @@ public class LinkImpl<T> implements EmbeddedLink<T>, ICloneable
         }
     }
 
-    class LinkIterator implements PersistentIterator, ListIterator<T> { 
+    static class LinkIterator<T extends IPersistent> implements PersistentIterator, ListIterator<T> { 
+        private Link<T> link;
         private int     i;
         private int     last;
 
-        LinkIterator(int index) { 
+        LinkIterator(Link<T> link, int index) { 
+            this.link = link;
             i = index;
             last = -1;
         }
 
         public boolean hasNext() {
-            return i < size();
+            return i < link.size();
         }
 
         public T next() throws NoSuchElementException { 
@@ -483,7 +467,7 @@ public class LinkImpl<T> implements EmbeddedLink<T>, ICloneable
                 throw new NoSuchElementException();
             }
             last = i;
-            return get(i++);
+            return link.get(i++);
         }
 
         public int nextIndex() { 
@@ -498,7 +482,7 @@ public class LinkImpl<T> implements EmbeddedLink<T>, ICloneable
             if (!hasPrevious()) { 
                 throw new NoSuchElementException();
             }
-            return get(last = --i);
+            return link.get(last = --i);
         }
 
 	public int previousIndex() {
@@ -507,16 +491,16 @@ public class LinkImpl<T> implements EmbeddedLink<T>, ICloneable
 
         public int nextOid() throws NoSuchElementException { 
             if (!hasNext()) { 
-                return 0;
+                throw new NoSuchElementException();
             }
-            return db.getOid(getRaw(i++));
+            return link.getRaw(i++).getOid();
         }
 
         public void remove() {
 	    if (last < 0) { 
 		throw new IllegalStateException();
             }
-            removeObject(last);
+            link.removeObject(last);
             if (last < i) { 
                 i -= 1;
             }
@@ -526,11 +510,11 @@ public class LinkImpl<T> implements EmbeddedLink<T>, ICloneable
 	    if (last < 0) { 
 		throw new IllegalStateException();
             }
-            setObject(last, o);
+            link.setObject(last, o);
         }
 
 	public void add(T o) {
-            insert(i++, o);
+            link.insert(i++, o);
             last = -1;
         }
      }
@@ -590,11 +574,11 @@ public class LinkImpl<T> implements EmbeddedLink<T>, ICloneable
     }
 
     public Iterator<T> iterator() { 
-        return new LinkIterator(0);
+        return new LinkIterator<T>(this, 0);
     }
 
     public ListIterator<T> listIterator(int index) {
-        return new LinkIterator(index);
+        return new LinkIterator<T>(this, index);
     }
 
     public ListIterator<T> listIterator() {
@@ -603,9 +587,9 @@ public class LinkImpl<T> implements EmbeddedLink<T>, ICloneable
 
     private final T loadElem(int i) 
     {
-        Object elem = arr[i];
-        if (elem != null && db.isRaw(elem)) { 
-            elem = db.lookupObject(db.getOid(elem), null);
+        IPersistent elem = arr[i];
+        if (elem != null && elem.isRaw()) { 
+            elem = ((StorageImpl)elem.getStorage()).lookupObject(elem.getOid(), null);
         }
         return (T)elem;
     }
@@ -615,38 +599,34 @@ public class LinkImpl<T> implements EmbeddedLink<T>, ICloneable
         return query.select(cls, iterator(), predicate);
     }
 
-    public void setOwner(Object obj) { 
+    public void setOwner(IPersistent obj) { 
         owner = obj;
     }
 
-    public Object getOwner() { 
+    public IPersistent getOwner() { 
         return owner;
     }
 
     LinkImpl() {}
 
-    public LinkImpl(StorageImpl db, int initSize) {
-        this.db = db;
-        arr = new Object[initSize];
+    public LinkImpl(int initSize) {
+        arr = new IPersistent[initSize];
     }
 
-    public LinkImpl(StorageImpl db, T[] arr, Object owner) { 
-        this.db = db;
+    public LinkImpl(T[] arr, IPersistent owner) { 
         this.arr = arr;
         this.owner = owner;
         used = arr.length;
     }
 
-    public LinkImpl(StorageImpl db, Link link, Object owner) { 
-        this.db = db;
+    public LinkImpl(Link link, IPersistent owner) { 
         used = link.size();
-        arr = new Object[used];
+        arr = new IPersistent[used];
         System.arraycopy(arr, 0, link.toRawArray(), 0, used);
         this.owner = owner;
     }
 
-    Object[] arr;
-    int      used;
-    transient Object owner;
-    transient StorageImpl db;
+    IPersistent[] arr;
+    int           used;
+    transient IPersistent owner;
 }

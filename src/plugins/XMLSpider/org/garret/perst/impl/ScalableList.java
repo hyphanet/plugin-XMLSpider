@@ -1,15 +1,9 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
+import plugins.XMLSpider.org.garret.perst.*;
 
-import plugins.XMLSpider.org.garret.perst.IPersistentList;
-import plugins.XMLSpider.org.garret.perst.Link;
-import plugins.XMLSpider.org.garret.perst.PersistentCollection;
-import plugins.XMLSpider.org.garret.perst.Storage;
+import  java.util.*;
 
-class ScalableList<E> extends PersistentCollection<E> implements IPersistentList<E>
+class ScalableList<E extends IPersistent> extends PersistentCollection<E> implements IPersistentList<E>
 {
     Link<E>            small;
     IPersistentList<E> large;
@@ -44,7 +38,11 @@ class ScalableList<E> extends PersistentCollection<E> implements IPersistentList
     }
 
     public boolean contains(Object o) {         
-        return small != null ? small.contains(o) : large.contains(o);
+        if (o instanceof IPersistent) { 
+            IPersistent p = (IPersistent)o;
+            return small != null ? small.contains(p) : large.contains(p);
+        }
+        return false;
     }
 
     public <T> T[] toArray(T a[]) { 

@@ -1,17 +1,10 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import java.lang.reflect.Array;
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Date;
+import plugins.XMLSpider.org.garret.perst.*;
 
-import plugins.XMLSpider.org.garret.perst.Assert;
-import plugins.XMLSpider.org.garret.perst.FieldIndex;
-import plugins.XMLSpider.org.garret.perst.IterableIterator;
-import plugins.XMLSpider.org.garret.perst.Key;
-import plugins.XMLSpider.org.garret.perst.Query;
-import plugins.XMLSpider.org.garret.perst.StorageError;
+import java.lang.reflect.*;
+import java.util.*;
 
-class BtreeFieldIndex<T> extends Btree<T> implements FieldIndex<T> { 
+class BtreeFieldIndex<T extends IPersistent> extends Btree<T> implements FieldIndex<T> { 
     String className;
     String fieldName;
     long   autoincCount;
@@ -60,7 +53,7 @@ class BtreeFieldIndex<T> extends Btree<T> implements FieldIndex<T> {
         return fld.getType().getEnumConstants()[val];
     }
 
-    private Key extractKey(Object obj) { 
+    private Key extractKey(IPersistent obj) { 
         try { 
             Field f = fld;
             Key key = null;
@@ -82,8 +75,12 @@ class BtreeFieldIndex<T> extends Btree<T> implements FieldIndex<T> {
                 break;            
               case ClassDescriptor.tpObject:
                 {
-                    Object val = f.get(obj);
-                    key = new Key(val, getStorage().makePersistent(val), true);
+                    IPersistent ptr = (IPersistent)f.get(obj);
+                    if (ptr != null && !ptr.isPersistent())
+                    {
+                        getStorage().makePersistent(ptr);
+                    }
+                    key = new Key(ptr);
                     break;
                 }
               case ClassDescriptor.tpLong:
@@ -125,8 +122,8 @@ class BtreeFieldIndex<T> extends Btree<T> implements FieldIndex<T> {
          return super.set(extractKey(obj), obj);
     }
 
-    public boolean remove(Object obj) {
-        return super.removeIfExists(extractKey(obj), obj);
+    public void remove(T obj) {
+        super.remove(extractKey(obj), obj);
     }
 
     public boolean containsObject(T obj) {
@@ -134,7 +131,7 @@ class BtreeFieldIndex<T> extends Btree<T> implements FieldIndex<T> {
         if (unique) { 
             return super.get(key) != null;
         } else { 
-            Object[] mbrs = get(key, key);
+            IPersistent[] mbrs = get(key, key);
             for (int i = 0; i < mbrs.length; i++) { 
                 if (mbrs[i] == obj) { 
                     return true;
@@ -144,12 +141,12 @@ class BtreeFieldIndex<T> extends Btree<T> implements FieldIndex<T> {
         }
     }
 
-    public boolean contains(Object obj) {
+    public boolean contains(T obj) {
         Key key = extractKey(obj);
         if (unique) { 
             return super.get(key) != null;
         } else { 
-            Object[] mbrs = get(key, key);
+            IPersistent[] mbrs = get(key, key);
             for (int i = 0; i < mbrs.length; i++) { 
                 if (mbrs[i].equals(obj)) { 
                     return true;
@@ -178,7 +175,7 @@ class BtreeFieldIndex<T> extends Btree<T> implements FieldIndex<T> {
             throw new StorageError(StorageError.ACCESS_VIOLATION, x);
         }
         autoincCount += 1;
-        getStorage().modify(obj);
+        obj.modify();
         super.insert(key, obj, false);
     }
 
@@ -200,7 +197,7 @@ class BtreeFieldIndex<T> extends Btree<T> implements FieldIndex<T> {
         return (T[])list.toArray((T[])Array.newInstance(cls, list.size()));
     }
 
-    public T[] toArray() {
+    public T[] toPersistentArray() {
         T[] arr = (T[])Array.newInstance(cls, nElems);
         if (root != 0) { 
             BtreePage.traverseForward((StorageImpl)getStorage(), root, type, height, arr, 0);
@@ -223,7 +220,7 @@ class BtreeFieldIndex<T> extends Btree<T> implements FieldIndex<T> {
     }
 }
 
-class BtreeCaseInsensitiveFieldIndex<T>  extends BtreeFieldIndex<T> {    
+class BtreeCaseInsensitiveFieldIndex<T extends IPersistent>  extends BtreeFieldIndex<T> {    
     BtreeCaseInsensitiveFieldIndex() {}
 
     BtreeCaseInsensitiveFieldIndex(Class cls, String fieldName, boolean unique) {

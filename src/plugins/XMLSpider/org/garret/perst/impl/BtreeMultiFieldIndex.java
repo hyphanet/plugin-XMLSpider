@@ -1,18 +1,10 @@
 package plugins.XMLSpider.org.garret.perst.impl;
-import java.lang.reflect.Array;
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Map;
+import plugins.XMLSpider.org.garret.perst.*;
 
-import plugins.XMLSpider.org.garret.perst.Assert;
-import plugins.XMLSpider.org.garret.perst.FieldIndex;
-import plugins.XMLSpider.org.garret.perst.IterableIterator;
-import plugins.XMLSpider.org.garret.perst.Key;
-import plugins.XMLSpider.org.garret.perst.Query;
-import plugins.XMLSpider.org.garret.perst.StorageError;
+import java.lang.reflect.*;
+import java.util.*;
 
-class BtreeMultiFieldIndex<T> extends Btree<T> implements FieldIndex<T> { 
+class BtreeMultiFieldIndex<T extends IPersistent> extends Btree<T> implements FieldIndex<T> { 
     String   className;
     String[] fieldName;
     int[]    types;
@@ -184,7 +176,7 @@ class BtreeMultiFieldIndex<T> extends Btree<T> implements FieldIndex<T> {
                 v = new Byte(data[offs++]);
                 break;
               case ClassDescriptor.tpShort:
-                v = new Short(Bytes.unpack2(data, offs));
+                v = Short.valueOf(Bytes.unpack2(data, offs));
                 offs += 2;
                 break;
               case ClassDescriptor.tpChar:
@@ -255,7 +247,7 @@ class BtreeMultiFieldIndex<T> extends Btree<T> implements FieldIndex<T> {
     }
 
 
-    private Key extractKey(Object obj) { 
+    private Key extractKey(IPersistent obj) { 
         try { 
             ByteBuffer buf = new ByteBuffer();
             int dst = 0;
@@ -287,9 +279,17 @@ class BtreeMultiFieldIndex<T> extends Btree<T> implements FieldIndex<T> {
                     break;
                   case ClassDescriptor.tpObject:
                   {
-                      Object p = f.get(obj);
+                      IPersistent p = (IPersistent)f.get(obj);
                       buf.extend(dst+4);
-                      Bytes.pack4(buf.arr, dst, getStorage().makePersistent(p));
+                      if (p != null) { 
+                          if (!p.isPersistent())
+                          {
+                              getStorage().makePersistent(p);
+                          }                        
+                          Bytes.pack4(buf.arr, dst, p.getOid());
+                      } else { 
+                          Bytes.pack4(buf.arr, dst, 0);
+                      }
                       dst += 4;
                       break;
                   }
@@ -406,7 +406,7 @@ class BtreeMultiFieldIndex<T> extends Btree<T> implements FieldIndex<T> {
                 break;
               case ClassDescriptor.tpObject:
                 buf.extend(dst+4);
-                Bytes.pack4(buf.arr, dst, getStorage().getOid(v));
+                Bytes.pack4(buf.arr, dst, v == null ? 0 : ((IPersistent)v).getOid());
                 dst += 4;
                 break;
               case ClassDescriptor.tpLong:
@@ -486,8 +486,8 @@ class BtreeMultiFieldIndex<T> extends Btree<T> implements FieldIndex<T> {
          return super.set(extractKey(obj), obj);
     }
 
-    public boolean remove(Object obj) {
-        return super.removeIfExists(extractKey(obj), obj);
+    public void remove(T obj) {
+        super.remove(extractKey(obj), obj);
     }
 
     public T remove(Key key) {
@@ -499,7 +499,7 @@ class BtreeMultiFieldIndex<T> extends Btree<T> implements FieldIndex<T> {
         if (unique) { 
             return super.get(key) != null;
         } else { 
-            Object[] mbrs = get(key, key);
+            IPersistent[] mbrs = get(key, key);
             for (int i = 0; i < mbrs.length; i++) { 
                 if (mbrs[i] == obj) { 
                     return true;
@@ -509,12 +509,12 @@ class BtreeMultiFieldIndex<T> extends Btree<T> implements FieldIndex<T> {
         }
     }
 
-    public boolean contains(Object obj) {
+    public boolean contains(T obj) {
         Key key = extractKey(obj);
         if (unique) { 
             return super.get(key) != null;
         } else { 
-            Object[] mbrs = get(key, key);
+            IPersistent[] mbrs = get(key, key);
             for (int i = 0; i < mbrs.length; i++) { 
                 if (mbrs[i].equals(obj)) { 
                     return true;
@@ -546,7 +546,7 @@ class BtreeMultiFieldIndex<T> extends Btree<T> implements FieldIndex<T> {
     }
         
 
-    public T[] toArray() {
+    public T[] toPersistentArray() {
         T[] arr = (T[])Array.newInstance(cls, nElems);
         if (root != 0) { 
             BtreePage.traverseForward((StorageImpl)getStorage(), root, type, height, arr, 0);
@@ -582,7 +582,7 @@ class BtreeMultiFieldIndex<T> extends Btree<T> implements FieldIndex<T> {
 }
 
 
-class BtreeCaseInsensitiveMultiFieldIndex<T> extends BtreeMultiFieldIndex<T> {    
+class BtreeCaseInsensitiveMultiFieldIndex<T extends IPersistent> extends BtreeMultiFieldIndex<T> {    
     BtreeCaseInsensitiveMultiFieldIndex() {}
 
     BtreeCaseInsensitiveMultiFieldIndex(Class cls, String[] fieldNames, boolean unique) {

@@ -1,10 +1,8 @@
 package plugins.XMLSpider.org.garret.perst;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Enumeration;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
+import java.io.*;
+import java.util.*;
+import java.util.zip.*;
 
 /**
  * Compressed read-only database file. You should create database using normal file (OSFile).

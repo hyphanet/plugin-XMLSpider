@@ -1,20 +1,10 @@
 package plugins.XMLSpider.org.garret.perst.impl;
 
-import java.util.ArrayList;
-import java.util.ConcurrentModificationException;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.NoSuchElementException;
+import plugins.XMLSpider.org.garret.perst.*;
 
-import plugins.XMLSpider.org.garret.perst.IterableIterator;
-import plugins.XMLSpider.org.garret.perst.PersistentCollection;
-import plugins.XMLSpider.org.garret.perst.PersistentIterator;
-import plugins.XMLSpider.org.garret.perst.RectangleR2;
-import plugins.XMLSpider.org.garret.perst.SpatialIndexR2;
-import plugins.XMLSpider.org.garret.perst.Storage;
-import plugins.XMLSpider.org.garret.perst.StorageError;
+import java.util.*;
 
-public class RtreeR2<T> extends PersistentCollection<T> implements SpatialIndexR2<T> {
+public class RtreeR2<T extends IPersistent> extends PersistentCollection<T> implements SpatialIndexR2<T> {
     private int           height;
     private int           n;
     private RtreeR2Page   root;
@@ -26,14 +16,13 @@ public class RtreeR2<T> extends PersistentCollection<T> implements SpatialIndexR
     }
 
     public void put(RectangleR2 r, T obj) {
-        Storage db = getStorage();
         if (root == null) { 
-            root = new RtreeR2Page(db, obj, r);
+            root = new RtreeR2Page(getStorage(), obj, r);
             height = 1;
         } else { 
-            RtreeR2Page p = root.insert(db, r, obj, height); 
+            RtreeR2Page p = root.insert(getStorage(), r, obj, height); 
             if (p != null) {
-                root = new RtreeR2Page(db, root, p);
+                root = new RtreeR2Page(getStorage(), root, p);
                 height += 1;
             }
         }
@@ -79,12 +68,12 @@ public class RtreeR2<T> extends PersistentCollection<T> implements SpatialIndexR
         modify();
     }
     
-    public Object[] get(RectangleR2 r) {
+    public IPersistent[] get(RectangleR2 r) {
         ArrayList result = new ArrayList();
         if (root != null) { 
             root.find(r, result, height);
         }
-        return result.toArray();
+        return (IPersistent[])result.toArray(new IPersistent[result.size()]);
     }
 
     public ArrayList<T> getList(RectangleR2 r) { 
@@ -167,9 +156,9 @@ public class RtreeR2<T> extends PersistentCollection<T> implements SpatialIndexR
  
         public int nextOid() {
             if (!hasNext()) { 
-                return 0;
+                throw new NoSuchElementException();
             }
-            int oid = getStorage().getOid(pageStack[height-1].branch.getRaw(posStack[height-1]));
+            int oid = pageStack[height-1].branch.getRaw(posStack[height-1]).getOid();
             if (!gotoNextItem(height-1)) { 
                 pageStack = null;
                 posStack = null;

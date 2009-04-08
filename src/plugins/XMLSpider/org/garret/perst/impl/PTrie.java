@@ -1,14 +1,10 @@
 package plugins.XMLSpider.org.garret.perst.impl;
 
-import java.util.ArrayList;
-import java.util.Iterator;
+import plugins.XMLSpider.org.garret.perst.*;
 
-import plugins.XMLSpider.org.garret.perst.PatriciaTrie;
-import plugins.XMLSpider.org.garret.perst.PatriciaTrieKey;
-import plugins.XMLSpider.org.garret.perst.Persistent;
-import plugins.XMLSpider.org.garret.perst.PersistentCollection;
+import java.util.*;
 
-class PTrie<T> extends PersistentCollection<T> implements PatriciaTrie<T> 
+class PTrie<T extends IPersistent> extends PersistentCollection<T> implements PatriciaTrie<T> 
 { 
     private PTrieNode<T> rootZero;
     private PTrieNode<T> rootOne;
@@ -37,7 +33,7 @@ class PTrie<T> extends PersistentCollection<T> implements PatriciaTrie<T>
         return elements().iterator();
     }
     
-    private static <E> void fill(ArrayList<E> list, PTrieNode<E> node) { 
+    private static <E extends IPersistent> void fill(ArrayList<E> list, PTrieNode<E> node) { 
         if (node != null) {
             list.add(node.obj);
             fill(list, node.childZero);
@@ -165,7 +161,7 @@ class PTrie<T> extends PersistentCollection<T> implements PatriciaTrie<T>
         count = 0;
     }
 
-    static class PTrieNode<T> extends Persistent 
+    static class PTrieNode<T extends IPersistent> extends Persistent 
     {
         long         key;
         int          keyLength;

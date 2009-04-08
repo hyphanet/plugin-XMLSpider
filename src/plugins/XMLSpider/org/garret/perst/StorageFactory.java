@@ -1,8 +1,5 @@
 package plugins.XMLSpider.org.garret.perst;
-import plugins.XMLSpider.org.garret.perst.impl.ReplicationDynamicSlaveStorageImpl;
-import plugins.XMLSpider.org.garret.perst.impl.ReplicationMasterStorageImpl;
-import plugins.XMLSpider.org.garret.perst.impl.ReplicationStaticSlaveStorageImpl;
-import plugins.XMLSpider.org.garret.perst.impl.StorageImpl;
+import plugins.XMLSpider.org.garret.perst.impl.*;
 
 /**
  * Storage factory

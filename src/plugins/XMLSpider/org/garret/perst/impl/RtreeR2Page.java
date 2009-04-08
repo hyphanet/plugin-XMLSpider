@@ -1,12 +1,8 @@
 package plugins.XMLSpider.org.garret.perst.impl;
 
-import java.util.ArrayList;
+import plugins.XMLSpider.org.garret.perst.*;
 
-import plugins.XMLSpider.org.garret.perst.Assert;
-import plugins.XMLSpider.org.garret.perst.Link;
-import plugins.XMLSpider.org.garret.perst.Persistent;
-import plugins.XMLSpider.org.garret.perst.RectangleR2;
-import plugins.XMLSpider.org.garret.perst.Storage;
+import java.util.ArrayList;
 
 public class RtreeR2Page extends Persistent { 
     static final int card = (Page.pageSize-ObjectHeader.sizeof-4*3)/(8*4+4);
@@ -16,7 +12,7 @@ public class RtreeR2Page extends Persistent {
     RectangleR2[] b;
     Link          branch;
 
-    RtreeR2Page(Storage storage, Object obj, RectangleR2 r) {
+    RtreeR2Page(Storage storage, IPersistent obj, RectangleR2 r) {
         branch = storage.createLink(card);
         branch.setSize(card);
         b = new RectangleR2[card]; 
@@ -41,7 +37,7 @@ public class RtreeR2Page extends Persistent {
 
     RtreeR2Page() {}
 
-    RtreeR2Page insert(Storage storage, RectangleR2 r, Object obj, int level) {
+    RtreeR2Page insert(Storage storage, RectangleR2 r, IPersistent obj, int level) {
         modify();
         if (--level != 0) { 
             // not leaf page
@@ -76,7 +72,7 @@ public class RtreeR2Page extends Persistent {
         }
     }
 
-    int remove(RectangleR2 r, Object obj, int level, ArrayList reinsertList) {
+    int remove(RectangleR2 r, IPersistent obj, int level, ArrayList reinsertList) {
         if (--level != 0) { 
             for (int i = 0; i < n; i++) { 
                 if (r.intersects(b[i])) { 
@@ -133,7 +129,7 @@ public class RtreeR2Page extends Persistent {
         deallocate();
     }
     
-    final void setBranch(int i, RectangleR2 r, Object obj) { 
+    final void setBranch(int i, RectangleR2 r, IPersistent obj) { 
         b[i] = r;
         branch.setObject(i, obj);
     }
@@ -146,7 +142,7 @@ public class RtreeR2Page extends Persistent {
         modify();
     }
 
-    final RtreeR2Page addBranch(Storage storage, RectangleR2 r, Object obj) { 
+    final RtreeR2Page addBranch(Storage storage, RectangleR2 r, IPersistent obj) { 
         if (n < card) { 
             setBranch(n++, r, obj);
             return null;
@@ -155,7 +151,7 @@ public class RtreeR2Page extends Persistent {
         }
     }
 
-    final RtreeR2Page splitPage(Storage storage, RectangleR2 r, Object obj) { 
+    final RtreeR2Page splitPage(Storage storage, RectangleR2 r, IPersistent obj) { 
         int i, j, seed0 = 0, seed1 = 0;
         double[] rectArea = new double[card+1];
         double   waste;

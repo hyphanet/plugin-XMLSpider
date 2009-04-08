@@ -1,9 +1,8 @@
 package plugins.XMLSpider.org.garret.perst.fulltext;
 
-import java.io.Reader;
+import plugins.XMLSpider.org.garret.perst.*;
 
-import plugins.XMLSpider.org.garret.perst.IPersistent;
-import plugins.XMLSpider.org.garret.perst.IResource;
+import java.io.Reader;
 
 
 /**
@@ -27,18 +26,13 @@ public interface FullTextIndex extends IPersistent, IResource
      * @param text document text to be indexed
      * @param language language of the text
      */
-    void add(Object obj, Reader text, String language);
+    void add(IPersistent obj, Reader text, String language);
 
     /**
      * Delete document from the index
      * @param obj document to be deleted
      */
-    void delete(Object obj);
-
-    /**
-     * Remove all elements from full text index
-     */
-    void clear();
+    void delete(IPersistent obj);
 
     /**
      * Parse and execute full text search query

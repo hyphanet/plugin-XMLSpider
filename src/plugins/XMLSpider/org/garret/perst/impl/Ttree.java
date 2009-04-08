@@ -1,19 +1,11 @@
 package plugins.XMLSpider.org.garret.perst.impl;
 
+import plugins.XMLSpider.org.garret.perst.*;
+
 import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
+import java.util.*;
 
-import plugins.XMLSpider.org.garret.perst.IterableIterator;
-import plugins.XMLSpider.org.garret.perst.PersistentCollection;
-import plugins.XMLSpider.org.garret.perst.PersistentComparator;
-import plugins.XMLSpider.org.garret.perst.PersistentIterator;
-import plugins.XMLSpider.org.garret.perst.SortedCollection;
-import plugins.XMLSpider.org.garret.perst.Storage;
-import plugins.XMLSpider.org.garret.perst.StorageError;
-
-public class Ttree<T> extends PersistentCollection<T> implements SortedCollection<T> {
+public class Ttree<T extends IPersistent> extends PersistentCollection<T> implements SortedCollection<T> {
     private PersistentComparator<T> comparator;
     private boolean                 unique;
     private TtreePage               root;
@@ -21,8 +13,7 @@ public class Ttree<T> extends PersistentCollection<T> implements SortedCollectio
     
     private Ttree() {} 
 
-    Ttree(Storage db, PersistentComparator<T> comparator, boolean unique) { 
-        super(db);
+    Ttree(PersistentComparator<T> comparator, boolean unique) { 
         this.comparator = comparator;
         this.unique = unique;
     }
@@ -71,12 +62,16 @@ public class Ttree<T> extends PersistentCollection<T> implements SortedCollectio
     }
 
 
-    public Object[] get(Object from, Object till) { 
-        return getList(from, till).toArray();
+    public IPersistent[] get(Object from, Object till) { 
+        ArrayList<T> list = getList(from, till);
+        return (IPersistent[])list.toArray(new IPersistent[list.size()]);
+
     }
 
-    public Object[] get(Object from, boolean fromInclusive, Object till, boolean tillInclusive) { 
-        return getList(from, fromInclusive, till, tillInclusive).toArray();
+    public IPersistent[] get(Object from, boolean fromInclusive, Object till, boolean tillInclusive) { 
+        ArrayList<T> list = getList(from, fromInclusive, till, tillInclusive);
+        return (IPersistent[])list.toArray(new IPersistent[list.size()]);
+
     }
 
     /**
@@ -89,7 +84,7 @@ public class Ttree<T> extends PersistentCollection<T> implements SortedCollectio
     public boolean add(T obj) { 
         TtreePage newRoot;
         if (root == null) { 
-            newRoot = new TtreePage(getStorage(), obj);
+            newRoot = new TtreePage(obj);
         } else { 
             TtreePage.PageReference ref = new TtreePage.PageReference(root);
             if (root.insert(comparator, obj, unique, ref) == TtreePage.NOT_UNIQUE) { 
@@ -112,7 +107,7 @@ public class Ttree<T> extends PersistentCollection<T> implements SortedCollectio
         return (root != null && member != null)  ? root.containsObject(comparator, member) : false;
     }    
     
-    public boolean contains(Object member) {
+    public boolean contains(T member) {
         return (root != null && member != null) ? root.contains(comparator, member) : false;
     } 
        
@@ -124,19 +119,19 @@ public class Ttree<T> extends PersistentCollection<T> implements SortedCollectio
     /**
      * Remove member from collection
      * @param obj member to be removed
-     * @return <code>true</code> in case of success, <code>false</code> if there is no such key in the collection
+     * @exception StorageError(StorageError.KEY_NOT_FOUND) exception if there is no such key in the collection
      */
-    public boolean remove(Object obj) {
-        if (root != null) {
-            TtreePage.PageReference ref = new TtreePage.PageReference(root);
-            if (root.remove(comparator, obj, ref) != TtreePage.NOT_FOUND) {                         
-                root = ref.pg;
-                nMembers -= 1;        
-                modify();
-                return true;
-            }
+    public void remove(T obj) {
+        if (root == null) {
+            throw new StorageError(StorageError.KEY_NOT_FOUND);
         }
-        return false;
+        TtreePage.PageReference ref = new TtreePage.PageReference(root);
+        if (root.remove(comparator, obj, ref) == TtreePage.NOT_FOUND) {             
+            throw new StorageError(StorageError.KEY_NOT_FOUND);
+        }
+        root = ref.pg;
+        nMembers -= 1;        
+        modify();
     }
 
     /**
@@ -173,15 +168,19 @@ public class Ttree<T> extends PersistentCollection<T> implements SortedCollectio
      * Get all objects in the index as array ordered by index key.
      * @return array of objects in the index ordered by key value
      */
-    static final Object[] emptySelection = new Object[0];
+    static final IPersistent[] emptySelection = new IPersistent[0];
 
-    public Object[] toArray() {
+    public IPersistent[] toPersistentArray() {
         if (root == null) { 
             return emptySelection;
         }
-        Object[] arr = new Object[nMembers];
+        IPersistent[] arr = new IPersistent[nMembers];
         root.toArray(arr, 0);
         return arr;
+    }
+
+    public Object[] toArray() {
+        return toPersistentArray();
     }
 
     /**
@@ -204,7 +203,7 @@ public class Ttree<T> extends PersistentCollection<T> implements SortedCollectio
             arr = (E[])Array.newInstance(arr.getClass().getComponentType(), nMembers);
         }
         if (root != null) { 
-            root.toArray(arr, 0);
+            root.toArray((IPersistent[])arr, 0);
         }
         if (arr.length > nMembers) { 
             arr[nMembers] = null;
@@ -212,12 +211,14 @@ public class Ttree<T> extends PersistentCollection<T> implements SortedCollectio
         return arr;
     }
 
-    class TtreeIterator<T> extends IterableIterator<T> implements PersistentIterator { 
+    static class TtreeIterator<T extends IPersistent> extends IterableIterator<T> implements PersistentIterator { 
         int           i;
         ArrayList     list;
         boolean       removed;
+        Ttree         tree;
 
-        TtreeIterator(ArrayList list) { 
+        TtreeIterator(Ttree tree, ArrayList list) { 
+            this.tree = tree;
             this.list = list;
             i = -1;
         }
@@ -231,18 +232,14 @@ public class Ttree<T> extends PersistentCollection<T> implements SortedCollectio
         }
         
         public int nextOid() { 
-            if (i+1 >= list.size()) { 
-                return 0;
-            }
-            removed = false;
-            return getStorage().getOid(list.get(++i));
+            return ((IPersistent)next()).getOid();
         }
         
         public void remove() { 
             if (removed || i < 0 || i >= list.size()) { 
                 throw new IllegalStateException();
             }
-            Ttree.this.remove(list.get(i));
+            tree.remove((IPersistent)list.get(i));
             list.remove(i--);
             removed = true;
         }
@@ -265,7 +262,7 @@ public class Ttree<T> extends PersistentCollection<T> implements SortedCollectio
         if (root != null) { 
             root.find(comparator, from, fromInclusive ? 1 : 0, till, tillInclusive ? 1 : 0, list);
         }            
-        return new TtreeIterator(list);
+        return new TtreeIterator<T>(this, list);
     }
 
 }

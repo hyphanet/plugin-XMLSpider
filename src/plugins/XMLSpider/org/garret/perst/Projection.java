@@ -1,9 +1,7 @@
 package plugins.XMLSpider.org.garret.perst;
 
+import java.util.*;
 import java.lang.reflect.Field;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
 
 /**
  * Class use to project selected objects using relation field. 
@@ -11,7 +9,7 @@ import java.util.Iterator;
  * value of specified field (of IPersistent, array of IPersistent, Link or Relation type)
  * is inspected and all referenced object for projection (duplicate values are eliminated)
  */
-public class Projection<From, To> extends HashSet<To> { 
+public class Projection<From extends IPersistent, To extends IPersistent> extends HashSet<To> { 
     /**
      * Constructor of projection specified by class and field name of projected objects
      * @param type base class for selected objects
@@ -87,6 +85,14 @@ public class Projection<From, To> extends HashSet<To> {
      */
     public void join(Projection<From, To> prj) { 
         retainAll(prj);
+    }
+
+    /**
+     * Get result of preceding project and join operations
+     * @return array of objects
+     */
+    public IPersistent[] toPersistentArray() { 
+        return (IPersistent[])toArray(new IPersistent[size()]);
     }
 
     /**

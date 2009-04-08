@@ -1,9 +1,6 @@
 package plugins.XMLSpider.org.garret.perst;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.lang.annotation.*;
 
 /**
   * Annotation for marking indexable fields used by Database class to create table descriptors. 

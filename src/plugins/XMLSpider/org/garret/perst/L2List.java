@@ -1,8 +1,6 @@
 package plugins.XMLSpider.org.garret.perst;
 
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
+import java.util.*;
 
 import plugins.XMLSpider.org.garret.perst.impl.QueryImpl;
 
@@ -38,14 +36,6 @@ public class L2List extends L2ListElem implements ITable {
         next = prev = this;
         nElems = 0;
         updateCounter += 1;
-    }
-
-    public void deallocateMembers() {
-        Iterator i = iterator();
-        while (i.hasNext()) { 
-            ((IPersistent)i.next()).deallocate();
-        }
-        clear();
     }
 
     /**
@@ -160,11 +150,7 @@ public class L2List extends L2ListElem implements ITable {
         }
 
         public int nextOid() { 
-            if (!hasNext()) { 
-                return 0;
-            }
-            curr = curr.next;
-            return curr.getOid();
+            return ((IPersistent)next()).getOid();
         }
 
         public boolean hasNext() { 
