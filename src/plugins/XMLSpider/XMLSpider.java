@@ -92,7 +92,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 */
 	protected Set<String> allowedMIMETypes;	
 
-	static int version = 35;
+	static int version = 36;
 	public static final String pluginName = "XML spider " + version;
 
 	public String getVersion() {
