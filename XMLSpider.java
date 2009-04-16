@@ -690,7 +690,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 	}
 
-	public void onFoundEdition(long l, USK key, ObjectContainer container, ClientContext context, boolean metadata, short codec, byte[] data){
+	public void onFoundEdition(long l, USK key, ObjectContainer container, ClientContext context, boolean metadata,
+            short codec, byte[] data, boolean newKnownGood, boolean newSlotToo) {
 		FreenetURI uri = key.getURI();
 		/*-
 		 * FIXME this code don't make sense 
