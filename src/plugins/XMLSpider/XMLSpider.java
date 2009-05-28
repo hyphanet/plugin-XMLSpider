@@ -74,7 +74,7 @@ import freenet.support.io.NullBucketFactory;
  *  @author swati goyal
  *  
  */
-public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadless, FredPluginVersioned, FredPluginRealVersioned, FredPluginL10n, USKCallback, RequestClient {
+public class XMLSpider implements FredPlugin, FredPluginThreadless, FredPluginVersioned, FredPluginRealVersioned, FredPluginL10n, USKCallback, RequestClient {
 	public Config getConfig() {
 		return getRoot().getConfig();
 	}
@@ -92,7 +92,7 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	 */
 	protected Set<String> allowedMIMETypes;	
 
-	static int version = 36;
+	static int version = 37;
 	public static final String pluginName = "XML spider " + version;
 
 	public String getVersion() {
@@ -549,6 +549,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		}
 		try { callbackExecutor.awaitTermination(30, TimeUnit.SECONDS); } catch (InterruptedException e) {}
 		try { db.close(); } catch (Exception e) {}
+		
+		webInterface.unload();
 
 		Logger.normal(this, "XMLSpider terminated");
 	}
@@ -588,7 +590,8 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 		db = initDB();
 
 		indexWriter = new IndexWriter();
-		webInterface = new WebInterface(this);
+		webInterface = new WebInterface(this, pr.getHLSimpleClient(), pr.getToadletContainer());
+		webInterface.load();
 
 		FreenetURI[] initialURIs = core.getBookmarkURIs();
 		for (int i = 0; i < initialURIs.length; i++)
@@ -598,14 +601,6 @@ public class XMLSpider implements FredPlugin, FredPluginHTTP, FredPluginThreadle
 	}
 
 	private WebInterface webInterface;
-
-	public String handleHTTPGet(HTTPRequest request) throws PluginHTTPException {
-		return webInterface.handleHTTPGet(request);
-	}
-
-	public String handleHTTPPost(HTTPRequest request) throws PluginHTTPException {
-		return webInterface.handleHTTPPost(request);
-	}
 
 	/**
 	 * creates the callback object for each page.

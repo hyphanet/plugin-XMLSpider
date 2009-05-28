@@ -14,6 +14,7 @@ import plugins.XMLSpider.db.Config;
 import plugins.XMLSpider.db.Page;
 import plugins.XMLSpider.db.PerstRoot;
 import plugins.XMLSpider.db.Status;
+import freenet.clients.http.InfoboxNode;
 import freenet.clients.http.PageMaker;
 import freenet.keys.FreenetURI;
 import freenet.pluginmanager.PluginRespirator;
@@ -54,9 +55,8 @@ class MainPage implements WebPage {
 			synchronized (this) {
 				xmlSpider.scheduleMakeIndex();
 
-				HTMLNode infobox = pageMaker.getInfobox("infobox infobox-success", "Scheduled Creating Index");
-				infobox.addChild("#", "Index will start create soon.");
-				contentNode.addChild(infobox);
+				pageMaker.getInfobox("infobox infobox-success", "Scheduled Creating Index", contentNode).
+					addChild("#", "Index will start create soon.");
 			}
 		}
 
@@ -67,13 +67,11 @@ class MainPage implements WebPage {
 				FreenetURI uri = new FreenetURI(addURI);
 				xmlSpider.queueURI(uri, "manually", true);
 
-				HTMLNode infobox = pageMaker.getInfobox("infobox infobox-success", "URI Added");
-				infobox.addChild("#", "Added " + uri);
-				contentNode.addChild(infobox);
+				pageMaker.getInfobox("infobox infobox-success", "URI Added", contentNode).
+					addChild("#", "Added " + uri);
 			} catch (Exception e) {
-				HTMLNode infobox = pageMaker.getInfobox("infobox infobox-error", "Error adding URI");
-				infobox.addChild("#", e.getMessage());
-				contentNode.addChild(infobox);
+				pageMaker.getInfobox("infobox infobox-error", "Error adding URI", contentNode).
+					addChild("#", e.getMessage());
 				Logger.normal(this, "Manual added URI cause exception", e);
 			}
 			xmlSpider.startSomeRequests();
@@ -99,8 +97,7 @@ class MainPage implements WebPage {
 
 		// Column 1
 		HTMLNode nextTableCell = overviewTableRow.addChild("td", "class", "first");
-		HTMLNode statusBox = pageMaker.getInfobox("Spider Status");
-		HTMLNode statusContent = pageMaker.getContentNode(statusBox);
+		HTMLNode statusContent = pageMaker.getInfobox("#", "Spider Status", nextTableCell);
 		statusContent.addChild("#", "Running Request: " + runningFetch.size() + "/"
 		        + config.getMaxParallelRequests());
 		statusContent.addChild("br");
@@ -126,20 +123,16 @@ class MainPage implements WebPage {
 		statusContent.addChild("#", "Last Written: "
 		        + (xmlSpider.getIndexWriter().tProducedIndex == 0 ? "NEVER" : new Date(
 		                xmlSpider.getIndexWriter().tProducedIndex).toString()));
-		nextTableCell.addChild(statusBox);
 
 		// Column 2
 		nextTableCell = overviewTableRow.addChild("td", "class", "second");
-		HTMLNode mainBox = pageMaker.getInfobox("Main");
-		HTMLNode mainContent = pageMaker.getContentNode(mainBox);
+		HTMLNode mainContent = pageMaker.getInfobox("#", "Main", nextTableCell);
 		HTMLNode addForm = pr.addFormChild(mainContent, "plugins.XMLSpider.XMLSpider", "addForm");
 		addForm.addChild("label", "for", "addURI", "Add URI:");
 		addForm.addChild("input", new String[] { "name", "style" }, new String[] { "addURI", "width: 20em;" });
 		addForm.addChild("input", "type", "submit");
-		nextTableCell.addChild(mainBox);
 
-		HTMLNode indexBox = pageMaker.getInfobox("Create Index");
-		HTMLNode indexContent = pageMaker.getContentNode(indexBox);
+		HTMLNode indexContent = pageMaker.getInfobox("#", "Create Index", nextTableCell);
 		HTMLNode indexForm = pr.addFormChild(indexContent, "plugins.XMLSpider.XMLSpider", "indexForm");
 		indexForm.addChild("input", //
 		        new String[] { "name", "type", "value" },//
@@ -147,11 +140,11 @@ class MainPage implements WebPage {
 		indexForm.addChild("input", //
 		        new String[] { "type", "value" }, //
 		        new String[] { "submit", "Create Index Now" });
-		nextTableCell.addChild(indexBox);
 
-		HTMLNode runningBox = pageMaker.getInfobox("Running URI");
+		InfoboxNode running = pageMaker.getInfobox("Running URI");
+		HTMLNode runningBox = running.outer;
 		runningBox.addAttribute("style", "right: 0;");
-		HTMLNode runningContent = pageMaker.getContentNode(runningBox);
+		HTMLNode runningContent = running.content;
 
 		if (runningFetch.isEmpty()) {
 			runningContent.addChild("#", "NO URI");
@@ -168,21 +161,24 @@ class MainPage implements WebPage {
 		}
 		contentNode.addChild(runningBox);
 
-		HTMLNode queuedBox = pageMaker.getInfobox("Queued URI");
+		InfoboxNode queued = pageMaker.getInfobox("Queued URI");
+		HTMLNode queuedBox = queued.outer;
 		queuedBox.addAttribute("style", "right: 0; overflow: auto;");
-		HTMLNode queuedContent = pageMaker.getContentNode(queuedBox);
+		HTMLNode queuedContent = queued.content;
 		listPages(queuedStatus, queuedContent);
 		contentNode.addChild(queuedBox);
 
-		HTMLNode succeededBox = pageMaker.getInfobox("Succeeded URI");
+		InfoboxNode succeeded = pageMaker.getInfobox("Succeeded URI");
+		HTMLNode succeededBox = succeeded.outer;
 		succeededBox.addAttribute("style", "right: 0;");
-		HTMLNode succeededContent = pageMaker.getContentNode(succeededBox);
+		HTMLNode succeededContent = succeeded.content;
 		listPages(succeededStatus, succeededContent);
 		contentNode.addChild(succeededBox);
 
-		HTMLNode failedBox = pageMaker.getInfobox("Failed URI");
+		InfoboxNode failed = pageMaker.getInfobox("Failed URI");
+		HTMLNode failedBox = failed.outer;
 		failedBox.addAttribute("style", "right: 0;");
-		HTMLNode failedContent = pageMaker.getContentNode(failedBox);
+		HTMLNode failedContent = failed.content;
 		listPages(failedStatus, failedContent);
 		contentNode.addChild(failedBox);
 	}

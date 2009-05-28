@@ -104,8 +104,7 @@ class ConfigPage implements WebPage {
 	 * freenet.support.HTMLNode)
 	 */
 	public void writeContent(HTTPRequest request, HTMLNode contentNode) {	
-		HTMLNode configBox = pageMaker.getInfobox("Configuration");
-		HTMLNode configContent = pageMaker.getContentNode(configBox);
+		HTMLNode configContent = pageMaker.getInfobox("#", "Configuration", contentNode);
 		HTMLNode configForm = pr.addFormChild(configContent, "plugins.XMLSpider.XMLSpider?ConfigPage", "configForm");
 	
 		configForm.addChild("div", "class", "configprefix", "Spider Options");
@@ -175,7 +174,6 @@ class ConfigPage implements WebPage {
 		configForm.addChild("input", //
 		        new String[] { "type", "value" }, //
 		        new String[] { "submit", "Apply" });
-		contentNode.addChild(configBox);
 	}
 
 	
