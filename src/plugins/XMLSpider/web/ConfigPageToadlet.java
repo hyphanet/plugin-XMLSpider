@@ -36,25 +36,37 @@ public class ConfigPageToadlet extends Toadlet {
 	@Override
 	public void handleGet(URI uri, final HTTPRequest request, final ToadletContext ctx) 
 	throws ToadletContextClosedException, IOException, RedirectException {
-		ConfigPage page = new ConfigPage(spider);
-		PageNode p = ctx.getPageMaker().getPageNode(XMLSpider.pluginName, null);
-		HTMLNode pageNode = p.outer;
-		HTMLNode contentNode = p.content;
-		page.writeContent(request, contentNode);
-		writeHTMLReply(ctx, 200, "OK", null, pageNode.generate());
+		ClassLoader origClassLoader = Thread.currentThread().getContextClassLoader();
+		Thread.currentThread().setContextClassLoader(XMLSpider.class.getClassLoader());
+		try {
+			ConfigPage page = new ConfigPage(spider);
+			PageNode p = ctx.getPageMaker().getPageNode(XMLSpider.pluginName, null);
+			HTMLNode pageNode = p.outer;
+			HTMLNode contentNode = p.content;
+			page.writeContent(request, contentNode);
+			writeHTMLReply(ctx, 200, "OK", null, pageNode.generate());
+		} finally {
+			Thread.currentThread().setContextClassLoader(origClassLoader);
+		}
 	}
 	
 	@Override
 	public void handlePost(URI uri, HTTPRequest request, final ToadletContext ctx) throws ToadletContextClosedException, IOException, RedirectException {
-		PageNode p = ctx.getPageMaker().getPageNode(XMLSpider.pluginName, null);
-		HTMLNode pageNode = p.outer;
-		HTMLNode contentNode = p.content;
-
-		WebPage page = new ConfigPage(spider);
-
-		page.processPostRequest(request, contentNode);
-		page.writeContent(request, contentNode);
-
-		writeHTMLReply(ctx, 200, "OK", null, pageNode.generate());
+		ClassLoader origClassLoader = Thread.currentThread().getContextClassLoader();
+		Thread.currentThread().setContextClassLoader(XMLSpider.class.getClassLoader());
+		try {
+			PageNode p = ctx.getPageMaker().getPageNode(XMLSpider.pluginName, null);
+			HTMLNode pageNode = p.outer;
+			HTMLNode contentNode = p.content;
+	
+			WebPage page = new ConfigPage(spider);
+	
+			page.processPostRequest(request, contentNode);
+			page.writeContent(request, contentNode);
+	
+			writeHTMLReply(ctx, 200, "OK", null, pageNode.generate());
+		} finally {
+			Thread.currentThread().setContextClassLoader(origClassLoader);
+		}
 	}
 }
