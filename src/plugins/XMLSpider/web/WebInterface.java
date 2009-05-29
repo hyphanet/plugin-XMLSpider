@@ -78,6 +78,6 @@ public class WebInterface {
 	public void unload() {
 		toadletContainer.unregister(configToadlet);
 		toadletContainer.unregister(mainToadlet);
-		pageMaker.removeNavigationCategory("XMLSpider.category");
+		pageMaker.removeNavigationCategory("XMLSpider");
 	}
 }
