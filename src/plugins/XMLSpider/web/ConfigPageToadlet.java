@@ -40,7 +40,7 @@ public class ConfigPageToadlet extends Toadlet {
 		Thread.currentThread().setContextClassLoader(XMLSpider.class.getClassLoader());
 		try {
 			ConfigPage page = new ConfigPage(spider);
-			PageNode p = ctx.getPageMaker().getPageNode(XMLSpider.pluginName, null);
+			PageNode p = ctx.getPageMaker().getPageNode(XMLSpider.pluginName, ctx);
 			HTMLNode pageNode = p.outer;
 			HTMLNode contentNode = p.content;
 			page.writeContent(request, contentNode);
@@ -55,7 +55,7 @@ public class ConfigPageToadlet extends Toadlet {
 		ClassLoader origClassLoader = Thread.currentThread().getContextClassLoader();
 		Thread.currentThread().setContextClassLoader(XMLSpider.class.getClassLoader());
 		try {
-			PageNode p = ctx.getPageMaker().getPageNode(XMLSpider.pluginName, null);
+			PageNode p = ctx.getPageMaker().getPageNode(XMLSpider.pluginName, ctx);
 			HTMLNode pageNode = p.outer;
 			HTMLNode contentNode = p.content;
 	
