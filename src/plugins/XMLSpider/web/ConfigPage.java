@@ -105,7 +105,7 @@ class ConfigPage implements WebPage {
 	 */
 	public void writeContent(HTTPRequest request, HTMLNode contentNode) {	
 		HTMLNode configContent = pageMaker.getInfobox("#", "Configuration", contentNode);
-		HTMLNode configForm = pr.addFormChild(configContent, "plugins.XMLSpider.XMLSpider?ConfigPage", "configForm");
+		HTMLNode configForm = pr.addFormChild(configContent, "", "configForm");
 	
 		configForm.addChild("div", "class", "configprefix", "Spider Options");
 		
