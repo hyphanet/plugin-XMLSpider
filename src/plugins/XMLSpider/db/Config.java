@@ -57,8 +57,8 @@ public class Config extends Persistent implements Cloneable {
 		        ".7z", ".rar", ".arj", ".rpm", ".deb", //
 		        ".xpi", ".ace", ".cab", ".lza", ".lzh", //
 		        ".ace", ".exe", ".iso", // binary
-		        ".mpg", ".ogg", "ogv", ".mp3", ".avi", ".wv", ".swf", ".wmv", ".mkv", ".flac", ".ogm", // media
-		        ".css", ".sig", ".gml", ".df", "cbr", ".gf", ".pdf" // other
+		        ".mpg", ".ogg", ".ogv", ".mp3", ".avi", ".wv", ".swf", ".wmv", ".mkv", ".flac", ".ogm", // media
+		        ".css", ".sig", ".gml", ".df", ".cbr", ".gf", ".pdf" // other
 		};
 
 		requestPriority = RequestStarter.IMMEDIATE_SPLITFILE_PRIORITY_CLASS;
