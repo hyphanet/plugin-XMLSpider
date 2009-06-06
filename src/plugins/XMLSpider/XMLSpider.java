@@ -81,6 +81,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless, FredPluginVe
 
 	// Set config asynchronously
 	public void setConfig(Config config) {
+		getRoot().setConfig(config); // hack -- may cause race condition. but this is more user friendly
 		callbackExecutor.execute(new SetConfigCallback(config));
 	}
 
@@ -337,11 +338,8 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless, FredPluginVe
 
 		public void run() {
 			synchronized (getRoot()) {
-				Config oldConfig = getRoot().getConfig();
 				getRoot().setConfig(config);
-				
-				if (oldConfig.getMaxParallelRequests() < config.getMaxParallelRequests())
-					startSomeRequests();
+				startSomeRequests();
 			}
 		}
 	}
