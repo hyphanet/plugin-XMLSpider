@@ -54,11 +54,11 @@ public class Config extends Persistent implements Cloneable {
 		badlistedExtensions = new String[] { //
 				".ico", ".bmp", ".png", ".jpg", ".jpeg", ".gif", // image
 				".zip", ".jar", ".gz", ".bz2", ".rar", // archive
-		        ".7z", ".rar", ".arj", ".rpm", ".deb", //
+		        ".7z", ".tar", ".arj", ".rpm", ".deb", //
 		        ".xpi", ".ace", ".cab", ".lza", ".lzh", //
-		        ".ace", ".exe", ".iso", // binary
-		        ".mpg", ".ogg", ".ogv", ".mp3", ".avi", ".wv", ".swf", ".wmv", ".mkv", ".flac", ".ogm", // media
-		        ".css", ".sig", ".gml", ".df", ".cbr", ".gf", ".pdf" // other
+		        ".ace", ".exe", ".iso", ".bin", ".dll", // binary
+		        ".mpg", ".ogg", ".ogv", ".mp3", ".avi", ".wv", ".swf", ".wmv", ".mkv", ".flac", ".ogm", ".divx", ".mpeg", ".rm", ".wma", ".asf", ".rmvb", ".mov", ".flv", ".mp4", // media
+		        ".css", ".sig", ".gml", ".df", ".cbr", ".gf", ".pdf", ".db" // other
 		};
 
 		requestPriority = RequestStarter.IMMEDIATE_SPLITFILE_PRIORITY_CLASS;
