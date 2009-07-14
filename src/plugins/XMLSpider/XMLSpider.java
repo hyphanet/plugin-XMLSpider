@@ -36,10 +36,8 @@ import freenet.client.ClientMetadata;
 import freenet.client.FetchContext;
 import freenet.client.FetchException;
 import freenet.client.FetchResult;
-import freenet.client.InsertException;
-import freenet.client.async.BaseClientPutter;
-import freenet.client.async.ClientCallback;
 import freenet.client.async.ClientContext;
+import freenet.client.async.ClientGetCallback;
 import freenet.client.async.ClientGetter;
 import freenet.client.async.USKCallback;
 import freenet.clients.http.PageMaker;
@@ -53,16 +51,13 @@ import freenet.node.NodeClientCore;
 import freenet.node.RequestClient;
 import freenet.node.RequestStarter;
 import freenet.pluginmanager.FredPlugin;
-import freenet.pluginmanager.FredPluginHTTP;
 import freenet.pluginmanager.FredPluginL10n;
 import freenet.pluginmanager.FredPluginRealVersioned;
 import freenet.pluginmanager.FredPluginThreadless;
 import freenet.pluginmanager.FredPluginVersioned;
-import freenet.pluginmanager.PluginHTTPException;
 import freenet.pluginmanager.PluginRespirator;
 import freenet.support.Logger;
 import freenet.support.api.Bucket;
-import freenet.support.api.HTTPRequest;
 import freenet.support.io.NativeThread;
 import freenet.support.io.NullBucketFactory;
 
@@ -208,7 +203,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless, FredPluginVe
 		}
 	}
 
-	private class ClientGetterCallback implements ClientCallback {
+	private class ClientGetterCallback implements ClientGetCallback {
 		final Page page;
 
 		public ClientGetterCallback(Page page) {
@@ -223,32 +218,12 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless, FredPluginVe
 			Logger.minor(this, "Queued OnFailure: " + page + " (q:" + callbackExecutor.getQueue().size() + ")");
 		}
 
-		public void onFailure(InsertException e, BaseClientPutter state, ObjectContainer container) {
-			// Ignore
-		}
-
-		public void onFetchable(BaseClientPutter state, ObjectContainer container) {
-			// Ignore
-		}
-
-		public void onGeneratedURI(FreenetURI uri, BaseClientPutter state, ObjectContainer container) {
-			// Ignore
-		}
-
-		public void onMajorProgress(ObjectContainer container) {
-			// Ignore
-		}
-
 		public void onSuccess(final FetchResult result, final ClientGetter state, ObjectContainer container) {
 			if (stopped)
 				return;
 
 			callbackExecutor.execute(new OnSuccessCallback(result, state, page));
 			Logger.minor(this, "Queued OnSuccess: " + page + " (q:" + callbackExecutor.getQueue().size() + ")");
-		}
-
-		public void onSuccess(BaseClientPutter state, ObjectContainer container) {
-			// Ignore
 		}
 
 		public String toString() {
