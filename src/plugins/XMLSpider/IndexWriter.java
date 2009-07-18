@@ -69,6 +69,7 @@ public class IndexWriter {
 
 	public synchronized void makeIndex(PerstRoot perstRoot) throws Exception {
 		logMINOR = Logger.shouldLog(Logger.MINOR, this);
+		pause = false;
 		try {
 			time_taken = System.currentTimeMillis();
 
@@ -96,6 +97,7 @@ public class IndexWriter {
 			}catch(InterruptedException i){
 				Logger.normal(this, "Index writing paused on user request, writing resume file");
 				writeResume(subindexno);
+				pause = false;
 				throw i;
 			}
 			makeMainIndex();
