@@ -36,6 +36,9 @@ import plugins.XMLSpider.org.garret.perst.Storage;
 import plugins.XMLSpider.org.garret.perst.StorageFactory;
 import freenet.support.Logger;
 import freenet.support.io.Closer;
+import java.io.FileInputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 
 /**
  * Write index to disk file
@@ -50,6 +53,16 @@ public class IndexWriter {
 	private int match;
 	private long time_taken;
 	private boolean logMINOR = Logger.shouldLog(Logger.MINOR, this);
+
+	private String indexdir;
+	private int startDepth;
+	private boolean separatepageindex;
+	private String indexOwnerEmail;
+	private String indexOwner;
+	private String indexTitle;
+	private int subindexno = 0;
+	
+	private boolean pause = false;
 
 	IndexWriter() {
 	}
@@ -67,12 +80,27 @@ public class IndexWriter {
 				return;
 			}
 
-			if (logMINOR)
-				Logger.minor(this, "Spider: regenerating index. MAX_SIZE=" + config.getIndexSubindexMaxSize() +
-					", MAX_ENTRIES=" + config.getIndexMaxEntries());
 
-			makeSubIndices(perstRoot);
-			makeMainIndex(config);
+			if((new File(indexdir+"index-writer.resume")).exists()){
+				try{
+					readResume();
+				}catch( Exception e){
+					Logger.error(this, "Error preventing reading resume file", e);
+					return;
+				}
+			}else
+				readConfig(perstRoot);
+
+			try{
+				makeSubIndices(perstRoot);
+			}catch(InterruptedException i){
+				Logger.normal(this, "Index writing paused on user request, writing resume file");
+				writeResume(subindexno);
+				throw i;
+			}
+			makeMainIndex();
+
+			indices = null;
 
 			time_taken = System.currentTimeMillis() - time_taken;
 
@@ -85,6 +113,71 @@ public class IndexWriter {
 		}
 	}
 
+	void pause() {
+		pause = true;
+	}
+
+	private void readConfig(PerstRoot perstRoot){
+		Config config = perstRoot.getConfig();
+
+		if(indexdir == null || indexdir.equals(""))
+			indexdir = config.getIndexDir();
+		else
+			config.setIndexDir(indexdir);
+		
+		time_taken = System.currentTimeMillis();
+		indexOwner = config.getIndexOwner();
+		indexOwnerEmail = config.getIndexOwnerEmail();
+		indexTitle = config.getIndexTitle();
+		indices = null;
+		subindexno=0;
+
+		
+		if (logMINOR)
+			Logger.normal(this, "Spider: regenerating index. MAX_SIZE=" + config.getIndexSubindexMaxSize() +
+				", MAX_ENTRIES=" + config.getIndexMaxEntries());
+	}
+
+	private void readResume() throws IOException, ClassNotFoundException{
+		File resumeFile = new File(indexdir  + "index-writer.resume");
+		Logger.normal(this, "Reading resume file : "+resumeFile.getCanonicalPath());
+		ObjectInputStream fr = new ObjectInputStream(new FileInputStream(resumeFile));
+
+		time_taken = fr.readLong();
+		indexOwner = fr.readUTF();
+		indexOwnerEmail = fr.readUTF();
+		indexTitle = fr.readUTF();
+		Logger.normal(this, indexTitle);
+		separatepageindex = fr.readBoolean();
+		startDepth = fr.readInt();
+		subindexno = fr.readInt();
+		indices = (Vector)fr.readObject();
+		Logger.normal(this, indices.size()+" subindices found and resumed");
+		
+		resumeFile.delete();
+	}
+
+	void writeResume(int resumePosition) {
+		// Save writing progress to file
+		File resume = new File(indexdir  + "index-writer.resume");
+		try {
+			ObjectOutputStream ow = new ObjectOutputStream(new FileOutputStream(resume));
+
+			ow.writeLong(time_taken);
+			ow.writeUTF(indexOwner);
+			ow.writeUTF(indexOwnerEmail);
+			ow.writeUTF(indexTitle);
+			ow.writeBoolean(separatepageindex);
+			ow.writeInt(startDepth);
+			ow.writeInt(resumePosition);
+			ow.writeObject(indices);
+
+			Logger.normal(this, "Resume file written, "+indices.size()+" subindexes completed, will resume from "+Integer.toHexString(resumePosition));
+		} catch (IOException ex) {
+			Logger.error(this, "Could not write resume file, so index writing will not be resumeable", ex);
+		}
+	}
+
 	/**
 	 * generates the main index file that can be used by librarian for searching in the list of
 	 * subindices
@@ -94,13 +187,13 @@ public class IndexWriter {
 	 * @throws IOException
 	 * @throws NoSuchAlgorithmException
 	 */
-	private void makeMainIndex(Config config) throws IOException, NoSuchAlgorithmException {
+	private void makeMainIndex() throws IOException, NoSuchAlgorithmException {
 		// Produce the main index file.
 		if (logMINOR)
 			Logger.minor(this, "Producing top index...");
 
-		//the main index file 
-		File outputFile = new File(config.getIndexDir() + "index.xml");
+		//the main index file
+		File outputFile = new File(indexdir + "index.xml");
 		// Use a stream so we can explicitly close - minimise number of filehandles used.
 		BufferedOutputStream fos = new BufferedOutputStream(new FileOutputStream(outputFile));
 		StreamResult resultStream;
@@ -134,22 +227,22 @@ public class IndexWriter {
 
 			/* -> title */
 			Element subHeaderElement = xmlDoc.createElementNS(null, "title");
-			Text subHeaderText = xmlDoc.createTextNode(config.getIndexTitle());
+			Text subHeaderText = xmlDoc.createTextNode(indexTitle);
 
 			subHeaderElement.appendChild(subHeaderText);
 			headerElement.appendChild(subHeaderElement);
 
 			/* -> owner */
 			subHeaderElement = xmlDoc.createElementNS(null, "owner");
-			subHeaderText = xmlDoc.createTextNode(config.getIndexOwner());
+			subHeaderText = xmlDoc.createTextNode(indexOwner);
 
 			subHeaderElement.appendChild(subHeaderText);
 			headerElement.appendChild(subHeaderElement);
 
 			/* -> owner email */
-			if (config.getIndexOwnerEmail() != null) {
+			if (indexOwnerEmail != null) {
 				subHeaderElement = xmlDoc.createElementNS(null, "email");
-				subHeaderText = xmlDoc.createTextNode(config.getIndexOwnerEmail());
+				subHeaderText = xmlDoc.createTextNode(indexOwnerEmail);
 
 				subHeaderElement.appendChild(subHeaderText);
 				headerElement.appendChild(subHeaderElement);
@@ -159,6 +252,8 @@ public class IndexWriter {
 			 * stored in the xml
 			 */
 			Element prefixElement = xmlDoc.createElementNS(null, "prefix");
+			prefixElement.setAttributeNS(null, "value", match + "");
+
 			/* Adding word index */
 			Element keywordsElement = xmlDoc.createElementNS(null, "keywords");
 			for (int i = 0; i < indices.size(); i++) {
@@ -201,9 +296,9 @@ public class IndexWriter {
 			fos.close();
 		}
 
-		//The main xml file is generated 
+		//The main xml file is generated
 		//As each word is generated enter it into the respective subindex
-		//The parsing will start and nodes will be added as needed 
+		//The parsing will start and nodes will be added as needed
 
 	}
 
@@ -211,7 +306,7 @@ public class IndexWriter {
 	 * Generates the subindices. Each index has less than {@code MAX_ENTRIES} words. The original
 	 * treemap is split into several sublists indexed by the common substring of the hash code of
 	 * the words
-	 * 
+	 *
 	 * @throws Exception
 	 */
 	private void makeSubIndices(PerstRoot perstRoot) throws Exception {
@@ -220,8 +315,14 @@ public class IndexWriter {
 		indices = new Vector<String>();
 		match = 1;
 
-		for (String hex : HEX)
-			generateSubIndex(perstRoot, hex);
+
+		// Only allowing 2 start depths at the moment, 3 would seem to large a jump
+		if(startDepth<=1)
+			for (; subindexno<16; subindexno++)
+				generateSubIndex(perstRoot, Integer.toHexString(subindexno));
+		else
+			for(; subindexno<256; subindexno++)
+				generateSubIndex(perstRoot, String.format("%02x", subindexno));
 	}
 
 	private void generateSubIndex(PerstRoot perstRoot, String prefix) throws Exception {
@@ -232,10 +333,10 @@ public class IndexWriter {
 
 		if (generateXML(perstRoot, prefix))
 			return;
-		
+
 		if (logMINOR)
 			Logger.minor(this, "Too big subindex for (" + prefix + ")");
-		
+
 		for (String hex : HEX)
 			generateSubIndex(perstRoot, prefix + hex);
 	}
@@ -243,18 +344,20 @@ public class IndexWriter {
 	/**
 	 * generates the xml index with the given list of words with prefix number of matching bits in
 	 * md5
-	 * 
+	 *
 	 * @param prefix
 	 *            prefix string
 	 * @return successful
 	 * @throws IOException
 	 */
-	private boolean generateXML(PerstRoot perstRoot, String prefix) throws IOException {
+	private boolean generateXML(PerstRoot perstRoot, String prefix) throws IOException, InterruptedException {
+		if(pause==true)
+			throw new InterruptedException();
 		final Config config = perstRoot.getConfig();
 		final long MAX_SIZE = config.getIndexSubindexMaxSize();
 		final int MAX_ENTRIES = config.getIndexMaxEntries();
 		
-		File outputFile = new File(config.getIndexDir() + "index_" + prefix + ".xml");
+		File outputFile = new File(indexdir + "index_" + prefix + ".xml");
 		BufferedOutputStream fos = null;
 
 		int count = 0;
@@ -272,13 +375,13 @@ public class IndexWriter {
 			DOMImplementation impl = xmlBuilder.getDOMImplementation();
 			/* Starting to generate index */
 			Document xmlDoc = impl.createDocument("", "sub_index", null);
-			
+
 			Element rootElement = xmlDoc.getDocumentElement();
 			if (config.isDebug()) {
 				rootElement.setAttributeNS("http://www.w3.org/2000/xmlns/", "xmlns:debug", "urn:freenet:xmlspider:debug");
 				rootElement.appendChild(xmlDoc.createComment(new Date().toGMTString()));
 			}
-			
+
 			/* Adding header to the index */
 			Element headerElement = xmlDoc.createElementNS(null, "header");
 			/* -> title */
@@ -293,7 +396,7 @@ public class IndexWriter {
 																		 * fileElement
 																		 */
 			Set<Long> fileid = new HashSet<Long>();
-			
+
 			/* Adding word index */
 			Element keywordsElement = xmlDoc.createElementNS(null, "keywords");
 			IterableIterator<Term> termIterator = perstRoot.getTermIterator(prefix, prefix + "g");
@@ -317,7 +420,7 @@ public class IndexWriter {
 					TermPosition termPos = page.getTermPosition(term, false);
 					if (termPos == null)
 						continue;
-					
+
 					synchronized (termPos) {
 						synchronized (page) {
 							/*
@@ -340,10 +443,10 @@ public class IndexWriter {
 							}
 							uriElement.appendChild(xmlDoc.createTextNode(positionList.toString()));
 							wordElement.appendChild(uriElement);
-							
+
 							estimateSize += 13;
 							estimateSize += positionList.length();
-						
+
 							if (!fileid.contains(page.getId())) {
 								fileid.add(page.getId());
 
@@ -352,9 +455,11 @@ public class IndexWriter {
 								fileElement.setAttributeNS(null, "key", page.getURI());
 								fileElement.setAttributeNS(null, "title", page.getPageTitle() != null ? page
 								        .getPageTitle() : page.getURI());
+								// TODO word count
+								//fileElement.setAttributeNS(null, "wordCount", Long.toString(actualpage.getPageCount()));
 								
 								filesElement.appendChild(fileElement);
-								
+
 								estimateSize += 15;
 								estimateSize += filesElement.getAttributeNS(null, "id").length();
 								estimateSize += filesElement.getAttributeNS(null, "key").length();
@@ -365,7 +470,7 @@ public class IndexWriter {
 				}
 				keywordsElement.appendChild(wordElement);
 			}
-			
+
 			Element entriesElement = xmlDoc.createElementNS(null, "entries");
 			entriesElement.setAttributeNS(null, "value", count + "");
 
@@ -378,7 +483,7 @@ public class IndexWriter {
 			DOMSource domSource = new DOMSource(xmlDoc);
 			TransformerFactory transformFactory = TransformerFactory.newInstance();
 			Transformer serializer;
-			
+
 			try {
 				serializer = transformFactory.newTransformer();
 			} catch (javax.xml.transform.TransformerConfigurationException e) {
@@ -389,7 +494,7 @@ public class IndexWriter {
 
 			fos = new BufferedOutputStream(new FileOutputStream(outputFile));
 			StreamResult resultStream = new StreamResult(fos);
-			
+
 			/* final step */
 			try {
 				serializer.transform(domSource, resultStream);
@@ -399,7 +504,7 @@ public class IndexWriter {
 		} finally {
 			Closer.close(fos);
 		}
-		
+
 		if (outputFile.length() > MAX_SIZE && count > 1) {
 			outputFile.delete();
 			return false;
@@ -423,14 +528,14 @@ public class IndexWriter {
 		db.open(arg[0]);
 		PerstRoot root = (PerstRoot) db.getRoot();
 		IndexWriter writer = new IndexWriter();
-		
+
 		int benchmark = 0;
 		long[] timeTaken = null;
 		if (arg[1] != null) {
 			benchmark = Integer.parseInt(arg[1]);
 			timeTaken = new long[benchmark];
 		}
-		
+
 		for (int i = 0; i < benchmark; i++) {
 			long startTime = System.currentTimeMillis();
 			writer.makeIndex(root);

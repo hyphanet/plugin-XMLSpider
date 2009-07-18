@@ -3,6 +3,8 @@
  * http://www.gnu.org/ for further details of the GPL. */
 package plugins.XMLSpider;
 
+import com.db4o.ObjectContainer;
+import com.db4o.ObjectContainer;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -69,9 +71,28 @@ import freenet.support.io.NullBucketFactory;
  *  @author swati goyal
  *  
  */
-public class XMLSpider implements FredPlugin, FredPluginThreadless, FredPluginVersioned, FredPluginRealVersioned, FredPluginL10n, USKCallback, RequestClient {
+public class XMLSpider implements FredPlugin, FredPluginThreadless,
+		FredPluginVersioned, FredPluginRealVersioned, FredPluginL10n, USKCallback, RequestClient {
+
+
+	public synchronized boolean cancelWrite() {
+		if(writingIndex)
+			return false;
+		writeIndexScheduled = false;
+		return true;
+	}
+
 	public Config getConfig() {
 		return getRoot().getConfig();
+	}
+
+	public synchronized boolean pauseWrite() {
+		if(!writingIndex)
+			return false;
+		indexWriter.pause();
+		writingIndex = false;
+		writeIndexScheduled = false;
+		return true;
 	}
 
 	// Set config asynchronously
@@ -228,7 +249,11 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless, FredPluginVe
 
 		public String toString() {
 			return super.toString() + ":" + page;
-		}		
+		}
+
+		public void onMajorProgress(ObjectContainer container) {
+			throw new UnsupportedOperationException("Not supported yet.");
+		}
 	}
 
 	private ClientGetter makeGetter(Page page) throws MalformedURLException {
@@ -280,7 +305,12 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless, FredPluginVe
 
 	protected class MakeIndexCallback implements Runnable {
 		public void run() {
+			synchronized(this){
+				if(!writeIndexScheduled)
+					return;
+			}
 			try {
+				Logger.normal(this, "Making index");
 				synchronized (this) {
 					writingIndex = true;
 				}
@@ -297,6 +327,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless, FredPluginVe
 			} finally {
 				synchronized (this) {
 					writingIndex = false;
+					writeIndexScheduled = false;
 					notifyAll();
 				}
 			}
@@ -403,8 +434,8 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless, FredPluginVe
 			Logger.minor(this, "Successful: " + uri + " : " + page.getId());
 
 			try {
-			ContentFilter.filter(data, new NullBucketFactory(), mimeType, uri.toURI("http://127.0.0.1:8888/"),
-					pageCallBack);
+				ContentFilter.filter(data, new NullBucketFactory(), mimeType,
+						uri.toURI("http://127.0.0.1:8888/"), pageCallBack);
 			} catch (UnsafeContentTypeException e) {
 				// wrong mime type
 				page.setStatus(Status.SUCCEEDED);
