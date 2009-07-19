@@ -62,6 +62,8 @@ import freenet.support.Logger;
 import freenet.support.api.Bucket;
 import freenet.support.io.NativeThread;
 import freenet.support.io.NullBucketFactory;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 
 /**
  * XMLSpider. Produces xml index for searching words. 
@@ -435,8 +437,16 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 			Logger.minor(this, "Successful: " + uri + " : " + page.getId());
 
 			try {
-				ContentFilter.filter(data, new NullBucketFactory(), mimeType,
-						uri.toURI("http://127.0.0.1:8888/"), pageCallBack);
+				if("text/plain".equals(mimeType))
+					ContentFilter.filter(data, new NullBucketFactory(), mimeType,
+							uri.toURI("http://127.0.0.1:8888/"), pageCallBack);
+				else{
+					BufferedReader br = new BufferedReader(new InputStreamReader(data.getInputStream()));
+					String line;
+					while((line = br.readLine())!=null)
+						pageCallBack.onText(line, mimeType, uri.toURI("http://127.0.0.1:8888/"));
+				}
+
 			} catch (UnsafeContentTypeException e) {
 				// wrong mime type
 				page.setStatus(Status.SUCCEEDED);
