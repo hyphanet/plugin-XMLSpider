@@ -11,16 +11,20 @@ import freenet.clients.http.RedirectException;
 import freenet.clients.http.Toadlet;
 import freenet.clients.http.ToadletContext;
 import freenet.clients.http.ToadletContextClosedException;
+import freenet.node.NodeClientCore;
 import freenet.support.HTMLNode;
+import freenet.support.MultiValueTable;
 import freenet.support.api.HTTPRequest;
 
 public class ConfigPageToadlet extends Toadlet {
 
 	final XMLSpider spider;
+	private final NodeClientCore core;
 	
-	protected ConfigPageToadlet(HighLevelSimpleClient client, XMLSpider spider) {
+	protected ConfigPageToadlet(HighLevelSimpleClient client, XMLSpider spider, NodeClientCore core) {
 		super(client);
 		this.spider = spider;
+		this.core = core;
 	}
 
 	@Override
@@ -47,6 +51,15 @@ public class ConfigPageToadlet extends Toadlet {
 	public void handleMethodPOST(URI uri, HTTPRequest request, final ToadletContext ctx) throws ToadletContextClosedException, IOException, RedirectException {
 		ClassLoader origClassLoader = Thread.currentThread().getContextClassLoader();
 		Thread.currentThread().setContextClassLoader(XMLSpider.class.getClassLoader());
+
+		String formPassword = request.getPartAsString("formPassword", 32);
+		if((formPassword == null) || !formPassword.equals(core.formPassword)) {
+			MultiValueTable<String,String> headers = new MultiValueTable<String,String>();
+			headers.put("Location", "/xmlspider/config");
+			ctx.sendReplyHeaders(302, "Found", headers, null, 0);
+			return;
+		}
+
 		try {
 			PageNode p = ctx.getPageMaker().getPageNode(XMLSpider.pluginName, ctx);
 			HTMLNode pageNode = p.outer;

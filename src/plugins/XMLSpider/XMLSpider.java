@@ -606,7 +606,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 		db = initDB();
 
 		indexWriter = new IndexWriter();
-		webInterface = new WebInterface(this, pr.getHLSimpleClient(), pr.getToadletContainer());
+		webInterface = new WebInterface(this, pr.getHLSimpleClient(), pr.getToadletContainer(), pr.getNode().clientCore);
 		webInterface.load();
 
 		FreenetURI[] initialURIs = core.getBookmarkURIs();
