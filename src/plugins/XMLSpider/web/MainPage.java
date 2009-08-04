@@ -126,14 +126,14 @@ class MainPage implements WebPage {
 		statusContent.addChild("#", "Index Writer: ");
 		synchronized (this) {
 			if (xmlSpider.isWritingIndex()){
-				statusContent.addChild("span", "style", "color: red; font-weight: bold;", "RUNNING");
+				statusContent.addChild("span", "style", "color: red; font-weight: bold;", xmlSpider.getIndexWriterStatus() );
 				HTMLNode pauseform = pr.addFormChild(statusContent, "/xmlspider/", "pauseform");
 				pauseform.addChild("input", //
 						new String[] { "name", "type", "value" },//
 						new String[] { "pausewrite", "hidden", "pausewrite" });
 				pauseform.addChild("input", new String[]{"type", "value"}, new String[]{"submit", "Pause write"});
 			}else if (xmlSpider.isWriteIndexScheduled()){
-				statusContent.addChild("span", "style", "color: blue; font-weight: bold;", "SCHEDULED");
+				statusContent.addChild("span", "style", "color: blue; font-weight: bold;", xmlSpider.isGarbageCollecting() ? "GARBAGE COLLECTING" : "SCHEDULED" );
 				HTMLNode cancelform = pr.addFormChild(statusContent, "/xmlspider/", "cancelform");
 				cancelform.addChild("input", //
 						new String[] { "name", "type", "value" },//

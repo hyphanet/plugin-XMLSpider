@@ -49,6 +49,7 @@ public class IndexWriter {
 
 	private Config config;
 	//- Writing Index
+	public long tProducedIndex;
 	private Vector<String> indices;
 	private int match;
 	private long time_taken;
