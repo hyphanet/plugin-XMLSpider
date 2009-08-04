@@ -64,7 +64,7 @@ public class IndexWriter {
 	private int subindexno = 0;
 	
 	private boolean pause = false;
-	private String status = "";
+	private String currentSubindexPrefix = "";
 
 
 
@@ -125,15 +125,15 @@ public class IndexWriter {
 		}
 	}
 
-	String getStatus() {
-		return status;
+	String getCurrentSubindexPrefix() {
+		return currentSubindexPrefix;
 	}
 
 	/**
 	 * Pause writing this index, index writing will pause as soon as possible
 	 */
 	void pause() {
-		status = "Pausing";
+		currentSubindexPrefix = "Pausing";
 		pause = true;
 	}
 
@@ -211,7 +211,7 @@ public class IndexWriter {
 		// Produce the main index file.
 		if (logMINOR)
 			Logger.normal(this, "Producing top index...");
-		status = "Top";
+		currentSubindexPrefix = "Top";
 
 		//the main index file
 		File outputFile = new File(indexdir + "index.xml");
@@ -375,7 +375,7 @@ public class IndexWriter {
 		// Escape if pause requested
 		if(pause==true)
 			throw new InterruptedException();
-		status = prefix;
+		currentSubindexPrefix = prefix;
 		final Config config = perstRoot.getConfig();
 		final long MAX_SIZE = config.getIndexSubindexMaxSize();
 		final int MAX_ENTRIES = config.getIndexMaxEntries();

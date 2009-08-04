@@ -89,7 +89,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 	}
 
 	public String getIndexWriterStatus() {
-		return indexWriter.getStatus();
+		return indexWriter.getCurrentSubindexPrefix();
 	}
 
 	public boolean isGarbageCollecting() {
