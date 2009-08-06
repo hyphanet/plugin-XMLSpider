@@ -39,6 +39,7 @@ import freenet.support.io.Closer;
 import java.io.FileInputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import plugins.XMLSpider.db.Status;
 
 /**
  * Write index to disk file
@@ -408,16 +409,17 @@ public class IndexWriter {
 			/* Adding header to the index */
 			Element headerElement = xmlDoc.createElementNS(null, "header");
 			/* -> title */
-			Element subHeaderElement = xmlDoc.createElementNS(null, "title");
-			Text subHeaderText = xmlDoc.createTextNode(config.getIndexTitle());
-			subHeaderElement.appendChild(subHeaderText);
-			headerElement.appendChild(subHeaderElement);
+			Element titleElement = xmlDoc.createElementNS(null, "title");
+			Text titleText = xmlDoc.createTextNode(config.getIndexTitle());
+			titleElement.appendChild(titleText);
+			headerElement.appendChild(titleElement);
 
 			/* List of files referenced in this subindex */
 			Element filesElement = xmlDoc.createElementNS(null, "files"); /*
 																		 * filesElement !=
 																		 * fileElement
 																		 */
+			filesElement.setAttribute("totalFileCount", Integer.toString(perstRoot.getPageCount(Status.SUCCEEDED)));
 			Set<Long> fileid = new HashSet<Long>();
 
 			/* Adding word index */
@@ -472,6 +474,7 @@ public class IndexWriter {
 							}
 							uriElement.appendChild(xmlDoc.createTextNode(positionList.toString()));
 							wordElement.appendChild(uriElement);
+							wordElement.setAttribute("fileCount", Integer.toString( pages.size() ));
 
 							estimateSize += 13;
 							estimateSize += positionList.length();
