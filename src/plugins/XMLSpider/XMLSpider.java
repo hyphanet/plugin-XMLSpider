@@ -4,7 +4,6 @@
 package plugins.XMLSpider;
 
 import com.db4o.ObjectContainer;
-import com.db4o.ObjectContainer;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -22,8 +21,6 @@ import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-
-import com.db4o.ObjectContainer;
 
 import plugins.XMLSpider.db.Config;
 import plugins.XMLSpider.db.Page;
@@ -64,6 +61,7 @@ import freenet.support.io.NativeThread;
 import freenet.support.io.NullBucketFactory;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.util.Arrays;
 
 /**
  * XMLSpider. Produces xml index for searching words. 
@@ -271,7 +269,6 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 		}
 
 		public void onMajorProgress(ObjectContainer container) {
-			throw new UnsupportedOperationException("Not supported yet.");
 		}
 	}
 
@@ -745,12 +742,20 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 			if (logDEBUG)
 				Logger.debug(this, "addWord on " + page.getId() + " (" + word + "," + position + ")");
 
-			if (word.length() < 3)
+			// Skip word if it is a stop word
+			if (isStopWord(word))
 				return;
 			Term term = getTermByWord(word, true);
 			TermPosition termPos = page.getTermPosition(term, true);
 			termPos.addPositions(position);
 		}
+	}
+
+	private static List<String> stopWords = Arrays.asList(new String[]{
+		"the", "and", "that", "have", "for"		// English stop words
+	});
+	public static boolean isStopWord(String word) {
+		return word.length() < 3 || stopWords.contains(word);
 	}
 
 	public void onFoundEdition(long l, USK key, ObjectContainer container, ClientContext context, boolean metadata,
