@@ -113,12 +113,12 @@ class ConfigPage implements WebPage {
 		addConfig(spiderConfig, //
 		        "Max Parallel Requests (Working)", "Maximum number of parallel requests if we are in the working period.", //
 		        "maxParallelRequestsWorking", //
-		        new String[] { "0", "10", "50", "100", "250", "500" }, //
+		        new String[] { "0", "1", "2", "5", "10", "20", "50", "100", "200", "500", "1000" }, //
 		        Integer.toString(config.getMaxParallelRequestsWorking()));
 		addConfig(spiderConfig, //
 		        "Max Parallel Requests (Non-Working)", "Maximum number of parallel requests if we are not in the working period.", //
 		        "maxParallelRequestsNonWorking", //
-		        new String[] { "0", "10", "50", "100", "250", "500" }, //
+		        new String[] { "0", "1", "2", "5", "10", "20", "50", "100", "200", "500", "1000" }, //
 		        Integer.toString(config.getMaxParallelRequestsNonWorking()));
 
 		addConfig(spiderConfig, //
@@ -138,7 +138,6 @@ class ConfigPage implements WebPage {
 		        "Bad Listed Extensions", "Comma seprated list of banned URI suffix.", // 
 		        "badListedExtensions", //
 		        config.getBadlistedExtensions());
-		addHTML(spiderConfig, "Blar Blar Blar", new HTMLNode("a", "href", "?Blarla", "bla"));
 		
 		configForm.addChild("div", "class", "configprefix", "Index Writer Options");
 		
@@ -163,7 +162,7 @@ class ConfigPage implements WebPage {
 		addConfig(indexConfig, //
 		        "Maximum Subindex Size", "Maximum size of a subindex (MiB).", // 
 		        "indexSubindexMaxSize", //
-		        new String[] { "1", "2", "4", "8" }, //
+		        new String[] { "1", "2", "4", "8", "16", "20", "24", "28", "32", "40" }, //
 		        Integer.toString(config.getIndexSubindexMaxSize() / 1024 / 1024));
 		addConfig(indexConfig, //
 		        "Write debug info", "Write debug info", // 
