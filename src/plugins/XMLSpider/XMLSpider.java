@@ -637,7 +637,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless, FredPluginVe
 					if(type == null)
 						addWord(word, lastPosition + i);
 					else
-						addWord(word, -1 * (i + 1));
+						addWord(word, Integer.MIN_VALUE + i); // Put title words in the right order starting at Min_Value
 				}
 				catch (Exception e){}
 			}
