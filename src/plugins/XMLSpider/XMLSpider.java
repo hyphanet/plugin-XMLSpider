@@ -541,7 +541,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless, FredPluginVe
 			for (Map.Entry<Page, ClientGetter> me : runningFetch.entrySet()) {
 				ClientGetter getter = me.getValue();
 				Logger.minor(this, "Canceling request" + getter);
-				getter.cancel();
+				getter.cancel(null, clientContext);
 			}
 			runningFetch.clear();
 			callbackExecutor.shutdownNow();
