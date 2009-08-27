@@ -463,7 +463,7 @@ public class IndexWriter {
 							uriElement.setAttributeNS(null, "id", Long.toString(page.getId()));
 
 							/* Position by position */
-							int[] positions = termPos.positions;
+							int[] positions = termPos.getPositions();
 
 							StringBuilder positionList = new StringBuilder();
 

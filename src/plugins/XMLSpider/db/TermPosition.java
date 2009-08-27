@@ -8,7 +8,7 @@ import plugins.XMLSpider.org.garret.perst.Storage;
 
 public class TermPosition extends Persistent {
 	/** Position List */
-	public int[] positions;
+	private int[] positions;
 
 	public TermPosition() {
 	}
@@ -27,7 +27,7 @@ public class TermPosition extends Persistent {
 		modify();
 	}
 
-	public synchronized int[] addPositions() {
+	public synchronized int[] getPositions() {
 		return positions;
 	}
 }
