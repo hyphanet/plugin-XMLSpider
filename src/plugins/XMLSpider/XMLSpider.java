@@ -437,7 +437,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 			Logger.minor(this, "Successful: " + uri + " : " + page.getId());
 
 			try {
-				if("text/plain".equals(mimeType))
+				if(!"text/plain".equals(mimeType))
 					ContentFilter.filter(data, new NullBucketFactory(), mimeType,
 							uri.toURI("http://127.0.0.1:8888/"), pageCallBack);
 				else{
