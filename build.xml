@@ -97,6 +97,21 @@
 		</jar>
 	</target>
 
+
+	<target name="javadoc">
+		<javadoc  destdir="docs">
+			<link href="http://java.sun.com/j2se/1.5.0/docs/api" />
+			<link href="../../plugin-Library/docs/" />
+			<classpath>
+				<pathelement location="${freenet-ext.location}"/>
+				<pathelement location="${freenet-cvs-snapshot.location}"/>
+			</classpath>
+			<packageset dir="src" defaultexcludes="yes">
+			  <include name="**"/>
+			</packageset>
+		</javadoc>
+	</target>
+
 	<!-- ================================================== -->
 	<target name="clean" description="Delete class files and docs dir.">
 		<delete dir="${build}"/>
