@@ -87,7 +87,6 @@ public class IndexWriter {
 		try {
 			time_taken = System.currentTimeMillis();
 
-			Config config = perstRoot.getConfig();
 
 			File indexDir = new File(config.getIndexDir());
 			if(((!indexDir.exists()) && !indexDir.mkdirs()) || (indexDir.exists() && !indexDir.isDirectory())) {
@@ -104,7 +103,7 @@ public class IndexWriter {
 					return;
 				}
 			}else
-				readConfig(perstRoot);
+				readConfig();
 
 			try{
 				makeSubIndices(perstRoot);
@@ -138,8 +137,7 @@ public class IndexWriter {
 		pause = true;
 	}
 
-	private void readConfig(PerstRoot perstRoot){
-		Config config = perstRoot.getConfig();
+	private void readConfig(){
 
 		if(indexdir == null || indexdir.equals(""))
 			indexdir = config.getIndexDir();
@@ -377,7 +375,6 @@ public class IndexWriter {
 		if(pause==true)
 			throw new InterruptedException();
 		currentSubindexPrefix = prefix;
-		final Config config = perstRoot.getConfig();
 		final long MAX_SIZE = config.getIndexSubindexMaxSize();
 		final int MAX_ENTRIES = config.getIndexMaxEntries();
 		
