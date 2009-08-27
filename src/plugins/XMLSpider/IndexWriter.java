@@ -44,11 +44,11 @@ import java.io.ObjectOutputStream;
  * Write index to disk file
  */
 public class IndexWriter {
-	private static final String[] HEX = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e",
-	        "f" }; 
-	
+	private static final String[] HEX = { "0", "1", "2", "3", "4", "5", "6", "7",
+			"8", "9", "a", "b", "c", "d", "e", "f" };
+
+	private Config config;
 	//- Writing Index
-	public long tProducedIndex;
 	private Vector<String> indices;
 	private int match;
 	private long time_taken;
@@ -63,8 +63,13 @@ public class IndexWriter {
 	private int subindexno = 0;
 	
 	private boolean pause = false;
+	private String status = "";
 
-	IndexWriter() {
+
+
+	IndexWriter(Config config) {
+		indices = null;
+		this.config = config;
 	}
 
 	/**
@@ -113,19 +118,21 @@ public class IndexWriter {
 
 			time_taken = System.currentTimeMillis() - time_taken;
 
-			if (logMINOR)
-				Logger.minor(this, "Spider: indexes regenerated - tProducedIndex="
-				        + (System.currentTimeMillis() - tProducedIndex) + "ms ago time taken=" + time_taken + "ms");
+			Logger.normal(this, "Spider: indexes regenerated");
 
-			tProducedIndex = System.currentTimeMillis();
 		} finally {
 		}
+	}
+
+	String getStatus() {
+		return status;
 	}
 
 	/**
 	 * Pause writing this index, index writing will pause as soon as possible
 	 */
 	void pause() {
+		status = "Pausing";
 		pause = true;
 	}
 
@@ -202,7 +209,8 @@ public class IndexWriter {
 	private void makeMainIndex() throws IOException, NoSuchAlgorithmException {
 		// Produce the main index file.
 		if (logMINOR)
-			Logger.minor(this, "Producing top index...");
+			Logger.normal(this, "Producing top index...");
+		status = "Top";
 
 		//the main index file
 		File outputFile = new File(indexdir + "index.xml");
@@ -366,6 +374,7 @@ public class IndexWriter {
 		// Escape if pause requested
 		if(pause==true)
 			throw new InterruptedException();
+		status = prefix;
 		final Config config = perstRoot.getConfig();
 		final long MAX_SIZE = config.getIndexSubindexMaxSize();
 		final int MAX_ENTRIES = config.getIndexMaxEntries();
@@ -546,7 +555,7 @@ public class IndexWriter {
 
 		db.open(arg[0]);
 		PerstRoot root = (PerstRoot) db.getRoot();
-		IndexWriter writer = new IndexWriter();
+		IndexWriter writer = new IndexWriter(null);
 
 		int benchmark = 0;
 		long[] timeTaken = null;

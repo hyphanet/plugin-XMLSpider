@@ -88,6 +88,14 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 		return getRoot().getConfig();
 	}
 
+	public String getIndexWriterStatus() {
+		return indexWriter.getStatus();
+	}
+
+	public boolean isGarbageCollecting() {
+		return garbageCollecting;
+	}
+
 	public synchronized boolean pauseWrite() {
 		if(!writingIndex)
 			return false;
@@ -109,10 +117,11 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 	/**
 	 * Lists the allowed mime types of the fetched page. 
 	 */
-	protected Set<String> allowedMIMETypes;	
+	protected Set<String> allowedMIMETypes;
 
 	static int dbVersion = 37;
 	static int version = 38;
+
 	public static final String pluginName = "XML spider " + version;
 
 	public String getVersion() {
@@ -174,6 +183,9 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 		}
 	}
 
+	/**
+	 * Start requests from the queue if less than 80% of the max requests are running until the max requests are running.
+	 */
 	public void startSomeRequests() {
 		ArrayList<ClientGetter> toStart = null;
 		synchronized (this) {
@@ -195,10 +207,12 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 
 					while (running + toStart.size() < maxParallelRequests && it.hasNext()) {
 						Page page = it.next();
+						// Skip if getting this page already
 						if (runningFetch.containsKey(page))
 							continue;
-
+						
 						try {
+							
 							ClientGetter getter = makeGetter(page);
 
 							Logger.minor(this, "Starting " + getter + " " + page);
@@ -226,6 +240,9 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 		}
 	}
 
+	/**
+	 * Callback for fetching the pages
+	 */
 	private class ClientGetterCallback implements ClientGetCallback {
 		final Page page;
 
@@ -281,6 +298,9 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 		}
 	}
 
+	/**
+	 * Callback for asyncronous handling of a success
+	 */
 	protected class OnSuccessCallback implements Runnable {
 		private FetchResult result;
 		private ClientGetter state;
@@ -297,6 +317,9 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 		}
 	}
 
+	/**
+	 * Start a thread to make an index
+	 */
 	public synchronized void scheduleMakeIndex() {
 		if (writeIndexScheduled || writingIndex)
 			return;
@@ -318,7 +341,9 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 					writingIndex = true;
 				}
 
+				garbageCollecting = true;
 				db.gc();
+				garbageCollecting = false;
 				indexWriter.makeIndex(getRoot());
 
 				synchronized (this) {
@@ -337,7 +362,9 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 		}
 	}
 
-	// Set config asynchronously 
+	/**
+	 * Set config asynchronously
+	 */
 	protected class SetConfigCallback implements Runnable {
 		private Config config;
 
@@ -418,7 +445,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 			if (stopped)
 				return;    				
 		}
-
+		
 		FreenetURI uri = state.getURI();
 		ClientMetadata cm = result.getMetadata();
 		Bucket data = result.asBucket();
@@ -537,6 +564,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 
 	private boolean writingIndex;
 	private boolean writeIndexScheduled;
+	private boolean garbageCollecting = false;
 
 	protected IndexWriter indexWriter;
 
@@ -544,6 +572,9 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 		return indexWriter;
 	}
 
+	/**
+	 * Stop the plugin, pausing any writing which is happening
+	 */
 	public void terminate(){
 		Logger.normal(this, "XMLSpider terminating");
 
@@ -580,6 +611,10 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 
 	private Thread exitHook = new Thread(new ExitHook());
 
+	/**
+	 * Start plugin
+	 * @param pr
+	 */
 	public synchronized void runPlugin(PluginRespirator pr) {
 		this.core = pr.getNode().clientCore;
 		this.pr = pr;
@@ -605,7 +640,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 		// Initial Database
 		db = initDB();
 
-		indexWriter = new IndexWriter();
+		indexWriter = new IndexWriter(getConfig());
 		webInterface = new WebInterface(this, pr.getHLSimpleClient(), pr.getToadletContainer(), pr.getNode().clientCore);
 		webInterface.load();
 
@@ -638,6 +673,11 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 			// Ignore
 		}
 
+		/**
+		 * When a link is found in html
+		 * @param uri
+		 * @param inline
+		 */
 		public void foundURI(FreenetURI uri, boolean inline){
 			if (stopped)
 				throw new RuntimeException("plugin stopping");
@@ -648,6 +688,12 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 
 		protected Integer lastPosition = null;
 
+		/**
+		 * When text is found
+		 * @param s
+		 * @param type
+		 * @param baseURI
+		 */
 		public void onText(String s, String type, URI baseURI){
 			if (stopped)
 				throw new RuntimeException("plugin stopping");
@@ -681,7 +727,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 					else
 						addWord(word, Integer.MIN_VALUE + i); // Put title words in the right order starting at Min_Value
 				}
-				catch (Exception e){}
+				catch (Exception e){} // If a word fails continue
 			}
 
 			if(type == null) {
@@ -689,7 +735,13 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 			}
 		}
 
-		private void addWord(String word, int position) throws Exception {
+		/**
+		 * Add a word to the database for this page
+		 * @param word
+		 * @param position
+		 * @throws java.lang.Exception
+		 */
+		private void addWord(String word, int position) {
 			if (logDEBUG)
 				Logger.debug(this, "addWord on " + page.getId() + " (" + word + "," + position + ")");
 
@@ -748,10 +800,6 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 
 	public PerstRoot getRoot() {
 		return (PerstRoot) db.getRoot();
-	}
-
-	protected Page getPageByURI(FreenetURI uri) {
-		return getRoot().getPageByURI(uri, false, null);
 	}
 
 	protected Page getPageById(long id) {
