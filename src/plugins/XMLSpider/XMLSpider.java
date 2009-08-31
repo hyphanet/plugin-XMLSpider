@@ -62,6 +62,7 @@ import freenet.support.io.NullBucketFactory;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.Arrays;
+import plugins.Library.index.TermPageEntry;
 
 /**
  * XMLSpider. Produces xml index for searching words. 
@@ -73,6 +74,38 @@ import java.util.Arrays;
  */
 public class XMLSpider implements FredPlugin, FredPluginThreadless,
 		FredPluginVersioned, FredPluginRealVersioned, FredPluginL10n, USKCallback, RequestClient {
+
+	/** Document ID of fetching documents */
+	protected Map<Page, ClientGetter> runningFetch = Collections.synchronizedMap(new HashMap<Page, ClientGetter>());
+
+	/**
+	 * Lists the allowed mime types of the fetched page. 
+	 */
+	protected Set<String> allowedMIMETypes;
+
+	static int dbVersion = 37;
+	static int version = 38;
+
+	public static final String pluginName = "XML spider " + version;
+
+	public String getVersion() {
+		return version + "(" + dbVersion + ") r" + Version.getSvnRevision();
+	}
+	
+	public long getRealVersion() {
+		return version;
+	}
+
+	private FetchContext ctx;
+	private ClientContext clientContext;
+	private boolean stopped = true;
+
+	private NodeClientCore core;
+	private PageMaker pageMaker;	
+	private PluginRespirator pr;
+
+	private LibraryBuffer librarybuffer;
+
 
 
 	public synchronized boolean cancelWrite() {
@@ -108,36 +141,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 		getRoot().setConfig(config); // hack -- may cause race condition. but this is more user friendly
 		callbackExecutor.execute(new SetConfigCallback(config));
 	}
-
-	/** Document ID of fetching documents */
-	protected Map<Page, ClientGetter> runningFetch = Collections.synchronizedMap(new HashMap<Page, ClientGetter>());
-
-	/**
-	 * Lists the allowed mime types of the fetched page. 
-	 */
-	protected Set<String> allowedMIMETypes;
-
-	static int dbVersion = 37;
-	static int version = 38;
-
-	public static final String pluginName = "XML spider " + version;
-
-	public String getVersion() {
-		return version + "(" + dbVersion + ") r" + Version.getSvnRevision();
-	}
 	
-	public long getRealVersion() {
-		return version;
-	}
-
-	private FetchContext ctx;
-	private ClientContext clientContext;
-	private boolean stopped = true;
-
-	private NodeClientCore core;
-	private PageMaker pageMaker;	
-	private PluginRespirator pr;
-
 	/**
 	 * Adds the found uri to the list of to-be-retrieved uris. <p>Every usk uri added as ssk.
 	 * @param uri the new uri that needs to be fetched for further indexing
@@ -645,6 +649,8 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 		for (int i = 0; i < initialURIs.length; i++)
 			queueURI(initialURIs[i], "bookmark", false);
 
+		librarybuffer = new LibraryBuffer(pr);
+
 		callbackExecutor.execute(new StartSomeRequestsCallback());
 	}
 
@@ -658,11 +664,18 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 	 */
 	public class PageCallBack implements FoundURICallback{
 		protected final Page page;
+		private FreenetURI uri;
 
 		protected final boolean logDEBUG = Logger.shouldLog(Logger.DEBUG, this); // per instance, allow changing on the fly
 
 		PageCallBack(Page page) {
-			this.page = page; 
+			this.page = page;
+			try {
+				this.uri = new FreenetURI(page.getURI());
+			} catch (MalformedURLException ex) {
+				Logger.error(this, "Error creating uri from '"+page.getURI()+"'", ex);
+			}
+			//Logger.normal(this, "Parsing "+page.getURI());
 			page.clearTermPosition();
 		}
 
@@ -702,6 +715,9 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 				 * title of the page 
 				 */
 				page.setPageTitle(s);
+				for (TermPageEntry termPageEntry : tpes.values()) {
+					librarybuffer.setTitle(termPageEntry, s);
+				}
 				type = "title";
 			}
 			else type = null;
@@ -732,6 +748,8 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 			}
 		}
 
+		HashMap<String, TermPageEntry> tpes = new HashMap();
+
 		/**
 		 * Add a word to the database for this page
 		 * @param word
@@ -748,6 +766,22 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 			Term term = getTermByWord(word, true);
 			TermPosition termPos = page.getTermPosition(term, true);
 			termPos.addPositions(position);
+
+			// Add to Library buffer
+			TermPageEntry tp = getEntry(word);
+			librarybuffer.addPos(tp, position);
+		}
+
+		/**
+		 * Makes a TermPageEntry for this term
+		 * @param word
+		 * @return
+		 */
+		private TermPageEntry getEntry(String word) {
+			TermPageEntry tp = tpes.get(word);
+			if(tp==null)
+				tp = new TermPageEntry(word, 0, uri, new HashMap());
+			return tp;
 		}
 	}
 
