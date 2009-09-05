@@ -57,7 +57,7 @@ public class Config extends Persistent implements Cloneable {
 		        ".7z", ".tar", ".arj", ".rpm", ".deb", //
 		        ".xpi", ".ace", ".cab", ".lza", ".lzh", //
 		        ".ace", ".exe", ".iso", ".bin", ".dll", // binary
-		        ".mpg", ".ogg", ".ogv", ".mp3", ".avi", ".wv", ".swf", ".wmv", ".mkv", ".flac", ".ogm", ".divx", ".mpeg", ".rm", ".wma", ".asf", ".rmvb", ".mov", ".flv", ".mp4", // media
+		        ".mpg", ".ogg", ".ogv", ".mp3", ".avi", ".wv", ".swf", ".wmv", ".mkv", ".flac", ".ogm", ".divx", ".mpeg", ".rm", ".wma", ".asf", ".rmvb", ".mov", ".flv", ".mp4", ".m4v", // media
 		        ".css", ".sig", ".gml", ".df", ".cbr", ".gf", ".pdf", ".db" // other
 		};
 
