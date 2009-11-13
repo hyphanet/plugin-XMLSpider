@@ -9,6 +9,7 @@ import freenet.support.Logger;
 import freenet.support.SimpleFieldSet;
 import freenet.support.api.Bucket;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Collection;
 import java.util.TreeMap;
 import plugins.Library.index.TermEntryWriter;
@@ -107,9 +108,11 @@ public class LibraryBuffer implements FredPluginTalker {
 				termPageBuffer = new TreeMap();
 				bufferUsageEstimate = 0;
 			}
+			OutputStream os = bucket.getOutputStream();
 			for (TermPageEntry termPageEntry : buffer2) {
-				TermEntryWriter.getInstance().writeObject(termPageEntry, bucket.getOutputStream());
+				TermEntryWriter.getInstance().writeObject(termPageEntry, os);
 			}
+			os.close();
 			bucket.setReadOnly();
 			libraryTalker.send(sfs, bucket);
 			Logger.normal(this, "Buffer successfully sent to Library, size = "+bucket.size());
