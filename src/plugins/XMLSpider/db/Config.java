@@ -52,13 +52,13 @@ public class Config extends Persistent implements Cloneable {
 		endWorkingPeriod = 7;
 
 		badlistedExtensions = new String[] { //
-				".ico", ".bmp", ".png", ".jpg", ".jpeg", ".gif", // image
-				".zip", ".jar", ".gz", ".bz2", ".rar", // archive
+				".ico", ".bmp", ".png", ".jpg", ".jpeg", ".gif", ".tif", ".tiff", ".ani", ".raw", ".svg", // image
+				".zip", ".jar", ".gz", ".bz2", ".rar", ".sit", // archive
 		        ".7z", ".tar", ".arj", ".rpm", ".deb", //
 		        ".xpi", ".ace", ".cab", ".lza", ".lzh", //
-		        ".ace", ".exe", ".iso", ".bin", ".dll", // binary
-		        ".mpg", ".ogg", ".ogv", ".mp3", ".avi", ".wv", ".swf", ".wmv", ".mkv", ".flac", ".ogm", ".divx", ".mpeg", ".rm", ".wma", ".asf", ".rmvb", ".mov", ".flv", ".mp4", ".m4v", // media
-		        ".css", ".sig", ".gml", ".df", ".cbr", ".gf", ".pdf", ".db" // other
+		        ".exe", ".iso", ".bin", ".dll", ".nrg", ".dmg", ".drv", ".img", ".msi", ".nds", ".vcd", // binary
+		        ".mpg", ".ogg", ".ogv", ".mp3", ".avi", ".wv", ".swf", ".wmv", ".mkv", ".flac", ".ogm", ".divx", ".mpeg", ".rm", ".wma", ".asf", ".rmvb", ".mov", ".flv", ".mp4", ".m4v", ".wav", ".aac", ".cda", ".fla", ".m4a", ".midi", ".vob", // media
+		        ".css", ".sig", ".gml", ".df", ".cbr", ".gf", ".pdf", ".db", ".dbf", ".accdb", ".dat", ".docx", ".dwg", ".mdf", ".odg", ".odt", ".ods", ".pps", ".wdb", ".xls", ".xlsx" // other
 		};
 
 		requestPriority = RequestStarter.IMMEDIATE_SPLITFILE_PRIORITY_CLASS;
