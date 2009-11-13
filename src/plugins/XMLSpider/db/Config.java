@@ -44,7 +44,7 @@ public class Config extends Persistent implements Cloneable {
 		indexOwner = "Freenet";
 		indexOwnerEmail = "(nil)";
 
-		maxShownURIs = 15;
+		maxShownURIs = 50;
 
 		maxParallelRequestsWorking = 100;
 		maxParallelRequestsNonWorking = 100;
