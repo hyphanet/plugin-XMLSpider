@@ -113,7 +113,7 @@ class ConfigPage implements WebPage {
 		addConfig(spiderConfig, //
 		        "Max Parallel Requests (Working)", "Maximum number of parallel requests if we are in the working period.", //
 		        "maxParallelRequestsWorking", //
-		        new String[] { "0", "1", "2", "5", "10", "20", "50", "100", "200", "500", "1000" }, //
+		        new String[] { "0", "1", "2", "5", "10", "15", "25", "50", "75", "100", "150", "200", "500", "1000" }, //
 		        Integer.toString(config.getMaxParallelRequestsWorking()));
 		addConfig(spiderConfig, //
 		        "Max Parallel Requests (Non-Working)", "Maximum number of parallel requests if we are not in the working period.", //
