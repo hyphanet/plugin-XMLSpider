@@ -823,7 +823,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 	private Storage initDB() {
 		Storage db = StorageFactory.getInstance().createStorage();
 		db.setProperty("perst.object.cache.kind", "pinned");
-		db.setProperty("perst.object.cache.init.size", 8192);
+		db.setProperty("perst.object.cache.init.size", 65536); //Increasing from 8192 no longer brings my system to it's knees after a few hours.  Does this make sense?
 		db.setProperty("perst.alternative.btree", true);
 		db.setProperty("perst.string.encoding", "UTF-8");
 		db.setProperty("perst.concurrent.iterator", true);
