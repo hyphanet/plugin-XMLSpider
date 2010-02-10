@@ -427,7 +427,7 @@ public class IndexWriter {
 				if(pause==true)
 					throw new InterruptedException();
 				// Skip if Term is a stopword
-				if(XMLSpider.isStopWord(term.getWord()))
+				if(SearchUtil.isStopWord(term.getWord()))
 					continue;
 				Element wordElement = xmlDoc.createElementNS(null, "word");
 				wordElement.setAttributeNS(null, "v", term.getWord());

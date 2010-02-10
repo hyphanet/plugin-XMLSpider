@@ -3,8 +3,11 @@
  * http://www.gnu.org/ for further details of the GPL. */
 package plugins.XMLSpider;
 
-import com.db4o.ObjectContainer;
+import static plugins.XMLSpider.SearchUtil.isStopWord;
+
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -22,6 +25,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import plugins.Library.index.TermPageEntry;
 import plugins.XMLSpider.db.Config;
 import plugins.XMLSpider.db.Page;
 import plugins.XMLSpider.db.PerstRoot;
@@ -31,6 +35,9 @@ import plugins.XMLSpider.db.TermPosition;
 import plugins.XMLSpider.org.garret.perst.Storage;
 import plugins.XMLSpider.org.garret.perst.StorageFactory;
 import plugins.XMLSpider.web.WebInterface;
+
+import com.db4o.ObjectContainer;
+
 import freenet.client.ClientMetadata;
 import freenet.client.FetchContext;
 import freenet.client.FetchException;
@@ -59,10 +66,6 @@ import freenet.support.Logger;
 import freenet.support.api.Bucket;
 import freenet.support.io.NativeThread;
 import freenet.support.io.NullBucketFactory;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.util.Arrays;
-import plugins.Library.index.TermPageEntry;
 
 /**
  * XMLSpider. Produces xml index for searching words. 
@@ -725,15 +728,12 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 			 * determine the position of the word in the retrieved page
 			 * FIXME - replace with a real tokenizor
 			 */
-			String[] words = s.split("[^\\p{L}\\{N}]+");
+			SearchTokenizer tok = new SearchTokenizer(s);
 
 			if(lastPosition == null)
 				lastPosition = 1; 
-			for (int i = 0; i < words.length; i++) {
-				String word = words[i];
-				if ((word == null) || (word.length() == 0))
-					continue;
-				word = word.toLowerCase();
+			int i = 0;
+			for (String word: tok) {
 				try{
 					if(type == null)
 						addWord(word, lastPosition + i);
@@ -741,10 +741,11 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 						addWord(word, Integer.MIN_VALUE + i); // Put title words in the right order starting at Min_Value
 				}
 				catch (Exception e){} // If a word fails continue
+				i++;
 			}
 
 			if(type == null) {
-				lastPosition = lastPosition + words.length;
+				lastPosition = lastPosition + i;
 			}
 		}
 
@@ -783,13 +784,6 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 				tp = new TermPageEntry(word, 0, uri, new HashMap());
 			return tp;
 		}
-	}
-
-	private static List<String> stopWords = Arrays.asList(new String[]{
-		"the", "and", "that", "have", "for"		// English stop words
-	});
-	public static boolean isStopWord(String word) {
-		return word.length() < 3 || stopWords.contains(word);
 	}
 
 	public void onFoundEdition(long l, USK key, ObjectContainer container, ClientContext context, boolean metadata,
