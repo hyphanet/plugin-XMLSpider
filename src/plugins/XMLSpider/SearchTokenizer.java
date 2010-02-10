@@ -4,6 +4,7 @@ import java.lang.Character.UnicodeBlock;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Locale;
+import static plugins.XMLSpider.SearchUtil.*;
 
 /**
  * Search Tokenizer
@@ -163,29 +164,5 @@ class SearchTokenizer implements Iterable<String>, Iterator<String> {
 		// TODO: JAVA6: normalize to NFKC
 		// Do upper case first for Turkish and friends
 		return text.toUpperCase(Locale.US).toLowerCase(Locale.US);
-	}
-
-	protected boolean isCJK(int codePoint) {
-		UnicodeBlock block = Character.UnicodeBlock.of(codePoint);
-		return block == UnicodeBlock.CJK_COMPATIBILITY // CJK
-			|| block == UnicodeBlock.CJK_COMPATIBILITY_FORMS // 
-			|| block == UnicodeBlock.CJK_COMPATIBILITY_IDEOGRAPHS // 
-			|| block == UnicodeBlock.CJK_COMPATIBILITY_IDEOGRAPHS_SUPPLEMENT // 
-			|| block == UnicodeBlock.CJK_RADICALS_SUPPLEMENT // 
-			|| block == UnicodeBlock.CJK_SYMBOLS_AND_PUNCTUATION // 
-			|| block == UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS // 
-			|| block == UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_A // 
-			|| block == UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_B // 
-			|| block == UnicodeBlock.BOPOMOFO // Chinese
-			|| block == UnicodeBlock.BOPOMOFO_EXTENDED //
-			|| block == UnicodeBlock.HANGUL_COMPATIBILITY_JAMO // Korean
-			|| block == UnicodeBlock.HANGUL_JAMO //
-			|| block == UnicodeBlock.HANGUL_SYLLABLES //
-			|| block == UnicodeBlock.KANBUN // Japanese
-			|| block == UnicodeBlock.HIRAGANA //
-			|| block == UnicodeBlock.KANGXI_RADICALS //
-			|| block == UnicodeBlock.KANNADA //
-			|| block == UnicodeBlock.KATAKANA //
-			|| block == UnicodeBlock.KATAKANA_PHONETIC_EXTENSIONS;
 	}
 }
