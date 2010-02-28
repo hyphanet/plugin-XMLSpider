@@ -117,7 +117,8 @@ public class IndexWriter {
 
 			indices = null;
 
-			time_taken = System.currentTimeMillis() - time_taken;
+			tProducedIndex = System.currentTimeMillis();
+			time_taken = tProducedIndex - time_taken;
 
 			Logger.normal(this, "Spider: indexes regenerated");
 
