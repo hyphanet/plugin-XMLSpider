@@ -69,8 +69,9 @@ class ConfigPage implements WebPage {
 					break;
 				}
 			}
-			if (good)
+			if (good) {
 				config.setBadlistedExtensions(v0);
+			}
 		}
 		
 		if (request.isPartSet("indexDir")) {
