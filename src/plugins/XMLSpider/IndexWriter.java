@@ -67,8 +67,6 @@ public class IndexWriter {
 	private boolean pause = false;
 	private String currentSubindexPrefix = "";
 
-
-
 	IndexWriter(Config config) {
 		indices = null;
 		this.config = config;
@@ -87,27 +85,25 @@ public class IndexWriter {
 		try {
 			time_taken = System.currentTimeMillis();
 
-
 			File indexDir = new File(config.getIndexDir());
-			if(((!indexDir.exists()) && !indexDir.mkdirs()) || (indexDir.exists() && !indexDir.isDirectory())) {
+			if (((!indexDir.exists()) && !indexDir.mkdirs()) || (indexDir.exists() && !indexDir.isDirectory())) {
 				Logger.error(this, "Cannot create index directory: " + indexDir);
 				return;
 			}
 
-
-			if((new File(indexdir+"index-writer.resume")).exists()){
-				try{
+			if ((new File(indexdir+"index-writer.resume")).exists()) {
+				try {
 					readResume();
-				}catch( Exception e){
+				} catch (Exception e) {
 					Logger.error(this, "Error preventing reading resume file", e);
 					return;
 				}
-			}else
+			} else
 				readConfig();
 
-			try{
+			try {
 				makeSubIndices(perstRoot);
-			}catch(InterruptedException i){
+			} catch (InterruptedException i) {
 				Logger.normal(this, "Index writing paused on user request, writing resume file");
 				writeResume(subindexno);
 				pause = false;
@@ -138,27 +134,29 @@ public class IndexWriter {
 		pause = true;
 	}
 
-	private void readConfig(){
+	private void readConfig() {
 
-		if(indexdir == null || indexdir.equals(""))
+		if (indexdir == null || indexdir.equals("")) {
 			indexdir = config.getIndexDir();
-		else
+		} else {
 			config.setIndexDir(indexdir);
+		}
 		
 		time_taken = System.currentTimeMillis();
 		indexOwner = config.getIndexOwner();
 		indexOwnerEmail = config.getIndexOwnerEmail();
 		indexTitle = config.getIndexTitle();
 		indices = null;
-		subindexno=0;
+		subindexno = 0;
 
 		
-		if (logMINOR)
+		if (logMINOR) {
 			Logger.normal(this, "Spider: regenerating index. MAX_SIZE=" + config.getIndexSubindexMaxSize() +
 				", MAX_ENTRIES=" + config.getIndexMaxEntries());
+		}
 	}
 
-	private void readResume() throws IOException, ClassNotFoundException{
+	private void readResume() throws IOException, ClassNotFoundException {
 		File resumeFile = new File(indexdir  + "index-writer.resume");
 		Logger.normal(this, "Reading resume file : "+resumeFile.getCanonicalPath());
 		ObjectInputStream fr = new ObjectInputStream(new FileInputStream(resumeFile));
@@ -172,7 +170,7 @@ public class IndexWriter {
 		startDepth = fr.readInt();
 		subindexno = fr.readInt();
 		indices = (Vector)fr.readObject();
-		Logger.normal(this, indices.size()+" subindices found and resumed");
+		Logger.normal(this, indices.size() + " subindices found and resumed");
 		
 		resumeFile.delete();
 	}
@@ -209,8 +207,9 @@ public class IndexWriter {
 	 */
 	private void makeMainIndex() throws IOException, NoSuchAlgorithmException {
 		// Produce the main index file.
-		if (logMINOR)
+		if (logMINOR) {
 			Logger.normal(this, "Producing top index...");
+		}
 		currentSubindexPrefix = "Top";
 
 		//the main index file
@@ -278,7 +277,6 @@ public class IndexWriter {
 			/* Adding word index */
 			Element keywordsElement = xmlDoc.createElementNS(null, "keywords");
 			for (int i = 0; i < indices.size(); i++) {
-
 				Element subIndexElement = xmlDoc.createElementNS(null, "subIndex");
 				subIndexElement.setAttributeNS(null, "key", indices.elementAt(i));
 				//the subindex element key will contain the bits used for matching in that subindex
@@ -338,28 +336,36 @@ public class IndexWriter {
 
 
 		// Only allowing 2 start depths at the moment, 3 would seem to large a jump
-		if(startDepth<=1)
-			for (; subindexno<16; subindexno++)
+		if(startDepth<=1) {
+			for (; subindexno<16; subindexno++) {
 				generateSubIndex(perstRoot, Integer.toHexString(subindexno));
-		else
-			for(; subindexno<256; subindexno++)
+			}
+		} else {
+			for(; subindexno<256; subindexno++) {
 				generateSubIndex(perstRoot, String.format("%02x", subindexno));
+			}
+		}
 	}
 
 	private void generateSubIndex(PerstRoot perstRoot, String prefix) throws Exception {
-		if (logMINOR)
+		if (logMINOR) {
 			Logger.minor(this, "Generating subindex for (" + prefix + ")");
-		if (prefix.length() > match)
+		}
+		if (prefix.length() > match) {
 			match = prefix.length();
+		}
 
-		if (generateXML(perstRoot, prefix))
+		if (generateXML(perstRoot, prefix)) {
 			return;
+		}
 
-		if (logMINOR)
+		if (logMINOR) {
 			Logger.minor(this, "Too big subindex for (" + prefix + ")");
+		}
 
-		for (String hex : HEX)
+		for (String hex : HEX) {
 			generateSubIndex(perstRoot, prefix + hex);
+		}
 	}
 
 	/**
@@ -373,8 +379,9 @@ public class IndexWriter {
 	 */
 	private boolean generateXML(PerstRoot perstRoot, String prefix) throws IOException, InterruptedException {
 		// Escape if pause requested
-		if(pause==true)
+		if(pause==true) {
 			throw new InterruptedException();
+		}
 		currentSubindexPrefix = prefix;
 		final long MAX_SIZE = config.getIndexSubindexMaxSize();
 		final int MAX_ENTRIES = config.getIndexMaxEntries();
@@ -413,10 +420,8 @@ public class IndexWriter {
 			headerElement.appendChild(titleElement);
 
 			/* List of files referenced in this subindex */
-			Element filesElement = xmlDoc.createElementNS(null, "files"); /*
-																		 * filesElement !=
-																		 * fileElement
-																		 */
+			Element filesElement = xmlDoc.createElementNS(null, "files"); /* filesElement != fileElement */
+
 			filesElement.setAttribute("totalFileCount", Integer.toString(perstRoot.getPageCount(Status.SUCCEEDED)));
 			Set<Long> fileid = new HashSet<Long>();
 
@@ -425,11 +430,13 @@ public class IndexWriter {
 			IterableIterator<Term> termIterator = perstRoot.getTermIterator(prefix, prefix + "g");
 			for (Term term : termIterator) {
 				// Escape if pause requested
-				if(pause==true)
+				if(pause==true) {
 					throw new InterruptedException();
+				}
 				// Skip if Term is a stopword
-				if(SearchUtil.isStopWord(term.getWord()))
+				if(SearchUtil.isStopWord(term.getWord())) {
 					continue;
+				}
 				Element wordElement = xmlDoc.createElementNS(null, "word");
 				wordElement.setAttributeNS(null, "v", term.getWord());
 				if (config.isDebug()) {
@@ -442,16 +449,19 @@ public class IndexWriter {
 				Set<Page> pages = term.getPages();
 				
 				if ((count > 1 && (estimateSize + pages.size() * 13) > MAX_SIZE) || //
-						(count > MAX_ENTRIES))
+						(count > MAX_ENTRIES)) {
 					return false;
+				}
 
 				for (Page page : pages) {
 					// Escape if pause requested
-					if(pause==true)
+					if(pause==true) {
 						throw new InterruptedException();
+					}
 					TermPosition termPos = page.getTermPosition(term, false);
-					if (termPos == null)
+					if (termPos == null) {
 						continue;
+					}
 
 					synchronized (termPos) {
 						synchronized (page) {
@@ -469,8 +479,9 @@ public class IndexWriter {
 							StringBuilder positionList = new StringBuilder();
 
 							for (int k = 0; k < positions.length; k++) {
-								if (k != 0)
+								if (k != 0) {
 									positionList.append(',');
+								}
 								positionList.append(positions[k]);
 							}
 							uriElement.appendChild(xmlDoc.createTextNode(positionList.toString()));
@@ -543,8 +554,7 @@ public class IndexWriter {
 			return false;
 		}
 
-		if (logMINOR)
-			Logger.minor(this, "Spider: indexes regenerated.");
+		if (logMINOR) Logger.minor(this, "Spider: indexes regenerated.");
 		indices.add(prefix);
 		return true;
 	}
