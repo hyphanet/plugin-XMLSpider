@@ -57,7 +57,7 @@ public class IndexWriter {
 	private boolean logMINOR = Logger.shouldLog(Logger.MINOR, this);
 
 	private String indexdir;
-	private int startDepth;
+	private int startDepth = 2;
 	private boolean separatepageindex;
 	private String indexOwnerEmail;
 	private String indexOwner;
@@ -176,7 +176,7 @@ public class IndexWriter {
 		resumeFile.delete();
 	}
 
-	void writeResume(int resumePosition) {
+	private void writeResume(int resumePosition) {
 		// Save writing progress to file
 		File resume = new File(indexdir  + "index-writer.resume");
 		try {
