@@ -98,8 +98,9 @@ public class IndexWriter {
 					Logger.error(this, "Error preventing reading resume file", e);
 					return;
 				}
-			} else
+			} else {
 				readConfig();
+			}
 
 			try {
 				makeSubIndices(perstRoot);
@@ -109,6 +110,7 @@ public class IndexWriter {
 				pause = false;
 				throw i;
 			}
+
 			makeMainIndex();
 
 			indices = null;
@@ -117,7 +119,6 @@ public class IndexWriter {
 			time_taken = tProducedIndex - time_taken;
 
 			Logger.normal(this, "Spider: indexes regenerated");
-
 		} finally {
 		}
 	}
@@ -335,7 +336,7 @@ public class IndexWriter {
 		match = 1;
 
 
-		// Only allowing 2 start depths at the moment, 3 would seem to large a jump
+		// Only allowing 2 start depths at the moment, 3 would seem too large a jump
 		if(startDepth<=1) {
 			for (; subindexno<16; subindexno++) {
 				generateSubIndex(perstRoot, Integer.toHexString(subindexno));
