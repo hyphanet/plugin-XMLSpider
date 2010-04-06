@@ -157,12 +157,12 @@ class ConfigPage implements WebPage {
 		addConfig(indexConfig, //
 		        "Maximum Subindex Entries", "Maximum number of entries in each index.", // 
 		        "indexMaxEntries", //
-		        new String[] { "500", "1000", "2000", "4000", "8000" }, //
+		        new String[] { "500", "1000", "2000", "4000", "8000", "12000", "16000" }, //
 		        Integer.toString(config.getIndexMaxEntries()));
 		addConfig(indexConfig, //
 		        "Maximum Subindex Size", "Maximum size of a subindex (MiB).", // 
 		        "indexSubindexMaxSize", //
-		        new String[] { "1", "2", "4", "8", "16", "20", "24", "28", "32", "40" }, //
+		        new String[] { "1", "2", "4", "8", "16", "20", "24", "28", "32", "40", "48" }, //
 		        Integer.toString(config.getIndexSubindexMaxSize() / 1024 / 1024));
 		addConfig(indexConfig, //
 		        "Write debug info", "Write debug info", // 
