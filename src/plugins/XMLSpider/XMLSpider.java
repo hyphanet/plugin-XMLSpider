@@ -109,11 +109,10 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 
 	private LibraryBuffer librarybuffer;
 
-
-
 	public synchronized boolean cancelWrite() {
-		if(writingIndex)
+		if(writingIndex) {
 			return false;
+		}
 		writeIndexScheduled = false;
 		return true;
 	}
@@ -131,8 +130,9 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 	}
 
 	public synchronized boolean pauseWrite() {
-		if(!writingIndex)
+		if(!writingIndex) {
 			return false;
+		}
 		indexWriter.pause();
 		writingIndex = false;
 		writeIndexScheduled = false;
@@ -152,13 +152,16 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 	public void queueURI(FreenetURI uri, String comment, boolean force) {
 		String sURI = uri.toString();
 		String lowerCaseURI = sURI.toLowerCase(Locale.US);
-		for (String ext : getRoot().getConfig().getBadlistedExtensions())
-			if (lowerCaseURI.endsWith(ext))
+		for (String ext : getRoot().getConfig().getBadlistedExtensions()) {
+			if (lowerCaseURI.endsWith(ext)) {
 				return; // be smart
+			}
+		}
 
 		if (uri.isUSK()) {
-			if (uri.getSuggestedEdition() < 0)
+			if (uri.getSuggestedEdition() < 0) {
 				uri = uri.setSuggestedEdition((-1) * uri.getSuggestedEdition());
+			}
 			try {
 				uri = ((USK.create(uri)).getSSK()).getURI();
 				(clientContext.uskManager).subscribe(USK.create(uri), this, false, this);
@@ -194,14 +197,13 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 	public void startSomeRequests() {
 		ArrayList<ClientGetter> toStart = null;
 		synchronized (this) {
-			if (stopped)
-				return;
+			if (stopped) return;
+
 			synchronized (runningFetch) {
 				int running = runningFetch.size();
 				int maxParallelRequests = getRoot().getConfig().getMaxParallelRequests();
 
-				if (running >= maxParallelRequests * 0.8)
-					return;
+				if (running >= maxParallelRequests * 0.8) return;
 
 				// Prepare to start
 				toStart = new ArrayList<ClientGetter>(maxParallelRequests - running);
@@ -213,11 +215,9 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 					while (running + toStart.size() < maxParallelRequests && it.hasNext()) {
 						Page page = it.next();
 						// Skip if getting this page already
-						if (runningFetch.containsKey(page))
-							continue;
+						if (runningFetch.containsKey(page)) continue;
 						
 						try {
-							
 							ClientGetter getter = makeGetter(page);
 
 							Logger.minor(this, "Starting " + getter + " " + page);
@@ -256,16 +256,14 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 		}
 
 		public void onFailure(FetchException e, ClientGetter state, ObjectContainer container) {
-			if (stopped)
-				return;
+			if (stopped) return;
 
 			callbackExecutor.execute(new OnFailureCallback(e, state, page));
 			Logger.minor(this, "Queued OnFailure: " + page + " (q:" + callbackExecutor.getQueue().size() + ")");
 		}
 
 		public void onSuccess(final FetchResult result, final ClientGetter state, ObjectContainer container) {
-			if (stopped)
-				return;
+			if (stopped) return;
 
 			callbackExecutor.execute(new OnSuccessCallback(result, state, page));
 			Logger.minor(this, "Queued OnSuccess: " + page + " (q:" + callbackExecutor.getQueue().size() + ")");
@@ -282,7 +280,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 	private ClientGetter makeGetter(Page page) throws MalformedURLException {
 		ClientGetter getter = new ClientGetter(new ClientGetterCallback(page),
 				new FreenetURI(page.getURI()), ctx,
-		        getPollingPriorityProgress(), this, null, null);
+				getPollingPriorityProgress(), this, null, null);
 		return getter;
 	}
 
@@ -325,8 +323,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 	 * Start a thread to make an index
 	 */
 	public synchronized void scheduleMakeIndex() {
-		if (writeIndexScheduled || writingIndex)
-			return;
+		if (writeIndexScheduled || writingIndex) return;
 
 		callbackExecutor.execute(new MakeIndexCallback());
 		writeIndexScheduled = true;
@@ -334,9 +331,8 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 
 	protected class MakeIndexCallback implements Runnable {
 		public void run() {
-			synchronized(this){
-				if(!writeIndexScheduled)
-					return;
+			synchronized (this) {
+				if (!writeIndexScheduled) return;
 				writeIndexScheduled=false;
 			}
 			try {
@@ -400,23 +396,23 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 
 	protected static class CallbackPrioritizer implements Comparator<Runnable> {
 		public int compare(Runnable o1, Runnable o2) {
-			if (o1.getClass() == o2.getClass())
-				return 0;
+			if (o1.getClass() == o2.getClass()) return 0;
 
 			return getPriority(o1) - getPriority(o2);
 		}
 
 		private int getPriority(Runnable r) {
-			if (r instanceof SetConfigCallback)
+			if (r instanceof SetConfigCallback) {
 				return 0;
-			else if (r instanceof MakeIndexCallback)
+			} else if (r instanceof MakeIndexCallback) {
 				return 1;
-			else if (r instanceof OnFailureCallback)
+			} else if (r instanceof OnFailureCallback) {
 				return 2;
-			else if (r instanceof OnSuccessCallback)
+			} else if (r instanceof OnSuccessCallback) {
 				return 3;
-			else if (r instanceof StartSomeRequestsCallback)
+			} else if (r instanceof StartSomeRequestsCallback) {
 				return 4;
+			}
 
 			return -1;
 		}
@@ -446,8 +442,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 	// single threaded
 	protected void onSuccess(FetchResult result, ClientGetter state, Page page) {
 		synchronized (this) {
-			if (stopped)
-				return;    				
+			if (stopped) return;    				
 		}
 		
 		FreenetURI uri = state.getURI();
@@ -468,14 +463,15 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 			Logger.minor(this, "Successful: " + uri + " : " + page.getId());
 
 			try {
-				if(!"text/plain".equals(mimeType))
+				if (!"text/plain".equals(mimeType)) {
 					ContentFilter.filter(data, new NullBucketFactory(), mimeType,
 							uri.toURI("http://127.0.0.1:8888/"), pageCallBack, null, null);
-				else{
+				} else {
 					BufferedReader br = new BufferedReader(new InputStreamReader(data.getInputStream()));
 					String line;
-					while((line = br.readLine())!=null)
+					while((line = br.readLine())!=null) {
 						pageCallBack.onText(line, mimeType, uri.toURI("http://127.0.0.1:8888/"));
+					}
 				}
 
 			} catch (UnsafeContentTypeException e) {
@@ -512,8 +508,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 				synchronized (this) {
 					runningFetch.remove(page);
 				}
-				if (!stopped)
-					startSomeRequests();
+				if (!stopped) startSomeRequests();
 			} finally {
 				if (!dbTransactionEnded) {
 					Logger.minor(this, "rollback transaction", new Exception("debug"));
@@ -530,8 +525,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 		Logger.minor(this, "Failed: " + page + " : " + state, fe);
 
 		synchronized (this) {
-			if (stopped)
-				return;
+			if (stopped) return;
 		}
 
 		boolean dbTransactionEnded = false;
@@ -649,8 +643,9 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 		webInterface.load();
 
 		FreenetURI[] initialURIs = core.getBookmarkURIs();
-		for (int i = 0; i < initialURIs.length; i++)
+		for (int i = 0; i < initialURIs.length; i++) {
 			queueURI(initialURIs[i], "bookmark", false);
+		}
 
 		librarybuffer = new LibraryBuffer(pr);
 
@@ -682,7 +677,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 			page.clearTermPosition();
 		}
 
-		public void foundURI(FreenetURI uri){
+		public void foundURI(FreenetURI uri) {
 			// Ignore
 		}
 
@@ -691,11 +686,9 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 		 * @param uri
 		 * @param inline
 		 */
-		public void foundURI(FreenetURI uri, boolean inline){
-			if (stopped)
-				throw new RuntimeException("plugin stopping");
-			if (logDEBUG)
-				Logger.debug(this, "foundURI " + uri + " on " + page);
+		public void foundURI(FreenetURI uri, boolean inline) {
+			if (stopped) throw new RuntimeException("plugin stopping");
+			if (logDEBUG) Logger.debug(this, "foundURI " + uri + " on " + page);
 			queueURI(uri, "Added from " + page.getURI(), false);
 		}
 
@@ -708,10 +701,8 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 		 * @param baseURI
 		 */
 		public void onText(String s, String type, URI baseURI){
-			if (stopped)
-				throw new RuntimeException("plugin stopping");
-			if (logDEBUG)
-				Logger.debug(this, "onText on " + page.getId() + " (" + baseURI + ")");
+			if (stopped) throw new RuntimeException("plugin stopping");
+			if (logDEBUG) Logger.debug(this, "onText on " + page.getId() + " (" + baseURI + ")");
 
 			if ("title".equalsIgnoreCase(type) && (s != null) && (s.length() != 0) && (s.indexOf('\n') < 0)) {
 				/*
@@ -722,27 +713,26 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 					librarybuffer.setTitle(termPageEntry, s);
 				}
 				type = "title";
+			} else {
+				type = null;
 			}
-			else type = null;
 			// Tokenise. Do not use the pairs-of-CJK-chars option because we need
 			// accurate word index numbers.
 			SearchTokenizer tok = new SearchTokenizer(s, false);
 
-			if(lastPosition == null)
-				lastPosition = 1; 
+			if(lastPosition == null) lastPosition = 1; 
 			int i = 0;
 			for (String word: tok) {
-				try{
+				try {
 					if(type == null)
 						addWord(word, lastPosition + i);
 					else
 						addWord(word, Integer.MIN_VALUE + i); // Put title words in the right order starting at Min_Value
-				}
-				catch (Exception e){} // If a word fails continue
+				} catch (Exception e) {} // If a word fails continue
 				i++;
 			}
 
-			if(type == null) {
+			if (type == null) {
 				lastPosition = lastPosition + i;
 			}
 		}
@@ -756,12 +746,10 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 		 * @throws java.lang.Exception
 		 */
 		private void addWord(String word, int position) {
-			if (logDEBUG)
-				Logger.debug(this, "addWord on " + page.getId() + " (" + word + "," + position + ")");
+			if (logDEBUG) Logger.debug(this, "addWord on " + page.getId() + " (" + word + "," + position + ")");
 
 			// Skip word if it is a stop word
-			if (isStopWord(word))
-				return;
+			if (isStopWord(word)) return;
 			Term term = getTermByWord(word, true);
 			TermPosition termPos = page.getTermPosition(term, true);
 			termPos.addPositions(position);
@@ -778,8 +766,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 		 */
 		private TermPageEntry getEntry(String word) {
 			TermPageEntry tp = tpes.get(word);
-			if(tp==null)
-				tp = new TermPageEntry(word, 0, uri, new HashMap());
+			if (tp == null) tp = new TermPageEntry(word, 0, uri, new HashMap());
 			return tp;
 		}
 	}
@@ -823,8 +810,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 		db.open("XMLSpider-" + dbVersion + ".dbs");
 
 		PerstRoot root = (PerstRoot) db.getRoot();
-		if (root == null)
-			PerstRoot.createRoot(db);
+		if (root == null) PerstRoot.createRoot(db);
 
 		return db;
 	}

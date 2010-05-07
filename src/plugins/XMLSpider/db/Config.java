@@ -46,8 +46,8 @@ public class Config extends Persistent implements Cloneable {
 
 		maxShownURIs = 50;
 
-		maxParallelRequestsWorking = 100;
-		maxParallelRequestsNonWorking = 100;
+		maxParallelRequestsWorking = 0;
+		maxParallelRequestsNonWorking = 0;
 		beginWorkingPeriod = 23;
 		endWorkingPeriod = 7;
 

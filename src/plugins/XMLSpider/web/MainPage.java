@@ -60,17 +60,19 @@ class MainPage implements WebPage {
 			}
 		}
 		if (request.isPartSet("pausewrite")) {
-			if(xmlSpider.pauseWrite())
+			if(xmlSpider.pauseWrite()) {
 				pageMaker.getInfobox("infobox infobox-success", "Writing task paused", contentNode)
 						.addChild("#", "Schedule writing to the same directory to continue");
-			else
+			} else {
 				pageMaker.getInfobox("infobox infobox-error", "Write task could not be paused", contentNode);
+			}
 		}
 		if (request.isPartSet("cancelwrite")) {
-			if(xmlSpider.cancelWrite())
+			if(xmlSpider.cancelWrite()) {
 				pageMaker.getInfobox("infobox infobox-success", "Writing task cancelled", contentNode);
-			else
+			} else {
 				pageMaker.getInfobox("infobox infobox-error", "Write task could not be cancelled, it has already started", contentNode);
+			}
 		}
 
 		// Queue URI
@@ -125,22 +127,23 @@ class MainPage implements WebPage {
 		statusContent.addChild("br");
 		statusContent.addChild("#", "Index Writer: ");
 		synchronized (this) {
-			if (xmlSpider.isWritingIndex()){
+			if (xmlSpider.isWritingIndex()) {
 				statusContent.addChild("span", "style", "color: red; font-weight: bold;", xmlSpider.getIndexWriterStatus() );
 				HTMLNode pauseform = pr.addFormChild(statusContent, "/xmlspider/", "pauseform");
 				pauseform.addChild("input", //
 						new String[] { "name", "type", "value" },//
 						new String[] { "pausewrite", "hidden", "pausewrite" });
 				pauseform.addChild("input", new String[]{"type", "value"}, new String[]{"submit", "Pause write"});
-			}else if (xmlSpider.isWriteIndexScheduled()){
+			} else if (xmlSpider.isWriteIndexScheduled()) {
 				statusContent.addChild("span", "style", "color: blue; font-weight: bold;", xmlSpider.isGarbageCollecting() ? "GARBAGE COLLECTING" : "SCHEDULED" );
 				HTMLNode cancelform = pr.addFormChild(statusContent, "/xmlspider/", "cancelform");
 				cancelform.addChild("input", //
 						new String[] { "name", "type", "value" },//
 						new String[] { "cancelwrite", "hidden", "cancelwrite" });
 				cancelform.addChild("input", new String[]{"type", "value"}, new String[]{"submit", "Cancel write"});
-			}else
+			} else {
 				statusContent.addChild("span", "style", "color: green; font-weight: bold;", "IDLE");
+			}
 		}
 		statusContent.addChild("br");
 		statusContent.addChild("#", "Last Written: "
@@ -215,8 +218,9 @@ class MainPage implements WebPage {
 
 			int showURI = xmlSpider.getConfig().getMaxShownURIs();
 			List<Page> page = new ArrayList();
-			while (page.size() < showURI && it.hasNext())
+			while (page.size() < showURI && it.hasNext()) {
 				page.add(it.next());
+			}
 
 			return new PageStatus(count, page);
 		}
