@@ -50,6 +50,6 @@ public class SearchUtil {
 			} 
 			return true;
 		} 
-		return true;
+		return false;
 	}
 }
