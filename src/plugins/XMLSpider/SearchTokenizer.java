@@ -18,6 +18,7 @@ class SearchTokenizer implements Iterable<String>, Iterator<String> {
 	private ArrayList<Mode> mode;
 	private ArrayList<String> segments;
 	private int nextPos;
+	private final boolean returnPairs;
 
 	private Iterator<String> cjkTokenizer;
 
@@ -25,7 +26,8 @@ class SearchTokenizer implements Iterable<String>, Iterator<String> {
 		UNDEF, LATIN, CJK
 	};
 
-	SearchTokenizer(String text) {
+	SearchTokenizer(String text, boolean returnPairs) {
+		this.returnPairs = returnPairs;
 		// normalize
 		text = normalize(text);
 
@@ -124,7 +126,7 @@ class SearchTokenizer implements Iterable<String>, Iterator<String> {
 			return curSeg;
 
 		case CJK:
-			cjkTokenizer = cjkIterator(curSeg);
+			cjkTokenizer = cjkIterator(curSeg, returnPairs);
 			assert cjkTokenizer.hasNext();
 			return cjkTokenizer.next();
 
@@ -134,8 +136,10 @@ class SearchTokenizer implements Iterable<String>, Iterator<String> {
 		return null;
 	}
 
-	// C1C2C3C4 -> C1, C1C2, C2, C2C3, C3, C3C4, C4
-	private Iterator<String> cjkIterator(String cjkText) {
+	/** Iterate a CJK string. Return characters or characters and pairs of characters.
+	 * @param returnPairs If true, return pairs of characters in between characters: 
+	 * C1C2C3C4 -> C1, C1C2, C2, C2C3, C3, C3C4, C4 */
+	private Iterator<String> cjkIterator(String cjkText, final boolean returnPairs) {
 		ArrayList<String> cjkToken = new ArrayList<String>();
 
 		String lastChar = null;
@@ -146,7 +150,7 @@ class SearchTokenizer implements Iterable<String>, Iterator<String> {
 
 			String curChar = new String(Character.toChars(codepoint));
 
-			if (lastChar != null)
+			if (lastChar != null && returnPairs)
 				cjkToken.add(lastChar + curChar);
 			if (isCJK(codepoint)) // skip number embedded in cjk
 				cjkToken.add(curChar);

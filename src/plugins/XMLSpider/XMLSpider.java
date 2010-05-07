@@ -724,11 +724,9 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 				type = "title";
 			}
 			else type = null;
-			/*
-			 * determine the position of the word in the retrieved page
-			 * FIXME - replace with a real tokenizor
-			 */
-			SearchTokenizer tok = new SearchTokenizer(s);
+			// Tokenise. Do not use the pairs-of-CJK-chars option because we need
+			// accurate word index numbers.
+			SearchTokenizer tok = new SearchTokenizer(s, false);
 
 			if(lastPosition == null)
 				lastPosition = 1; 

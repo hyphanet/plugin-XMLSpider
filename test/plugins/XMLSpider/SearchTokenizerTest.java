@@ -176,7 +176,7 @@ public class SearchTokenizerTest extends TestCase {
 	}
 
 	private void compare(String text, String[] token) {
-		SearchTokenizer st = new SearchTokenizer(text);
+		SearchTokenizer st = new SearchTokenizer(text, true);
 		System.out.println("> " + text);
 
 		if (token == null)
