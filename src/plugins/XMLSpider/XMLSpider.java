@@ -470,7 +470,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 			try {
 				if(!"text/plain".equals(mimeType))
 					ContentFilter.filter(data, new NullBucketFactory(), mimeType,
-							uri.toURI("http://127.0.0.1:8888/"), pageCallBack, null);
+							uri.toURI("http://127.0.0.1:8888/"), pageCallBack, null, null);
 				else{
 					BufferedReader br = new BufferedReader(new InputStreamReader(data.getInputStream()));
 					String line;
