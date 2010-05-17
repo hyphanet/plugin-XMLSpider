@@ -107,8 +107,6 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 	private PageMaker pageMaker;	
 	private PluginRespirator pr;
 
-	private LibraryBuffer librarybuffer;
-
 	public synchronized boolean cancelWrite() {
 		if(writingIndex) {
 			return false;
@@ -647,8 +645,6 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 			queueURI(initialURIs[i], "bookmark", false);
 		}
 
-		librarybuffer = new LibraryBuffer(pr);
-
 		callbackExecutor.execute(new StartSomeRequestsCallback());
 	}
 
@@ -709,9 +705,6 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 				 * title of the page 
 				 */
 				page.setPageTitle(s);
-				for (TermPageEntry termPageEntry : tpes.values()) {
-					librarybuffer.setTitle(termPageEntry, s);
-				}
 				type = "title";
 			} else {
 				type = null;
@@ -756,7 +749,6 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 
 			// Add to Library buffer
 			TermPageEntry tp = getEntry(word);
-			librarybuffer.addPos(tp, position);
 		}
 
 		/**
