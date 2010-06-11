@@ -7,7 +7,9 @@ import static plugins.XMLSpider.SearchUtil.isStopWord;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -47,9 +49,9 @@ import freenet.client.async.ClientGetCallback;
 import freenet.client.async.ClientGetter;
 import freenet.client.async.USKCallback;
 import freenet.clients.http.PageMaker;
-import freenet.clients.http.filter.ContentFilter;
-import freenet.clients.http.filter.FoundURICallback;
-import freenet.clients.http.filter.UnsafeContentTypeException;
+import freenet.client.filter.ContentFilter;
+import freenet.client.filter.FoundURICallback;
+import freenet.client.filter.UnsafeContentTypeException;
 import freenet.keys.FreenetURI;
 import freenet.keys.USK;
 import freenet.l10n.BaseL10n.LANGUAGE;
@@ -64,7 +66,9 @@ import freenet.pluginmanager.FredPluginVersioned;
 import freenet.pluginmanager.PluginRespirator;
 import freenet.support.Logger;
 import freenet.support.api.Bucket;
+import freenet.support.io.Closer;
 import freenet.support.io.NativeThread;
+import freenet.support.io.NullBucket;
 import freenet.support.io.NullBucketFactory;
 
 /**
@@ -460,10 +464,16 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 			PageCallBack pageCallBack = new PageCallBack(page);
 			Logger.minor(this, "Successful: " + uri + " : " + page.getId());
 
+			InputStream filterInput = null;
+			OutputStream filterOutput = null;
 			try {
+				filterInput = data.getInputStream();
+				filterOutput = new NullBucket().getOutputStream();
 				if (!"text/plain".equals(mimeType)) {
-					ContentFilter.filter(data, new NullBucketFactory(), mimeType,
+					ContentFilter.filter(filterInput, filterOutput, mimeType,
 							uri.toURI("http://127.0.0.1:8888/"), pageCallBack, null, null);
+					filterInput.close();
+					filterOutput.close();
 				} else {
 					BufferedReader br = new BufferedReader(new InputStreamReader(data.getInputStream()));
 					String line;
@@ -488,6 +498,9 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 				// we have lots of invalid html on net - just normal, not error
 				Logger.normal(this, "exception on content filter for " + page, e);
 				return;
+			} finally {
+				Closer.close(filterInput);
+				Closer.close(filterOutput);
 			}
 
 			page.setStatus(Status.SUCCEEDED);
