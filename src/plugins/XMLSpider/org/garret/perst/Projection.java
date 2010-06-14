@@ -81,7 +81,7 @@ public class Projection<From extends IPersistent, To extends IPersistent> extend
 
     /**
      * Join this projection with another projection.
-     * Result of this join is set of objects present in both projections.
+     * HashResult of this join is set of objects present in both projections.
      */
     public void join(Projection<From, To> prj) { 
         retainAll(prj);

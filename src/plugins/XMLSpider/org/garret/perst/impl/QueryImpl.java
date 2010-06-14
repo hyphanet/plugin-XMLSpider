@@ -3875,7 +3875,7 @@ public class QueryImpl<T> implements Query<T>
                     if (rt.equals(void.class) 
                         || !(rt.isPrimitive() && !Comparable.class.isAssignableFrom(rt))) 
                     {
-                        throw new CompileError("Result type " + rt + " of sort method should be comparable", p);
+                        throw new CompileError("HashResult type " + rt + " of sort method should be comparable", p);
                     }
                 } else { 
                     Class type = groupByField.getType();
