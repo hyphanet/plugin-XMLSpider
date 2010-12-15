@@ -873,4 +873,8 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 	public void removeFrom(ObjectContainer container) {
 		throw new UnsupportedOperationException();
 	}
+
+	public boolean realTimeFlag() {
+		return false; // Definitely want throughput here.
+	}
 }
