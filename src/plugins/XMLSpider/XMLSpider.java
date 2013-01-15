@@ -774,6 +774,11 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 			if (tp == null) tp = new TermPageEntry(word, 0, uri, new HashMap());
 			return tp;
 		}
+
+		@Override
+		public void onFinishedPage() {
+			// Ignore
+		}
 	}
 
 	public void onFoundEdition(long l, USK key, ObjectContainer container, ClientContext context, boolean metadata,
