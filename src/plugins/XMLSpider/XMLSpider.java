@@ -70,6 +70,7 @@ import freenet.support.io.Closer;
 import freenet.support.io.NativeThread;
 import freenet.support.io.NullBucket;
 import freenet.support.io.NullBucketFactory;
+import freenet.support.io.ResumeFailedException;
 
 /**
  * XMLSpider. Produces xml index for searching words. 
@@ -239,10 +240,10 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 
 		for (ClientGetter g : toStart) {
 			try {
-				g.start(null, clientContext);
+				g.start(clientContext);
 				Logger.minor(this, g + " started");
 			} catch (FetchException e) {
-				g.getClientCallback().onFailure(e, g, null);
+				g.getClientCallback().onFailure(e, g);
 			}
 		}
 	}
@@ -257,14 +258,14 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 			this.page = page;
 		}
 
-		public void onFailure(FetchException e, ClientGetter state, ObjectContainer container) {
+		public void onFailure(FetchException e, ClientGetter state) {
 			if (stopped) return;
 
 			callbackExecutor.execute(new OnFailureCallback(e, state, page));
 			Logger.minor(this, "Queued OnFailure: " + page + " (q:" + callbackExecutor.getQueue().size() + ")");
 		}
 
-		public void onSuccess(final FetchResult result, final ClientGetter state, ObjectContainer container) {
+		public void onSuccess(final FetchResult result, final ClientGetter state) {
 			if (stopped) return;
 
 			callbackExecutor.execute(new OnSuccessCallback(result, state, page));
@@ -275,14 +276,22 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 			return super.toString() + ":" + page;
 		}
 
-		public void onMajorProgress(ObjectContainer container) {
-		}
+        @Override
+        public void onResume(ClientContext context) throws ResumeFailedException {
+            // Impossible.
+        }
+
+        @Override
+        public RequestClient getRequestClient() {
+            return XMLSpider.this;
+        }
+
 	}
 
 	private ClientGetter makeGetter(Page page) throws MalformedURLException {
 		ClientGetter getter = new ClientGetter(new ClientGetterCallback(page),
 				new FreenetURI(page.getURI()), ctx,
-				getPollingPriorityProgress(), this, null, null, null);
+				getPollingPriorityProgress(), null, null, null);
 		return getter;
 	}
 
@@ -598,7 +607,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 			for (Map.Entry<Page, ClientGetter> me : runningFetch.entrySet()) {
 				ClientGetter getter = me.getValue();
 				Logger.minor(this, "Canceling request" + getter);
-				getter.cancel(null, clientContext);
+				getter.cancel(clientContext);
 			}
 			runningFetch.clear();
 			callbackExecutor.shutdownNow();
@@ -781,7 +790,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 		}
 	}
 
-	public void onFoundEdition(long l, USK key, ObjectContainer container, ClientContext context, boolean metadata,
+	public void onFoundEdition(long l, USK key, ClientContext context, boolean metadata,
             short codec, byte[] data, boolean newKnownGood, boolean newSlotToo) {
 		FreenetURI uri = key.getURI();
 		/*-
@@ -797,7 +806,7 @@ public class XMLSpider implements FredPlugin, FredPluginThreadless,
 	}
 
 	public short getPollingPriorityNormal() {
-		return (short) Math.min(RequestStarter.MINIMUM_PRIORITY_CLASS, getRoot().getConfig().getRequestPriority() + 1);
+		return (short) Math.min(RequestStarter.PAUSED_PRIORITY_CLASS, getRoot().getConfig().getRequestPriority() + 1);
 	}
 
 	public short getPollingPriorityProgress() {
